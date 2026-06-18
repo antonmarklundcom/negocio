@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<template id="__bundler_thumbnail" data-bg-color="#2C8DE0">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#2C8DE0"/>
+    <rect x="360" y="250" width="480" height="300" rx="36" fill="#ffffff" opacity="0.16"/>
+    <path d="M470 360h260l-16-64H486l-16 64Z" fill="#ffffff"/>
+    <path d="M486 360v176h228V360" fill="none" stroke="#ffffff" stroke-width="22" stroke-linejoin="round"/>
+    <path d="M548 536v-88h104v88" fill="none" stroke="#ffffff" stroke-width="22" stroke-linejoin="round"/>
+  </svg>
+</template>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+    p{text-wrap:pretty;}
+    ::-webkit-scrollbar{height:10px;width:10px;}
+    ::-webkit-scrollbar-thumb{background:#d4cdc1;border-radius:8px;}
+  </style>
+</helmet>
+
+<x-import component-from-global-scope="image-slot" from="./image-slot.js" id="__slotloader" placeholder="" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;" hint-size="1px,1px"></x-import>
+
+<div style="min-width:100%;width:max-content;min-height:100vh;box-sizing:border-box;padding:48px;background:#E6E3DC;">
+
+  <div style="max-width:1160px;margin:0 0 8px;">
+    <div style="font:800 22px 'Plus Jakarta Sans';color:#3a3528;letter-spacing:-.01em;">negocio.com.py — Página de negocio</div>
+    <div style="font:500 14px 'Plus Jakarta Sans';color:#8A8578;margin-top:4px;">Sistema de diseño · estados Gratis y Premium · móvil y escritorio</div>
+  </div>
+
+  <!-- ===================== STYLE TILE ===================== -->
+  <sc-if value="{{ showStyleTile }}" hint-placeholder-val="{{ true }}">
+  <section style="margin:24px 0 44px;">
+    <div style="font:600 12px 'Plus Jakarta Sans';letter-spacing:.09em;text-transform:uppercase;color:#8A8578;margin:0 0 12px 2px;">Style tile · fundamentos del sistema</div>
+    <div style="width:1160px;background:#FAF7F2;border-radius:14px;box-shadow:0 1px 3px rgba(40,50,60,.08),0 18px 44px rgba(40,50,60,.10);overflow:hidden;border:1px solid #EFEAE2;padding:32px;display:grid;grid-template-columns:1fr 1fr;gap:34px;">
+
+      <div>
+        <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin:0 0 14px;">Color</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          <div><div style="height:58px;border-radius:12px;background:#FAF7F2;border:1px solid #EBE6DE;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Canvas</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#FAF7F2</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#2C8DE0;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Azul primario</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#2C8DE0</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#1B6FBE;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Azul oscuro</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#1B6FBE</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#E9F3FC;border:1px solid #DCEBF8;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Azul suave</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#E9F3FC</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#F2A33C;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Ámbar (acento)</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#F2A33C</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#25D366;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">WhatsApp</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#25D366</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#233240;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Tinta</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#233240</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#7A8694;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Apagado</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#7A8694</div></div>
+          <div><div style="height:58px;border-radius:12px;background:#fff;border:1px solid #EBE6DE;"></div><div style="font:600 12px 'Plus Jakarta Sans';color:#233240;margin-top:7px;">Borde</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;">#EBE6DE</div></div>
+        </div>
+
+        <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin:26px 0 14px;">Tokens CSS</div>
+        <pre style="margin:0;background:#2A2520;color:#E9E2D6;border-radius:12px;padding:16px 18px;font:500 11.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto;white-space:pre;">:root{
+  --np-canvas:#FAF7F2;  --np-surface:#FFFFFF;
+  --np-primary:#2C8DE0; --np-primary-dark:#1B6FBE;
+  --np-primary-soft:#E9F3FC;
+  --np-accent:#F2A33C;  --np-accent-soft:#FCEFD9;
+  --np-whatsapp:#25D366;--np-whatsapp-dark:#1EBE5A;
+  --np-ink:#233240;     --np-body:#44515E;
+  --np-muted:#7A8694;   --np-border:#EBE6DE;
+  --np-locked:#F2EEE8;
+  --r-card:18px; --r-btn:12px; --r-pill:999px;
+  --shadow:0 2px 4px rgba(40,50,60,.04),
+           0 8px 24px rgba(40,50,60,.06);
+  --space:4px;  /* escala 4·8·12·16·24·32·48 */
+  --font:'Plus Jakarta Sans';
+}</pre>
+      </div>
+
+      <div>
+        <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin:0 0 14px;">Tipografía · Plus Jakarta Sans</div>
+        <div style="display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #EBE6DE;padding-bottom:18px;">
+          <div><div style="font:800 38px/1.05 'Plus Jakarta Sans';color:#233240;letter-spacing:-.025em;">Panadería Doña Marta</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;margin-top:3px;">Nombre del negocio · 38 / 800 · −2.5% letter-spacing</div></div>
+          <div><div style="font:700 18px 'Plus Jakarta Sans';color:#233240;">Horario de atención</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;margin-top:2px;">Título de sección · 18 / 700</div></div>
+          <div><div style="font:400 16px/1.6 'Plus Jakarta Sans';color:#44515E;">Pan casero y facturas horneadas cada mañana en el corazón de Asunción.</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;margin-top:2px;">Cuerpo · 16 / 400 · interlínea 1.6</div></div>
+          <div><div style="font:600 14px 'Plus Jakarta Sans';color:#7A8694;">Lun a Vie · 06:00 a 20:00</div><div style="font:500 11px 'Plus Jakarta Sans';color:#9AA1A9;margin-top:2px;">Meta · 14 / 600</div></div>
+        </div>
+
+        <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin:20px 0 14px;">Botones</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#25D366;color:#fff;border:none;border-radius:12px;font:700 14px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.28);"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.5 0 1.47 1.08 2.9 1.23 3.1.15.2 2.12 3.24 5.13 4.54.72.31 1.27.49 1.71.63.72.23 1.37.2 1.89.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/></svg>WhatsApp</button>
+          <button style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#E9F3FC;color:#1B6FBE;border:1.5px solid #BFDDF6;border-radius:12px;font:700 14px 'Plus Jakarta Sans';cursor:pointer;">Llamar</button>
+          <button style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#2C8DE0;color:#fff;border:none;border-radius:12px;font:700 14px 'Plus Jakarta Sans';cursor:pointer;">Enviar mensaje</button>
+          <button style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#F2EEE8;color:#9AA1A9;border:1.5px dashed #D8D2C8;border-radius:12px;font:700 14px 'Plus Jakarta Sans';cursor:not-allowed;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Bloqueado</button>
+        </div>
+
+        <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin:22px 0 14px;">Insignias y etiquetas</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#E9F3FC;color:#1B6FBE;border-radius:999px;font:700 12.5px 'Plus Jakarta Sans';"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.4 1.8 3 .1 1 2.85 2.4 1.8-.9 2.9.9 2.9-2.4 1.8-1 2.85-3 .1L12 22l-2.4-1.8-3-.1-1-2.85L3.2 15.4l.9-2.9-.9-2.9L5.6 7.8l1-2.85 3-.1L12 2Z"/><path d="m8.5 12 2.3 2.3 4.7-4.6" fill="none" stroke="#E9F3FC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Verificado</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#fff;color:#44515E;border:1px solid #EBE6DE;border-radius:999px;font:600 12.5px 'Plus Jakarta Sans';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2C8DE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/></svg>Panaderías</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#FCEFD9;color:#B26B0E;border-radius:999px;font:700 12.5px 'Plus Jakarta Sans';">Premium</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- ===================== MÓVIL ===================== -->
+  <section style="margin:0 0 44px;">
+    <div style="font:600 12px 'Plus Jakarta Sans';letter-spacing:.09em;text-transform:uppercase;color:#8A8578;margin:0 0 14px 2px;">Móvil · 360px · la brecha de mejora</div>
+    <div style="display:flex;gap:40px;align-items:flex-start;">
+
+      <!-- ---------- MÓVIL GRATIS ---------- -->
+      <sc-if value="{{ showFree }}" hint-placeholder-val="{{ true }}">
+      <div style="width:360px;flex:none;">
+        <div style="display:inline-flex;align-items:center;gap:7px;font:700 12px 'Plus Jakarta Sans';color:#8A8578;margin:0 0 10px 4px;"><span style="width:9px;height:9px;border-radius:3px;background:#C9C2B6;"></span>GRATIS</div>
+        <div style="width:360px;background:#FAF7F2;border-radius:30px;box-shadow:0 4px 12px rgba(40,50,60,.08),0 30px 60px rgba(40,50,60,.13);overflow:hidden;border:1px solid #EFEAE2;">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid #EFEAE2;">
+            <div style="font:800 17px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div>
+            <div style="display:flex;gap:14px;color:#7A8694;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </div>
+          </div>
+
+          <div style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:center;gap:6px;font:500 12px 'Plus Jakarta Sans';color:#7A8694;flex-wrap:wrap;">
+              <span>Inicio</span><span style="color:#C9C2B6;">›</span><span>Panaderías</span><span style="color:#C9C2B6;">›</span><span style="color:#233240;font-weight:600;">Doña Marta</span>
+            </div>
+
+            <div style="position:relative;overflow:hidden;border-radius:18px;padding:24px 20px;background:linear-gradient(155deg,#3D9AE8 0%,#2480D6 100%);color:#fff;box-shadow:0 8px 22px rgba(36,128,214,.28);">
+              <svg style="position:absolute;right:-14px;bottom:-18px;opacity:.16;" width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/><path d="M9 20v-5h6v5"/></svg>
+              <div style="position:relative;">
+                <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:rgba(255,255,255,.18);color:#fff;border-radius:999px;font:600 12px 'Plus Jakarta Sans';margin-bottom:12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/></svg>Panaderías y Confiterías</span>
+                <h1 style="margin:0;font:800 27px/1.12 'Plus Jakarta Sans';letter-spacing:-.025em;">Panadería Doña Marta</h1>
+                <div style="margin-top:7px;font:500 13.5px 'Plus Jakarta Sans';color:rgba(255,255,255,.86);">Panadería artesanal · Asunción</div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:16px;">
+              <p style="margin:0;font:400 14.5px/1.62 'Plus Jakarta Sans';color:#44515E;">Pan casero, facturas y tortas por encargo, horneados cada mañana en el corazón de Asunción. Atención familiar desde 1998.</p>
+              <div style="height:1px;background:#EFEAE2;margin:14px 0;"></div>
+              <div style="display:flex;align-items:flex-start;gap:10px;color:#44515E;">
+                <span style="color:#2C8DE0;margin-top:1px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                <div style="font:500 14px/1.45 'Plus Jakarta Sans';">Av. Mcal. López 1234 c/ Brasilia<br><span style="color:#9AA1A9;font-size:13px;">Asunción, Paraguay</span></div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:16px;">
+              <div style="display:flex;align-items:center;gap:8px;font:700 15px 'Plus Jakarta Sans';color:#233240;margin-bottom:12px;"><span style="color:#2C8DE0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Horario de atención</div>
+              <div style="display:flex;flex-direction:column;gap:9px;font:500 14px 'Plus Jakarta Sans';">
+                <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Lunes a Viernes</span><span style="color:#233240;font-weight:600;">06:00 – 20:00</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Sábados</span><span style="color:#233240;font-weight:600;">06:00 – 21:00</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Domingos</span><span style="color:#233240;font-weight:600;">07:00 – 13:00</span></div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:16px;">
+              <div style="font:600 12px 'Plus Jakarta Sans';color:#9AA1A9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Teléfono</div>
+              <div style="display:flex;align-items:center;gap:9px;font:700 17px 'Plus Jakarta Sans';color:#233240;"><span style="color:#7A8694;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg></span>+595 21 555 0182</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:9px;">
+              <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;background:#F2EEE8;border:1.5px dashed #D8D2C8;border-radius:14px;">
+                <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#E7E1D8;color:#A79F92;flex:none;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+                <div style="flex:1;"><div style="font:700 14px 'Plus Jakarta Sans';color:#8A8578;">WhatsApp</div><div style="font:500 12.5px 'Plus Jakarta Sans';color:#A79F92;">Disponible con Premium</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;background:#F2EEE8;border:1.5px dashed #D8D2C8;border-radius:14px;">
+                <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#E7E1D8;color:#A79F92;flex:none;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L18 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+                <div style="flex:1;"><div style="font:700 14px 'Plus Jakarta Sans';color:#8A8578;">Galería de fotos</div><div style="font:500 12.5px 'Plus Jakarta Sans';color:#A79F92;">Disponible con Premium</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;background:#F2EEE8;border:1.5px dashed #D8D2C8;border-radius:14px;">
+                <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#E7E1D8;color:#A79F92;flex:none;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/></svg></span>
+                <div style="flex:1;"><div style="font:700 14px 'Plus Jakarta Sans';color:#8A8578;">Sección de Panaderías</div><div style="font:500 12.5px 'Plus Jakarta Sans';color:#A79F92;">Menú, especialidades y más</div></div>
+              </div>
+
+              <div style="margin-top:4px;display:flex;align-items:center;gap:12px;padding:15px;background:#FCEFD9;border:1px solid #F4D9A8;border-radius:16px;">
+                <span style="color:#E0902B;flex:none;"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.6L19.4 9l-5.7 1.4L12 16l-1.7-5.6L4.6 9l5.7-1.4L12 2Z"/></svg></span>
+                <div style="flex:1;"><div style="font:700 14.5px 'Plus Jakarta Sans';color:#6B4708;">Mejorá este perfil</div><div style="font:500 12.5px/1.4 'Plus Jakarta Sans';color:#9A7430;">Activá WhatsApp, fotos y tu sección.</div></div>
+                <button style="flex:none;padding:9px 14px;background:#F2A33C;color:#fff;border:none;border-radius:10px;font:700 13px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 4px 12px rgba(242,163,60,.3);transition:transform .15s ease;" style-hover="transform:translateY(-2px);">Mejorar</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#F3EFE9;border-top:1px solid #EBE6DE;padding:18px 16px;">
+            <div style="font:800 14px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div>
+            <div style="display:flex;gap:16px;margin-top:8px;font:500 12.5px 'Plus Jakarta Sans';color:#7A8694;"><span>Categorías</span><span>Sumá tu negocio</span><span>Ayuda</span></div>
+            <div style="margin-top:10px;font:500 11.5px 'Plus Jakarta Sans';color:#A79F92;">Directorio de negocios del Paraguay</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ---------- MÓVIL PREMIUM ---------- -->
+      <sc-if value="{{ showPremium }}" hint-placeholder-val="{{ true }}">
+      <div style="width:360px;flex:none;">
+        <div style="display:inline-flex;align-items:center;gap:7px;font:700 12px 'Plus Jakarta Sans';color:#1B6FBE;margin:0 0 10px 4px;"><span style="width:9px;height:9px;border-radius:3px;background:#2C8DE0;"></span>PREMIUM</div>
+        <div style="width:360px;background:#FAF7F2;border-radius:30px;box-shadow:0 4px 12px rgba(40,50,60,.08),0 30px 60px rgba(40,50,60,.15);overflow:hidden;border:1px solid #EFEAE2;">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid #EFEAE2;">
+            <div style="font:800 17px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div>
+            <div style="display:flex;gap:14px;color:#7A8694;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </div>
+          </div>
+
+          <div style="padding:14px 14px 0;">
+            <div style="display:flex;align-items:center;gap:6px;font:500 12px 'Plus Jakarta Sans';color:#7A8694;flex-wrap:wrap;margin-bottom:12px;">
+              <span>Inicio</span><span style="color:#C9C2B6;">›</span><span>Panaderías</span><span style="color:#C9C2B6;">›</span><span style="color:#233240;font-weight:600;">Doña Marta</span>
+            </div>
+          </div>
+
+          <div style="position:relative;margin:0 14px;border-radius:18px;overflow:hidden;box-shadow:0 8px 22px rgba(40,50,60,.14);">
+            <image-slot id="cover-pm" shape="rect" placeholder="Foto de portada del local" style="display:block;width:100%;height:200px;"></image-slot>
+          </div>
+          <div style="display:flex;gap:8px;padding:10px 14px 0;">
+            <image-slot id="gal-pm-1" shape="rounded" radius="10" placeholder="" style="display:block;width:100%;height:58px;"></image-slot>
+            <image-slot id="gal-pm-2" shape="rounded" radius="10" placeholder="" style="display:block;width:100%;height:58px;"></image-slot>
+            <image-slot id="gal-pm-3" shape="rounded" radius="10" placeholder="" style="display:block;width:100%;height:58px;"></image-slot>
+          </div>
+
+          <div style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:#E9F3FC;color:#1B6FBE;border-radius:999px;font:600 12px 'Plus Jakarta Sans';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/></svg>Panaderías y Confiterías</span>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:9px;">
+                <h1 style="margin:0;font:800 27px/1.12 'Plus Jakarta Sans';letter-spacing:-.025em;color:#233240;flex:1;">Panadería Doña Marta</h1>
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 9px;background:#E9F3FC;color:#1B6FBE;border-radius:999px;font:700 11.5px 'Plus Jakarta Sans';margin-top:5px;flex:none;"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.4 1.8 3 .1 1 2.85 2.4 1.8-.9 2.9.9 2.9-2.4 1.8-1 2.85-3 .1L12 22l-2.4-1.8-3-.1-1-2.85L3.2 15.4l.9-2.9-.9-2.9L5.6 7.8l1-2.85 3-.1L12 2Z"/><path d="m8.5 12 2.3 2.3 4.7-4.6" fill="none" stroke="#E9F3FC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Verificado</span>
+              </div>
+              <div style="margin-top:6px;font:500 13.5px 'Plus Jakarta Sans';color:#7A8694;">Panadería artesanal · Asunción</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:9px;background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:14px;">
+              <button style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:14px;background:#25D366;color:#fff;border:none;border-radius:12px;font:700 15.5px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.3);transition:transform .15s ease,box-shadow .15s ease;" style-hover="transform:translateY(-2px);box-shadow:0 8px 22px rgba(37,211,102,.4);"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.5 0 1.47 1.08 2.9 1.23 3.1.15.2 2.12 3.24 5.13 4.54.72.31 1.27.49 1.71.63.72.23 1.37.2 1.89.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35ZM12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.26A10 10 0 1 0 12 2Z"/></svg>Enviar WhatsApp</button>
+              <button style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:13px;background:#E9F3FC;color:#1B6FBE;border:1.5px solid #BFDDF6;border-radius:12px;font:700 15px 'Plus Jakarta Sans';cursor:pointer;transition:transform .15s ease;" style-hover="transform:translateY(-2px);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>Llamar · +595 21 555 0182</button>
+            </div>
+
+            <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:16px;">
+              <p style="margin:0;font:400 14.5px/1.62 'Plus Jakarta Sans';color:#44515E;">Pan casero, facturas y tortas por encargo, horneados cada mañana en el corazón de Asunción. Atención familiar desde 1998.</p>
+            </div>
+
+            <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:16px;">
+              <div style="display:flex;align-items:center;gap:8px;font:700 15px 'Plus Jakarta Sans';color:#233240;margin-bottom:12px;"><span style="color:#2C8DE0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>Ubicación</div>
+              <div style="position:relative;height:120px;border-radius:12px;overflow:hidden;border:1px solid #E3E8E2;background:linear-gradient(#EAF1EC,#E0EAE4);">
+                <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent 0 26px,rgba(255,255,255,.55) 26px 28px),repeating-linear-gradient(90deg,transparent 0 34px,rgba(255,255,255,.55) 34px 36px);"></div>
+                <div style="position:absolute;top:42px;left:0;right:0;height:9px;background:#D7E0D9;"></div>
+                <div style="position:absolute;top:0;bottom:0;left:120px;width:9px;background:#D7E0D9;"></div>
+                <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);color:#E0653C;filter:drop-shadow(0 3px 4px rgba(0,0,0,.2));"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg></span>
+              </div>
+              <div style="margin-top:11px;font:500 14px/1.45 'Plus Jakarta Sans';color:#44515E;">Av. Mcal. López 1234 c/ Brasilia, Asunción</div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:16px;">
+              <div style="display:flex;align-items:center;gap:8px;font:700 15px 'Plus Jakarta Sans';color:#233240;margin-bottom:12px;"><span style="color:#2C8DE0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Horario de atención</div>
+              <div style="display:flex;flex-direction:column;gap:9px;font:500 14px 'Plus Jakarta Sans';">
+                <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Lunes a Viernes</span><span style="color:#233240;font-weight:600;">06:00 – 20:00</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Sábados</span><span style="color:#233240;font-weight:600;">06:00 – 21:00</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Domingos</span><span style="color:#233240;font-weight:600;">07:00 – 13:00</span></div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:16px;">
+              <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin-bottom:4px;">Enviá un mensaje</div>
+              <div style="font:500 12.5px 'Plus Jakarta Sans';color:#9AA1A9;margin-bottom:12px;">Tu consulta llega directo al negocio.</div>
+              <div style="display:flex;flex-direction:column;gap:9px;">
+                <input placeholder="Tu nombre" style="width:100%;padding:11px 13px;border:1.5px solid #EBE6DE;border-radius:10px;font:500 14px 'Plus Jakarta Sans';color:#233240;background:#FCFBF9;outline:none;">
+                <textarea placeholder="Tu mensaje" rows="3" style="width:100%;padding:11px 13px;border:1.5px solid #EBE6DE;border-radius:10px;font:500 14px 'Plus Jakarta Sans';color:#233240;background:#FCFBF9;outline:none;resize:none;"></textarea>
+                <button style="width:100%;padding:12px;background:#2C8DE0;color:#fff;border:none;border-radius:10px;font:700 14.5px 'Plus Jakarta Sans';cursor:pointer;transition:transform .15s ease;" style-hover="transform:translateY(-2px);">Enviar consulta</button>
+              </div>
+            </div>
+
+            <div style="border:1.5px dashed #C7D8C9;border-radius:16px;padding:18px 16px;text-align:center;background:#F4F8F4;">
+              <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#E2F0E4;color:#3C8A56;border-radius:999px;font:700 11px 'Plus Jakarta Sans';text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;">Próximamente</div>
+              <div style="font:700 15px 'Plus Jakarta Sans';color:#3A6B49;">Sección de Panaderías</div>
+              <div style="font:500 12.5px/1.45 'Plus Jakarta Sans';color:#6E9079;margin-top:4px;">Aquí irá el bloque específico del rubro (menú, especialidades). Se diseña en el siguiente paso.</div>
+            </div>
+          </div>
+
+          <div style="background:#F3EFE9;border-top:1px solid #EBE6DE;padding:18px 16px;">
+            <div style="font:800 14px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div>
+            <div style="display:flex;gap:16px;margin-top:8px;font:500 12.5px 'Plus Jakarta Sans';color:#7A8694;"><span>Categorías</span><span>Sumá tu negocio</span><span>Ayuda</span></div>
+            <div style="margin-top:10px;font:500 11.5px 'Plus Jakarta Sans';color:#A79F92;">Directorio de negocios del Paraguay</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </section>
+
+  <!-- ===================== ESCRITORIO ===================== -->
+  <section style="margin:0;">
+    <div style="font:600 12px 'Plus Jakarta Sans';letter-spacing:.09em;text-transform:uppercase;color:#8A8578;margin:0 0 14px 2px;">Escritorio · la misma plantilla, lado a lado</div>
+    <div style="display:flex;gap:40px;align-items:flex-start;">
+
+      <!-- ---------- ESCRITORIO GRATIS ---------- -->
+      <sc-if value="{{ showFree }}" hint-placeholder-val="{{ true }}">
+      <div style="width:1100px;flex:none;">
+        <div style="display:inline-flex;align-items:center;gap:7px;font:700 12px 'Plus Jakarta Sans';color:#8A8578;margin:0 0 10px 4px;"><span style="width:9px;height:9px;border-radius:3px;background:#C9C2B6;"></span>GRATIS</div>
+        <div style="width:1100px;background:#FAF7F2;border-radius:16px;box-shadow:0 4px 12px rgba(40,50,60,.08),0 30px 60px rgba(40,50,60,.13);overflow:hidden;border:1px solid #EFEAE2;">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 36px;background:#fff;border-bottom:1px solid #EFEAE2;">
+            <div style="font:800 20px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div>
+            <div style="display:flex;align-items:center;gap:26px;font:600 14px 'Plus Jakarta Sans';color:#44515E;"><span>Categorías</span><span>Buscar</span><button style="padding:9px 16px;background:#2C8DE0;color:#fff;border:none;border-radius:10px;font:700 13.5px 'Plus Jakarta Sans';cursor:pointer;">Sumá tu negocio</button></div>
+          </div>
+
+          <div style="padding:26px 36px 40px;">
+            <div style="display:flex;align-items:center;gap:7px;font:500 13px 'Plus Jakarta Sans';color:#7A8694;margin-bottom:18px;"><span>Inicio</span><span style="color:#C9C2B6;">›</span><span>Panaderías y Confiterías</span><span style="color:#C9C2B6;">›</span><span style="color:#233240;font-weight:600;">Panadería Doña Marta</span></div>
+
+            <div style="position:relative;overflow:hidden;border-radius:20px;padding:40px 44px;background:linear-gradient(150deg,#3D9AE8 0%,#2480D6 100%);color:#fff;box-shadow:0 10px 30px rgba(36,128,214,.28);margin-bottom:26px;">
+              <svg style="position:absolute;right:8px;bottom:-30px;opacity:.16;" width="240" height="240" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/><path d="M9 20v-5h6v5"/></svg>
+              <div style="position:relative;max-width:680px;">
+                <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 13px;background:rgba(255,255,255,.18);color:#fff;border-radius:999px;font:600 13px 'Plus Jakarta Sans';margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/></svg>Panaderías y Confiterías</span>
+                <h1 style="margin:0;font:800 42px/1.06 'Plus Jakarta Sans';letter-spacing:-.028em;">Panadería Doña Marta</h1>
+                <div style="margin-top:11px;font:500 16px 'Plus Jakarta Sans';color:rgba(255,255,255,.88);">Panadería artesanal · Asunción, Paraguay</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 340px;gap:26px;align-items:start;">
+              <div style="display:flex;flex-direction:column;gap:18px;">
+                <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:24px;">
+                  <p style="margin:0;font:400 16px/1.65 'Plus Jakarta Sans';color:#44515E;">Pan casero, facturas y tortas por encargo, horneados cada mañana en el corazón de Asunción. Atención familiar desde 1998.</p>
+                  <div style="height:1px;background:#EFEAE2;margin:18px 0;"></div>
+                  <div style="display:flex;align-items:flex-start;gap:11px;color:#44515E;">
+                    <span style="color:#2C8DE0;margin-top:1px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                    <div style="font:500 15px/1.5 'Plus Jakarta Sans';">Av. Mcal. López 1234 c/ Brasilia<br><span style="color:#9AA1A9;font-size:14px;">Asunción, Paraguay</span></div>
+                  </div>
+                </div>
+
+                <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:24px;">
+                  <div style="display:flex;align-items:center;gap:9px;font:700 17px 'Plus Jakarta Sans';color:#233240;margin-bottom:14px;"><span style="color:#2C8DE0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Horario de atención</div>
+                  <div style="display:flex;flex-direction:column;gap:11px;font:500 15px 'Plus Jakarta Sans';max-width:420px;">
+                    <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Lunes a Viernes</span><span style="color:#233240;font-weight:600;">06:00 – 20:00</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Sábados</span><span style="color:#233240;font-weight:600;">06:00 – 21:00</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:#44515E;">Domingos</span><span style="color:#233240;font-weight:600;">07:00 – 13:00</span></div>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:11px;padding:16px 18px;background:#F2EEE8;border:1.5px dashed #D8D2C8;border-radius:16px;">
+                  <span style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;background:#E7E1D8;color:#A79F92;flex:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/></svg></span>
+                  <div style="flex:1;"><div style="font:700 15px 'Plus Jakarta Sans';color:#8A8578;">Sección de Panaderías</div><div style="font:500 13px 'Plus Jakarta Sans';color:#A79F92;">Menú y especialidades — disponible con Premium</div></div>
+                  <span style="color:#A79F92;flex:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:20px;">
+                <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:20px;">
+                  <div style="font:600 12px 'Plus Jakarta Sans';color:#9AA1A9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;">Teléfono</div>
+                  <div style="display:flex;align-items:center;gap:9px;font:700 18px 'Plus Jakarta Sans';color:#233240;"><span style="color:#7A8694;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg></span>+595 21 555 0182</div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:11px;padding:15px 16px;background:#F2EEE8;border:1.5px dashed #D8D2C8;border-radius:14px;">
+                  <span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:#E7E1D8;color:#A79F92;flex:none;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+                  <div style="flex:1;"><div style="font:700 14px 'Plus Jakarta Sans';color:#8A8578;">WhatsApp</div><div style="font:500 12.5px 'Plus Jakarta Sans';color:#A79F92;">Premium</div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:11px;padding:15px 16px;background:#F2EEE8;border:1.5px dashed #D8D2C8;border-radius:14px;">
+                  <span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:#E7E1D8;color:#A79F92;flex:none;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L18 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+                  <div style="flex:1;"><div style="font:700 14px 'Plus Jakarta Sans';color:#8A8578;">Galería de fotos</div><div style="font:500 12.5px 'Plus Jakarta Sans';color:#A79F92;">Premium</div></div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:12px;padding:16px;background:#FCEFD9;border:1px solid #F4D9A8;border-radius:16px;">
+                  <span style="color:#E0902B;flex:none;"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.6L19.4 9l-5.7 1.4L12 16l-1.7-5.6L4.6 9l5.7-1.4L12 2Z"/></svg></span>
+                  <div style="flex:1;"><div style="font:700 15px 'Plus Jakarta Sans';color:#6B4708;">Mejorá este perfil</div><div style="font:500 12.5px/1.4 'Plus Jakarta Sans';color:#9A7430;">WhatsApp, fotos y tu sección.</div></div>
+                </div>
+                <button style="width:100%;padding:13px;background:#F2A33C;color:#fff;border:none;border-radius:12px;font:700 15px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 4px 14px rgba(242,163,60,.3);transition:transform .15s ease;" style-hover="transform:translateY(-2px);">Mejorar a Premium</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#F3EFE9;border-top:1px solid #EBE6DE;padding:28px 36px;display:flex;justify-content:space-between;align-items:center;">
+            <div><div style="font:800 17px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div><div style="margin-top:6px;font:500 12.5px 'Plus Jakarta Sans';color:#A79F92;">Directorio de negocios del Paraguay</div></div>
+            <div style="display:flex;gap:24px;font:500 13.5px 'Plus Jakarta Sans';color:#7A8694;"><span>Categorías</span><span>Sumá tu negocio</span><span>Ayuda</span></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ---------- ESCRITORIO PREMIUM ---------- -->
+      <sc-if value="{{ showPremium }}" hint-placeholder-val="{{ true }}">
+      <div style="width:1100px;flex:none;">
+        <div style="display:inline-flex;align-items:center;gap:7px;font:700 12px 'Plus Jakarta Sans';color:#1B6FBE;margin:0 0 10px 4px;"><span style="width:9px;height:9px;border-radius:3px;background:#2C8DE0;"></span>PREMIUM</div>
+        <div style="width:1100px;background:#FAF7F2;border-radius:16px;box-shadow:0 4px 12px rgba(40,50,60,.08),0 30px 60px rgba(40,50,60,.15);overflow:hidden;border:1px solid #EFEAE2;">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 36px;background:#fff;border-bottom:1px solid #EFEAE2;">
+            <div style="font:800 20px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div>
+            <div style="display:flex;align-items:center;gap:26px;font:600 14px 'Plus Jakarta Sans';color:#44515E;"><span>Categorías</span><span>Buscar</span><button style="padding:9px 16px;background:#2C8DE0;color:#fff;border:none;border-radius:10px;font:700 13.5px 'Plus Jakarta Sans';cursor:pointer;">Sumá tu negocio</button></div>
+          </div>
+
+          <div style="padding:26px 36px 40px;">
+            <div style="display:flex;align-items:center;gap:7px;font:500 13px 'Plus Jakarta Sans';color:#7A8694;margin-bottom:18px;"><span>Inicio</span><span style="color:#C9C2B6;">›</span><span>Panaderías y Confiterías</span><span style="color:#C9C2B6;">›</span><span style="color:#233240;font-weight:600;">Panadería Doña Marta</span></div>
+
+            <div style="display:flex;gap:12px;margin-bottom:26px;">
+              <div style="flex:1;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(40,50,60,.16);">
+                <image-slot id="cover-pd" shape="rect" placeholder="Foto de portada del local" style="display:block;width:100%;height:340px;"></image-slot>
+              </div>
+              <div style="width:150px;flex:none;display:flex;flex-direction:column;gap:12px;">
+                <image-slot id="gal-pd-1" shape="rounded" radius="14" placeholder="" style="display:block;width:100%;height:105px;"></image-slot>
+                <image-slot id="gal-pd-2" shape="rounded" radius="14" placeholder="" style="display:block;width:100%;height:105px;"></image-slot>
+                <image-slot id="gal-pd-3" shape="rounded" radius="14" placeholder="+5 fotos" style="display:block;width:100%;height:105px;"></image-slot>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 340px;gap:26px;align-items:start;">
+              <div style="display:flex;flex-direction:column;gap:18px;">
+                <div>
+                  <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 13px;background:#E9F3FC;color:#1B6FBE;border-radius:999px;font:600 13px 'Plus Jakarta Sans';margin-bottom:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1-4H5L4 9Z"/><path d="M5 9v11h14V9"/></svg>Panaderías y Confiterías</span>
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <h1 style="margin:0;font:800 42px/1.06 'Plus Jakarta Sans';letter-spacing:-.028em;color:#233240;">Panadería Doña Marta</h1>
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:#E9F3FC;color:#1B6FBE;border-radius:999px;font:700 13px 'Plus Jakarta Sans';"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.4 1.8 3 .1 1 2.85 2.4 1.8-.9 2.9.9 2.9-2.4 1.8-1 2.85-3 .1L12 22l-2.4-1.8-3-.1-1-2.85L3.2 15.4l.9-2.9-.9-2.9L5.6 7.8l1-2.85 3-.1L12 2Z"/><path d="m8.5 12 2.3 2.3 4.7-4.6" fill="none" stroke="#E9F3FC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Verificado</span>
+                  </div>
+                  <div style="margin-top:10px;font:500 16px 'Plus Jakarta Sans';color:#7A8694;">Panadería artesanal · Asunción, Paraguay</div>
+                </div>
+
+                <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:24px;">
+                  <p style="margin:0;font:400 16px/1.65 'Plus Jakarta Sans';color:#44515E;">Pan casero, facturas y tortas por encargo, horneados cada mañana en el corazón de Asunción. Atención familiar desde 1998.</p>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+                  <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:22px;">
+                    <div style="display:flex;align-items:center;gap:9px;font:700 16px 'Plus Jakarta Sans';color:#233240;margin-bottom:14px;"><span style="color:#2C8DE0;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Horario</div>
+                    <div style="display:flex;flex-direction:column;gap:10px;font:500 14.5px 'Plus Jakarta Sans';">
+                      <div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:#44515E;">Lun a Vie</span><span style="color:#233240;font-weight:600;">06–20 h</span></div>
+                      <div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:#44515E;">Sábados</span><span style="color:#233240;font-weight:600;">06–21 h</span></div>
+                      <div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:#44515E;">Domingos</span><span style="color:#233240;font-weight:600;">07–13 h</span></div>
+                    </div>
+                  </div>
+                  <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:22px;">
+                    <div style="display:flex;align-items:center;gap:9px;font:700 16px 'Plus Jakarta Sans';color:#233240;margin-bottom:14px;"><span style="color:#2C8DE0;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>Ubicación</div>
+                    <div style="position:relative;height:96px;border-radius:12px;overflow:hidden;border:1px solid #E3E8E2;background:linear-gradient(#EAF1EC,#E0EAE4);">
+                      <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent 0 22px,rgba(255,255,255,.55) 22px 24px),repeating-linear-gradient(90deg,transparent 0 30px,rgba(255,255,255,.55) 30px 32px);"></div>
+                      <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);color:#E0653C;filter:drop-shadow(0 3px 4px rgba(0,0,0,.2));"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg></span>
+                    </div>
+                    <div style="margin-top:9px;font:500 13px/1.4 'Plus Jakarta Sans';color:#44515E;">Av. Mcal. López 1234, Asunción</div>
+                  </div>
+                </div>
+
+                <div style="border:1.5px dashed #C7D8C9;border-radius:18px;padding:26px;text-align:center;background:#F4F8F4;">
+                  <div style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#E2F0E4;color:#3C8A56;border-radius:999px;font:700 11.5px 'Plus Jakarta Sans';text-transform:uppercase;letter-spacing:.05em;margin-bottom:11px;">Próximamente</div>
+                  <div style="font:700 18px 'Plus Jakarta Sans';color:#3A6B49;">Sección de Panaderías</div>
+                  <div style="font:500 14px/1.5 'Plus Jakarta Sans';color:#6E9079;margin-top:6px;max-width:440px;margin-left:auto;margin-right:auto;">Aquí irá el bloque específico del rubro —menú, especialidades, precios—. Se diseña en el siguiente paso.</div>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:20px;">
+                <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 20px rgba(40,50,60,.07);">
+                  <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin-bottom:2px;">Contactá al negocio</div>
+                  <button style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:14px;background:#25D366;color:#fff;border:none;border-radius:12px;font:700 15.5px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.3);transition:transform .15s ease,box-shadow .15s ease;" style-hover="transform:translateY(-2px);box-shadow:0 8px 22px rgba(37,211,102,.4);"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.5 0 1.47 1.08 2.9 1.23 3.1.15.2 2.12 3.24 5.13 4.54.72.31 1.27.49 1.71.63.72.23 1.37.2 1.89.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35ZM12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.26A10 10 0 1 0 12 2Z"/></svg>Enviar WhatsApp</button>
+                  <button style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:13px;background:#E9F3FC;color:#1B6FBE;border:1.5px solid #BFDDF6;border-radius:12px;font:700 15px 'Plus Jakarta Sans';cursor:pointer;transition:transform .15s ease;" style-hover="transform:translateY(-2px);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>Llamar</button>
+                </div>
+
+                <div style="background:#fff;border:1px solid #EBE6DE;border-radius:18px;padding:20px;">
+                  <div style="font:700 15px 'Plus Jakarta Sans';color:#233240;margin-bottom:3px;">Enviá un mensaje</div>
+                  <div style="font:500 12.5px 'Plus Jakarta Sans';color:#9AA1A9;margin-bottom:13px;">Tu consulta llega directo al negocio.</div>
+                  <div style="display:flex;flex-direction:column;gap:9px;">
+                    <input placeholder="Tu nombre" style="width:100%;padding:11px 13px;border:1.5px solid #EBE6DE;border-radius:10px;font:500 14px 'Plus Jakarta Sans';color:#233240;background:#FCFBF9;outline:none;">
+                    <textarea placeholder="Tu mensaje" rows="3" style="width:100%;padding:11px 13px;border:1.5px solid #EBE6DE;border-radius:10px;font:500 14px 'Plus Jakarta Sans';color:#233240;background:#FCFBF9;outline:none;resize:none;"></textarea>
+                    <button style="width:100%;padding:12px;background:#2C8DE0;color:#fff;border:none;border-radius:10px;font:700 14.5px 'Plus Jakarta Sans';cursor:pointer;transition:transform .15s ease;" style-hover="transform:translateY(-2px);">Enviar consulta</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#F3EFE9;border-top:1px solid #EBE6DE;padding:28px 36px;display:flex;justify-content:space-between;align-items:center;">
+            <div><div style="font:800 17px 'Plus Jakarta Sans';color:#233240;">negocio<span style="color:#2C8DE0;">.com.py</span></div><div style="margin-top:6px;font:500 12.5px 'Plus Jakarta Sans';color:#A79F92;">Directorio de negocios del Paraguay</div></div>
+            <div style="display:flex;gap:24px;font:500 13.5px 'Plus Jakarta Sans';color:#7A8694;"><span>Categorías</span><span>Sumá tu negocio</span><span>Ayuda</span></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {&quot;width&quot;: 1280, &quot;height&quot;: 900},
+  &quot;frameMode&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;compare&quot;, &quot;free&quot;, &quot;premium&quot;], &quot;default&quot;: &quot;compare&quot;, &quot;tsType&quot;: &quot;'compare'|'free'|'premium'&quot;},
+  &quot;showStyleTile&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}
+}">
+class Component extends DCLogic {
+  _sizeSlots(){
+    const sizes = {
+      'cover-pm':['100%','200px'], 'gal-pm-1':['100%','58px'], 'gal-pm-2':['100%','58px'], 'gal-pm-3':['100%','58px'],
+      'cover-pd':['100%','340px'], 'gal-pd-1':['100%','105px'], 'gal-pd-2':['100%','105px'], 'gal-pd-3':['100%','105px'],
+    };
+    Object.entries(sizes).forEach(([id,[w,h]])=>{
+      const el = document.getElementById(id);
+      if(el){ el.style.display='block'; el.style.width=w; el.style.height=h; }
+    });
+  }
+  componentDidMount(){ this._sizeSlots(); setTimeout(()=>this._sizeSlots(), 60); setTimeout(()=>this._sizeSlots(), 300); }
+  componentDidUpdate(){ this._sizeSlots(); }
+  renderVals(){
+    const mode = this.props.frameMode || 'compare';
+    return {
+      showStyleTile: this.props.showStyleTile !== false,
+      showFree: mode !== 'premium',
+      showPremium: mode !== 'free',
+    };
+  }
+}
+</script>
+</body>
+</html>
