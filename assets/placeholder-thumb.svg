@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300" role="img" aria-label="Marcador de foto">
+  <rect width="300" height="300" fill="#E9F3FC"/>
+  <g transform="translate(150 150)" fill="none" stroke="#9FC4E6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-58" y="-48" width="116" height="96" rx="12"/>
+    <circle cx="-22" cy="-16" r="12"/>
+    <path d="M-58 34 L-12 -10 L20 24 L38 8 L58 30"/>
+  </g>
+</svg>

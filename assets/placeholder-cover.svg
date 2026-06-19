@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" width="1200" height="520" role="img" aria-label="Marcador de foto de portada">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E9F3FC"/>
+      <stop offset="1" stop-color="#DCEBF8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="520" fill="url(#bg)"/>
+  <g transform="translate(600 250)" fill="none" stroke="#9FC4E6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-54" y="-44" width="108" height="88" rx="10"/>
+    <circle cx="-22" cy="-14" r="11"/>
+    <path d="M-54 30 L-12 -8 L18 22 L34 8 L54 28"/>
+  </g>
+  <text x="600" y="360" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="30" font-weight="600" fill="#8FB6DC">Foto de portada del local</text>
+</svg>

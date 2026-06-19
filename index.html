@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>negocio.com.py — Directorio de negocios del Paraguay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Shared tokens — same design system as every page -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <style>
+    /* STUB ONLY — homepage is built in a later pass (see README build order). */
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;flex-direction:column;
+      font-family:var(--font);color:var(--np-body);background:var(--np-canvas)}
+    .stub-header{background:var(--np-surface);border-bottom:1px solid var(--np-border-soft)}
+    .stub-header .row{max-width:var(--page-max);margin:0 auto;padding:0 var(--s-4);height:60px;
+      display:flex;align-items:center;justify-content:space-between}
+    .brand{font-weight:800;font-size:18px;color:var(--np-ink);text-decoration:none;letter-spacing:-.01em}
+    .brand b{color:var(--np-primary)}
+    .stub-main{flex:1;display:flex;align-items:center;justify-content:center;padding:var(--s-8) var(--s-4)}
+    .stub-card{max-width:560px;text-align:center;background:var(--np-surface);
+      border:1px solid var(--np-border);border-radius:var(--r-card);padding:var(--s-12) var(--s-8);box-shadow:var(--shadow)}
+    .stub-chip{display:inline-flex;padding:4px 12px;border-radius:var(--r-pill);
+      background:var(--np-primary-soft);color:var(--np-primary-dark);
+      font:700 12px var(--font);text-transform:uppercase;letter-spacing:.05em;margin-bottom:var(--s-4)}
+    .stub-card h1{margin:0 0 var(--s-3);font:800 clamp(26px,5vw,34px) var(--font);
+      color:var(--np-ink);letter-spacing:-.02em}
+    .stub-card p{margin:0;font:400 var(--fs-body)/1.6 var(--font);color:var(--np-body)}
+    .stub-links{margin-top:var(--s-6);display:flex;gap:var(--s-3);justify-content:center;flex-wrap:wrap}
+    .stub-links a{padding:11px 18px;border-radius:var(--r-btn);text-decoration:none;
+      font:700 var(--fs-meta) var(--font)}
+    .stub-links .primary{background:var(--np-primary);color:var(--np-on-color)}
+    .stub-links .ghost{background:var(--np-primary-soft);color:var(--np-primary-dark);
+      border:1.5px solid var(--np-primary-soft-bd)}
+  </style>
+</head>
+<body>
+  <header class="stub-header">
+    <div class="row"><a class="brand" href="index.html">negocio<b>.com.py</b></a></div>
+  </header>
+  <main class="stub-main">
+    <div class="stub-card">
+      <span class="stub-chip">Próximamente</span>
+      <h1>Inicio · Página de inicio</h1>
+      <p>Stub. La portada del directorio se construye en el último paso del orden de build (detalle → categoría → inicio), reutilizando <code>css/tokens.css</code>.</p>
+      <div class="stub-links">
+        <a class="primary" href="negocio.html">Ver página de negocio →</a>
+        <a class="ghost" href="categoria.html">Ver categoría</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
