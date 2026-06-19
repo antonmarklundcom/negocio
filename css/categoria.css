@@ -1,0 +1,184 @@
+/* =============================================================
+   categoria.html — CATEGORY / ARCHIVE (listing grid)
+   Mobile-first → desktop. Same design system as the detail page
+   (css/tokens.css). Cards carry the SAME free/premium duality as
+   negocio.html: free = colour band header only; premium = band +
+   photo + Verificado ribbon. In WordPress this becomes a JetEngine
+   Listing Grid; each card is the listing item.
+   ============================================================= */
+
+/* ---- Filter bar ------------------------------------------- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+  padding: var(--s-3);
+  border-radius: var(--r-card);
+  background: linear-gradient(155deg, var(--np-band-from) 0%, var(--np-band-to) 100%);
+  box-shadow: var(--shadow-band);
+}
+.filters select {
+  flex: 1 1 140px;
+  padding: 11px 13px;
+  border: none;
+  border-radius: var(--r-btn);
+  background: var(--np-surface);
+  color: var(--np-ink);
+  font: 600 var(--fs-meta) var(--font);
+  cursor: pointer;
+  outline: none;
+}
+
+/* ---- Result count ----------------------------------------- */
+.result-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin: var(--s-6) 0 var(--s-3);
+}
+.result-head h1 {
+  font: 800 clamp(20px, 4vw, 26px) var(--font);
+  color: var(--np-ink);
+  letter-spacing: -.02em;
+}
+.result-head .count { font: 500 var(--fs-meta) var(--font); color: var(--np-muted); }
+
+/* ---- Grid ------------------------------------------------- */
+.biz-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-4);
+  padding-bottom: var(--s-6);
+}
+
+/* ---- Card ------------------------------------------------- */
+.biz-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--np-surface);
+  border: 1px solid var(--np-border);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.biz-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-cover); }
+
+/* colour band header — present on every card (free + premium) */
+.biz-card__head {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 14px 16px;
+  background: linear-gradient(155deg, var(--np-band-from) 0%, var(--np-band-to) 100%);
+  color: var(--np-on-color);
+}
+.biz-card__head .name {
+  font: 700 15.5px var(--font);
+  letter-spacing: -.01em;
+  line-height: 1.25;
+}
+
+/* Verificado ribbon — premium only, top-right corner */
+.biz-card__ribbon {
+  position: absolute;
+  top: 14px; right: -34px;
+  transform: rotate(45deg);
+  width: 130px;
+  padding: 4px 0;
+  text-align: center;
+  background: var(--np-primary-dark);
+  color: var(--np-on-color);
+  font: 700 10.5px var(--font);
+  letter-spacing: .04em;
+  box-shadow: var(--shadow);
+}
+
+/* premium photo */
+.biz-card__photo {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  background: var(--np-primary-soft);
+}
+
+/* body */
+.biz-card__body { padding: 14px 16px 18px; }
+.biz-card__body h2 {
+  font: 700 var(--fs-h3) var(--font);
+  color: var(--np-ink);
+  letter-spacing: -.01em;
+}
+.biz-card__cat {
+  display: inline-block;
+  margin-bottom: 6px;
+  font: 700 11px var(--font);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--np-primary);
+}
+.biz-card__addr {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 7px;
+  font: 500 13px/1.4 var(--font);
+  color: var(--np-muted);
+}
+.biz-card__addr svg { flex: none; margin-top: 2px; color: var(--np-muted-soft); }
+
+/* free card: a touch more head height so it reads as a band, not a bar */
+.biz-card.is-free .biz-card__head { min-height: 76px; }
+
+/* ---- Load more -------------------------------------------- */
+.load-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-6) 0 var(--s-12);
+  color: var(--np-muted);
+  font: 500 var(--fs-meta) var(--font);
+}
+.load-more button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border: 1.5px solid var(--np-primary-soft-bd);
+  border-radius: var(--r-pill);
+  background: var(--np-primary-soft);
+  color: var(--np-primary-dark);
+  font: 700 var(--fs-meta) var(--font);
+  cursor: pointer;
+}
+.load-more .spinner {
+  width: 18px; height: 18px;
+  border: 2.5px solid var(--np-border);
+  border-top-color: var(--np-primary);
+  border-radius: var(--r-pill);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* =============================================================
+   DESKTOP
+   ============================================================= */
+@media (min-width: 600px) {
+  .biz-grid { grid-template-columns: 1fr 1fr; gap: var(--s-6); }
+}
+@media (min-width: 960px) {
+  .biz-grid { grid-template-columns: repeat(3, 1fr); }
+  .filters { gap: var(--s-3); padding: var(--s-4); }
+  .filters select { flex: 0 1 200px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .biz-card { transition: none; }
+  .biz-card:hover { transform: none; }
+  .load-more .spinner { animation: none; }
+}

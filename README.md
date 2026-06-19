@@ -10,17 +10,42 @@ comment so it can be swapped for a Dynamic Tag.
 ## Structure
 
 ```
+app.js             Zero-dependency Node server (Build 1 runtime, Hostinger Node.js)
+package.json       start script: `node app.js`
 /index.html        Homepage            — STUB (built last)
-/categoria.html    Category / archive  — STUB (built second)
-/negocio.html      Business detail     — ✅ BUILT (this pass)
+/categoria.html    Category / archive  — ✅ BUILT (listing grid)
+/negocio.html      Business detail     — ✅ BUILT
+/404.html          Not-found page
 /css/
   tokens.css       Design-system tokens (:root) — imported by EVERY page
-  negocio.css      Detail-page styles
+  negocio.css      Detail-page styles (also provides the shared header/footer shell)
+  categoria.css    Listing-grid styles
 /js/
   preview.js       Free/Premium preview toggle — PREVIEW ONLY, not ported
 /assets/           SVG photo placeholders
 FIELD-MAP.md       Every dynamic value → JetEngine meta field + type
 ```
+
+## Build 1 — run it as a Hostinger Node.js site
+
+Build 1 is **static pages served by a tiny Node server** (no JetEngine yet). It
+exists so the site can go live on Hostinger Node.js and be seen. The JetEngine
+data layer (Next.js + WP API) comes in a later build.
+
+Run locally:
+
+```bash
+npm start            # → http://localhost:3000   (routes: / , /negocio , /categoria)
+```
+
+Deploy on Hostinger (hPanel → **Node.js**):
+
+1. Create the Node.js app on `negocio.com.py` (the apex must have **no active
+   subdomain** when you create it — see the migration notes).
+2. Set **Application startup file** → `app.js`, **Node version** → 18+.
+3. Deploy the repo (Git deploy from GitHub, or upload). No build step, no
+   dependencies — Hostinger just runs `npm start`.
+4. Hostinger provides the port via `process.env.PORT`; `app.js` already reads it.
 
 ## Shared tokens
 
@@ -36,13 +61,11 @@ and the same components:
 
 1. **`negocio.html`** (detail) — ✅ done. The richest template; establishes the
    component vocabulary (cards, chips, buttons, locked slots, nudge).
-2. **`categoria.html`** (category/archive) — listing grid of business cards.
-   Reuses the tokens + card/chip components from the detail page.
-3. **`index.html`** (homepage) — hero + featured rubros, composed from the same
-   building blocks.
-
-> Only the detail page is built in this pass. Homepage and category are labelled
-> stubs — confirm scope before building them.
+2. **`categoria.html`** (category/archive) — ✅ done. Listing grid of business
+   cards; each card carries the same free/premium duality as the detail page
+   (free = colour band; premium = band + photo + Verificado ribbon).
+3. **`index.html`** (homepage) — still a STUB. Hero + featured rubros, composed
+   from the same building blocks. Built in a later pass.
 
 ## The detail page: one template, two states
 

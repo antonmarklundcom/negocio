@@ -3,53 +3,196 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Categoría — negocio.com.py</title>
+  <title>Empresas en Paraguay — negocio.com.py</title>
+  <meta name="description" content="Explorá negocios y empresas del Paraguay por rubro y ubicación en negocio.com.py.">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Shared tokens — same design system as every page -->
+
+  <!-- Shared tokens FIRST, then page styles -->
   <link rel="stylesheet" href="css/tokens.css">
-  <style>
-    /* STUB ONLY — category / archive is built after the detail page. */
-    *,*::before,*::after{box-sizing:border-box}
-    body{margin:0;min-height:100vh;display:flex;flex-direction:column;
-      font-family:var(--font);color:var(--np-body);background:var(--np-canvas)}
-    .stub-header{background:var(--np-surface);border-bottom:1px solid var(--np-border-soft)}
-    .stub-header .row{max-width:var(--page-max);margin:0 auto;padding:0 var(--s-4);height:60px;
-      display:flex;align-items:center;justify-content:space-between}
-    .brand{font-weight:800;font-size:18px;color:var(--np-ink);text-decoration:none;letter-spacing:-.01em}
-    .brand b{color:var(--np-primary)}
-    .stub-main{flex:1;display:flex;align-items:center;justify-content:center;padding:var(--s-8) var(--s-4)}
-    .stub-card{max-width:560px;text-align:center;background:var(--np-surface);
-      border:1px solid var(--np-border);border-radius:var(--r-card);padding:var(--s-12) var(--s-8);box-shadow:var(--shadow)}
-    .stub-chip{display:inline-flex;padding:4px 12px;border-radius:var(--r-pill);
-      background:var(--np-primary-soft);color:var(--np-primary-dark);
-      font:700 12px var(--font);text-transform:uppercase;letter-spacing:.05em;margin-bottom:var(--s-4)}
-    .stub-card h1{margin:0 0 var(--s-3);font:800 clamp(26px,5vw,34px) var(--font);
-      color:var(--np-ink);letter-spacing:-.02em}
-    .stub-card p{margin:0;font:400 var(--fs-body)/1.6 var(--font);color:var(--np-body)}
-    .stub-links{margin-top:var(--s-6);display:flex;gap:var(--s-3);justify-content:center;flex-wrap:wrap}
-    .stub-links a{padding:11px 18px;border-radius:var(--r-btn);text-decoration:none;
-      font:700 var(--fs-meta) var(--font)}
-    .stub-links .primary{background:var(--np-primary);color:var(--np-on-color)}
-    .stub-links .ghost{background:var(--np-primary-soft);color:var(--np-primary-dark);
-      border:1.5px solid var(--np-primary-soft-bd)}
-  </style>
+  <link rel="stylesheet" href="css/negocio.css">   <!-- shared shell: header, footer, container -->
+  <link rel="stylesheet" href="css/categoria.css">
 </head>
 <body>
-  <header class="stub-header">
-    <div class="row"><a class="brand" href="index.html">negocio<b>.com.py</b></a></div>
-  </header>
-  <main class="stub-main">
-    <div class="stub-card">
-      <span class="stub-chip">Próximamente</span>
-      <h1>Categoría · Archivo de rubro</h1>
-      <p>Stub. La grilla de negocios por rubro (tarjetas de listado) se construye después de la página de detalle, reutilizando <code>css/tokens.css</code> y los mismos componentes.</p>
-      <div class="stub-links">
-        <a class="primary" href="negocio.html">Ver página de negocio →</a>
-        <a class="ghost" href="index.html">Ver inicio</a>
-      </div>
+
+  <!-- ========================= SITE HEADER (shared) ========================= -->
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html">negocio<b>.com.py</b></a>
+      <nav class="site-nav">
+        <a href="categoria.html">Categorías</a>
+        <a href="#">Buscar</a>
+        <a class="btn-add" href="#">Sumá tu negocio</a>
+        <button class="icon-btn" aria-label="Buscar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+        </button>
+        <button class="icon-btn" aria-label="Menú">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </nav>
     </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ========================= BREADCRUMB ========================= -->
+    <nav class="breadcrumb" aria-label="Migas de pan">
+      <a href="index.html">Inicio</a>
+      <span class="sep" aria-hidden="true">›</span>
+      <span class="here">Empresas</span>
+    </nav>
+
+    <!-- ========================= FILTERS =========================
+         JETENGINE: becomes a JetSmartFilters bar (taxonomy: rubro + ubicación)
+    -->
+    <form class="filters" role="search" aria-label="Filtrar negocios">
+      <select name="rubro" aria-label="Rubro">
+        <option value="">Rubro…</option>
+        <option>Panaderías y Confiterías</option>
+        <option>Servicios Legales</option>
+        <option>Tecnología</option>
+        <option>Veterinarias</option>
+        <option>Ferreterías</option>
+        <option>Gimnasios</option>
+        <option>Turismo</option>
+        <option>Salud</option>
+      </select>
+      <select name="ubicacion" aria-label="Ubicación">
+        <option value="">Ubicación…</option>
+        <option>Asunción</option>
+        <option>Ciudad del Este</option>
+        <option>Encarnación</option>
+        <option>Capiatá</option>
+        <option>Lambaré</option>
+        <option>Limpio</option>
+      </select>
+    </form>
+
+    <!-- ========================= RESULTS ========================= -->
+    <div class="result-head">
+      <h1>Empresas en Paraguay</h1>
+      <!-- JETENGINE: %count% resultados (Listing Grid query count) -->
+      <span class="count">128 resultados</span>
+    </div>
+
+    <!-- JETENGINE: this grid is a Listing Grid looping the `negocio` CPT.
+         Each <a.biz-card> is the Listing Item; .is-free / .is-premium and the
+         ribbon are driven by Dynamic Visibility on negocio_premium /
+         negocio_verificado. See FIELD-MAP.md. -->
+    <section class="biz-grid" aria-label="Listado de negocios">
+
+      <!-- PREMIUM card: band header + photo + Verificado ribbon -->
+      <a class="biz-card is-premium" href="negocio.html?state=premium">
+        <span class="biz-card__ribbon">VERIFICADO</span>
+        <div class="biz-card__head"><span class="name">Guaraní Tech Solutions</span></div>
+        <img class="biz-card__photo" src="assets/placeholder-cover.svg" alt="Foto de Guaraní Tech Solutions">
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Tecnología</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Km 4, Edificio Plaza Center, Ciudad del Este</p>
+        </div>
+      </a>
+
+      <!-- FREE card: band header only (no photo, no ribbon) -->
+      <a class="biz-card is-free" href="negocio.html?state=free">
+        <div class="biz-card__head"><span class="name">Estudio Jurídico Cardozo &amp; Asociados</span></div>
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Servicios Legales</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Pycasú 150 casi San Francisco, Capiatá</p>
+        </div>
+      </a>
+
+      <a class="biz-card is-premium" href="negocio.html?state=premium">
+        <span class="biz-card__ribbon">VERIFICADO</span>
+        <div class="biz-card__head"><span class="name">Eco-Aventura Ybycuí</span></div>
+        <img class="biz-card__photo" src="assets/placeholder-cover.svg" alt="Foto de Eco-Aventura Ybycuí">
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Turismo</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Acceso Parque Nacional, Ybycuí</p>
+        </div>
+      </a>
+
+      <a class="biz-card is-premium" href="negocio.html?state=premium">
+        <span class="biz-card__ribbon">VERIFICADO</span>
+        <div class="biz-card__head"><span class="name">Veterinaria Mascota Feliz</span></div>
+        <img class="biz-card__photo" src="assets/placeholder-cover.svg" alt="Foto de Veterinaria Mascota Feliz">
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Veterinarias</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Avda. Cacique Lambaré 1234, Lambaré</p>
+        </div>
+      </a>
+
+      <!-- Panadería Doña Marta — free; links to the detail page free state -->
+      <a class="biz-card is-free" href="negocio.html?state=free">
+        <div class="biz-card__head"><span class="name">Panadería Doña Marta</span></div>
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Panaderías y Confiterías</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Av. Mcal. López 1234, Asunción</p>
+        </div>
+      </a>
+
+      <a class="biz-card is-premium" href="negocio.html?state=premium">
+        <span class="biz-card__ribbon">VERIFICADO</span>
+        <div class="biz-card__head"><span class="name">Ferretería La Tuerca</span></div>
+        <img class="biz-card__photo" src="assets/placeholder-cover.svg" alt="Foto de Ferretería La Tuerca">
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Ferreterías</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Ruta PY03 c/ San José, Limpio</p>
+        </div>
+      </a>
+
+      <a class="biz-card is-free" href="negocio.html?state=free">
+        <div class="biz-card__head"><span class="name">Tu RUC al Día</span></div>
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Contabilidad</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Juan León Mallorquín c/ Villarrica, Encarnación</p>
+        </div>
+      </a>
+
+      <a class="biz-card is-premium" href="negocio.html?state=premium">
+        <span class="biz-card__ribbon">VERIFICADO</span>
+        <div class="biz-card__head"><span class="name">Iron Fitness Center</span></div>
+        <img class="biz-card__photo" src="assets/placeholder-cover.svg" alt="Foto de Iron Fitness Center">
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Gimnasios</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Ruta PY02 km 20, Capiatá</p>
+        </div>
+      </a>
+
+      <a class="biz-card is-premium" href="negocio.html?state=premium">
+        <span class="biz-card__ribbon">VERIFICADO</span>
+        <div class="biz-card__head"><span class="name">Policlínica San Roque</span></div>
+        <img class="biz-card__photo" src="assets/placeholder-cover.svg" alt="Foto de Policlínica San Roque">
+        <div class="biz-card__body">
+          <span class="biz-card__cat">Salud</span>
+          <p class="biz-card__addr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Avda. Mcal. López casi Tte. Ettiene, Fernando de la Mora</p>
+        </div>
+      </a>
+
+    </section>
+
+    <!-- JETENGINE: JetSmartFilters "Load more" pagination -->
+    <div class="load-more">
+      <button type="button">Cargando más…</button>
+    </div>
+
   </main>
+
+  <!-- ========================= SITE FOOTER (shared) ========================= -->
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand" href="index.html">negocio<b>.com.py</b></a>
+        <div class="footer-tagline">Directorio de negocios del Paraguay</div>
+      </div>
+      <nav class="footer-links">
+        <a href="categoria.html">Categorías</a>
+        <a href="#">Sumá tu negocio</a>
+        <a href="#">Ayuda</a>
+      </nav>
+    </div>
+  </footer>
+
 </body>
 </html>

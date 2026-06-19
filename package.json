@@ -1,0 +1,14 @@
+{
+  "name": "negocio-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend for negocio.com.py — Build 1: static blueprint served by a zero-dependency Node server (Hostinger Node.js). JetEngine data wired in a later build.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}
