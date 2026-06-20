@@ -1,14 +1,35 @@
 {
   "name": "negocio-frontend",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Frontend for negocio.com.py — Build 1: static blueprint served by a zero-dependency Node server (Hostinger Node.js). JetEngine data wired in a later build.",
-  "main": "app.js",
+  "description": "negocio.com.py — consumer business directory for Paraguay. Next.js (App Router) + TypeScript + Tailwind. SSR over a swappable listings repository (seed → JetEngine → Supabase).",
   "scripts": {
-    "start": "node app.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
+  },
+  "dependencies": {
+    "maplibre-gl": "^4.7.1",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3"
   },
   "license": "UNLICENSED"
 }

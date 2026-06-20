@@ -1,82 +1,89 @@
-# FIELD MAP — `negocio.html` → JetEngine
+# FIELD MAP — JetEngine `negocios` → `Listing`
 
-How every dynamic value on the detail page maps onto a JetEngine meta field /
-source. This is the translation key: build a **CPT `negocio`** (or reuse your
-existing one), attach a **JetEngine Meta Box** with the fields below, then turn
-each value in `negocio.html` into a Dynamic Tag.
+How every field of the app's `Listing` type (see `lib/types.ts`) maps onto the
+WordPress/JetEngine REST payload. **All of this lives in one place:**
+`lib/providers/jetengine.ts`, inside the block marked
+`// === JETENGINE FIELD MAP ===`. Correct the keys there and nowhere else.
 
-The whole template is driven by **one boolean** — `negocio_premium`. Every block
-tagged `.is-premium` / `.is-free` in the HTML gets a **Dynamic Visibility**
-condition on it (no JS toggle in production — that's preview-only).
+> The meta keys below are **UNVERIFIED guesses** until checked against the live
+> post type. Each line in `jetengine.ts` carries a
+> `// TODO: verify field key against live JetEngine`. A missing field maps to
+> `undefined` and never hard-fails; a down panel degrades to the seed.
+
+## Post type & auth
+
+- Custom post type: **`negocios`** → `GET /wp-json/wp/v2/negocios?_embed=1`
+- Auth: **Application Password (Basic Auth)**, `WP_APP_USER` / `WP_APP_PASSWORD`,
+  **server-side only** — never shipped to the client.
+- Activate with `NEXT_PUBLIC_BACKEND=jetengine` + `NEXT_PUBLIC_PANEL_URL`.
 
 ## Core post data
 
-| Value on page              | Source / meta field      | JetEngine field type        | Notes |
-|----------------------------|--------------------------|-----------------------------|-------|
-| Business name (H1)         | **Post Title** (native)  | —                           | Largest element. Used in band (free) and title block (premium). |
-| Rubro / category           | **`rubros`** taxonomy     | Taxonomy (term)             | Drives chip + breadcrumb. Also keys the future category-specific block. |
-| Subtitle / tagline         | `negocio_subtitulo`       | Text                        | e.g. "Panadería artesanal · Asunción". |
-| Description                | `negocio_descripcion`     | Textarea (or WYSIWYG)       | Body lede. Both states. |
+| `Listing` field | Source | Notes |
+|---|---|---|
+| `name` | **Post title** | — |
+| `slug` | Post slug | Public URL at `/lugar/{slug}`. |
+| `description` | Post content → excerpt fallback | HTML is stripped. |
+| `subtitle` | meta `subtitulo` | e.g. "Cocina paraguaya". |
 
-## Contact — all point at the BUSINESS, never the platform
+## Taxonomies (from `_embed` → `wp:term`)
 
-| Value                       | Meta field               | Type                        | Notes |
-|-----------------------------|--------------------------|-----------------------------|-------|
-| Phone                       | `negocio_telefono`        | Text (tel)                  | FREE: shown plain (no WhatsApp button). PREMIUM: powers the **Llamar** button. `href="tel:{value}"`. |
-| WhatsApp number             | `negocio_whatsapp`        | Text (tel, E.164 digits)    | PREMIUM only. `href="https://wa.me/{value}?text=..."`. Appears **exactly once** (rail). |
-| Message form recipient      | (uses `negocio_telefono` / form plugin) | —          | PREMIUM only. Routes to the business, not the platform. |
+| `Listing` field | Taxonomy | Notes |
+|---|---|---|
+| `categoria` / `categoriaLabel` | **`categoria`** | Term slug must match `lib/categories.ts`. |
+| `ciudad` / `ciudadLabel` | **`ciudad`** | Term slug must match `lib/cities.ts`. |
+| `zona` | meta `zona` | Barrio (free text). |
 
-## Gating flags (booleans)
+## Contact — always the BUSINESS, never the platform
 
-| Value                       | Meta field               | Type                        | Notes |
-|-----------------------------|--------------------------|-----------------------------|-------|
-| Premium flag                | **`negocio_premium`**     | Switcher (boolean)          | Master switch. `true` → cover/gallery/contact rail/form/verified-eligible; `false` → band + locked slots + nudge + plain phone. |
-| Verified flag               | `negocio_verificado`      | Switcher (boolean)          | PREMIUM only. Shows the small **Verificado** chip beside the name. Condition: `negocio_premium == true AND negocio_verificado == true`. |
+| `Listing` field | meta key | Notes |
+|---|---|---|
+| `phone` | `telefono` | Free: plain text. Premium: `tel:` + "Llamar". |
+| `whatsapp` | `whatsapp` | E.164 digits for `wa.me`. Premium only in UI. |
+| `email` | `email` | — |
+| `website` | `sitio_web` | — |
+| `instagram` | `instagram` | Handle. |
 
 ## Location
 
-| Value                       | Meta field               | Type                        | Notes |
-|-----------------------------|--------------------------|-----------------------------|-------|
-| Street address              | `negocio_direccion`       | Text                        | Both states (text). |
-| City / locality             | `negocio_ciudad`          | Text                        | Both states (muted line). |
-| Map                         | `negocio_ubicacion`       | **JetEngine Map** field     | PREMIUM only — replaces the stylised `.map` graphic with a real map. |
+| `Listing` field | meta key | Notes |
+|---|---|---|
+| `address` | `direccion` | — |
+| `lat` / `lng` | `lat` / `lng` (or `latitud`/`longitud`) | Drives the MapLibre map. |
 
-## Hours — ALWAYS a text day-list, never an image
+## Hours (drives "Abierto ahora", America/Asuncion)
 
-| Value                       | Meta field               | Type                        | Notes |
-|-----------------------------|--------------------------|-----------------------------|-------|
-| Opening hours               | `negocio_horarios`        | **Repeater**                | Render with a JetEngine Listing Grid / Dynamic Repeater. Sub-fields below. |
-| ↳ Day label                 | `horario_dia`             | Text (or Select)            | e.g. "Lunes a Viernes". |
-| ↳ Time range                | `horario_rango`           | Text                        | e.g. "06:00 – 20:00". (Or split `apertura`/`cierre` Text fields if you prefer.) |
+| `Listing` field | meta key | Notes |
+|---|---|---|
+| `hours` | `horarios` | Expected shape: `DayHours[]` (`{ day:0–6, ranges:[{open,close}] }`). The repeater shape from JetEngine must be reshaped in `parseHours()` — see its TODO. |
 
-## Photos (PREMIUM)
+## Photos
 
-| Value                       | Meta field               | Type                        | Notes |
-|-----------------------------|--------------------------|-----------------------------|-------|
-| Cover photo                 | `negocio_portada`         | Media                       | `.cover` img src. |
-| Gallery                     | `negocio_galeria`         | **Gallery**                 | `.thumbs` — loop first 3, optional "+N" overlay. |
+| `Listing` field | Source | Notes |
+|---|---|---|
+| `coverImage` | **Featured image** (`wp:featuredmedia`) → meta `cover` | Premium hero. |
+| `gallery` | meta `galeria` | Array of URLs. Premium gallery. |
 
-## Category-specific block (NEXT PASS — placeholder for now)
+## Category block (premium, render-only-if-present)
 
-Left as a labelled "Próximamente" placeholder in this build. When designed, model
-per-rubro fields and show them conditionally on the `rubros` term, e.g.:
+| `Listing` field | meta key | Block variant |
+|---|---|---|
+| `especialidades` | `especialidades` | food / default (chips) |
+| `destacadoItem` | (model as group) | food ("Menú del día") |
+| `productos` | (model as repeater) | shop |
+| `servicios` | (model as repeater) | service |
 
-| Value (example, Panaderías) | Meta field (suggested)   | Type                        | Notes |
-|-----------------------------|--------------------------|-----------------------------|-------|
-| Menu / specialties          | `rubro_pan_menu`          | Repeater (item, precio)     | Per-rubro group; show only when term = Panaderías. |
-| Highlight items             | `rubro_pan_destacados`    | Gallery / Repeater          | — |
+The variant is chosen by the category's `blockKind` in `lib/categories.ts`.
 
-> Pattern: one conditional sub-template per rubro term, swapped into the
-> `.category-block` slot. Keep the placeholder until that pass.
+## Flags / monetization
 
----
+| `Listing` field | meta key | Notes |
+|---|---|---|
+| `verified` | `verificado` | Switcher → "Verificado" chip. |
+| `premiumUntil` | `premium_until` | **Unix seconds.** `isPremium = premiumUntil > now`. Unlocks cover, gallery, WhatsApp, category block, sticky bar. |
 
-### Visibility cheat-sheet
+## Honesty-gated (do NOT populate at launch)
 
-```
-negocio_premium == false  → .band, .is-free  (plain phone, locked slots, nudge)
-negocio_premium == true   → .media, .title-block, .is-premium (cover, gallery,
-                            contact rail [WhatsApp + Llamar once], message form)
-negocio_premium == true
-  AND negocio_verificado  → .chip-verified
-```
+`rating`, `reviewsCount`, `reviews`, `yearsActive`, `avgResponseMins` only render
+when real data exists, and the reviews UI is gated behind
+`NEXT_PUBLIC_REVIEWS_ENABLED` (default `false`). Never fabricate ratings.
