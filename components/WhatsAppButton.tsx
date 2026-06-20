@@ -1,0 +1,35 @@
+'use client';
+
+import { waLink } from '@/lib/format';
+import { trackLead } from '@/lib/lead-client';
+import { WhatsApp } from './icons';
+
+/** Full-width WhatsApp action (premium contact card / sticky bar). */
+export function WhatsAppButton({
+  whatsapp,
+  listingId,
+  slug,
+  name,
+  label = 'WhatsApp',
+  className = '',
+}: {
+  whatsapp: string;
+  listingId: string;
+  slug: string;
+  name: string;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <a
+      href={waLink(whatsapp, `Hola ${name}, los encontré en negocio.com.py y quería consultar…`)}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => trackLead({ source: 'listing_whatsapp', listingId, slug })}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-wab px-4 py-3.5 text-[15px] font-bold text-[#053d22] shadow-wa transition-transform hover:-translate-y-0.5 ${className}`}
+    >
+      <WhatsApp size={19} />
+      {label}
+    </a>
+  );
+}

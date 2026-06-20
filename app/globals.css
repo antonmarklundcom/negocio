@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================
+   negocio.com.py — design tokens (single source of truth)
+   Mirrored in tailwind.config.ts. Exact values from
+   /design/reference.html §3. No page may hardcode a colour.
+   ============================================================= */
+:root {
+  --cream: #f7f1e6;
+  --cream2: #efe6d5;
+  --paper: #ffffff;
+  --ink: #241e16;
+  --ink2: #5b5246;
+  --ink3: #938876;
+  --line: #e8decb;
+  --line2: #f0e8d9;
+  --blue: #2b54db;
+  --blued: #1e3ca6;
+  --bluebg: #eaeefc;
+  --terra: #c2643e;
+  --terra2: #f4e3d6;
+  --terragold: #c2972f;
+  --wa: #1aa055;
+  --wab: #25d366;
+  --wabg: #e6f4ea;
+
+  /* Warm photo fallback gradient — used everywhere a photo is missing. */
+  --fallback: linear-gradient(150deg, #f4e3d6, #e9d2be);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-hanken), 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 108, 90, 0.32);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Newsreader for business names + section headings. */
+.font-serif {
+  letter-spacing: -0.015em;
+}
+
+/* Hide-on-scroll utility hook for the mobile bottom nav. */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* MapLibre attribution/controls inherit the warm theme. */
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
