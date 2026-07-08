@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { submitLead } from '@/lib/lead-client';
+import { Honeypot } from './Honeypot';
 
 const field = 'w-full rounded-[10px] border border-line bg-cream px-3.5 py-3 text-[15px] text-ink outline-none focus:border-blue';
 
@@ -13,12 +14,15 @@ export function ContactoForm() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     setStatus('sending');
-    const ok = await submitLead({
-      source: 'contacto',
-      name: String(fd.get('name') ?? ''),
-      email: String(fd.get('email') ?? ''),
-      message: String(fd.get('message') ?? ''),
-    });
+    const ok = await submitLead(
+      {
+        source: 'contacto',
+        name: String(fd.get('name') ?? ''),
+        email: String(fd.get('email') ?? ''),
+        message: String(fd.get('message') ?? ''),
+      },
+      String(fd.get('hp') ?? ''),
+    );
     setStatus(ok ? 'sent' : 'error');
     if (ok) e.currentTarget.reset();
   }
@@ -34,6 +38,7 @@ export function ContactoForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
+      <Honeypot />
       <input name="name" required placeholder="Tu nombre" className={field} />
       <input name="email" type="email" required placeholder="Tu email" className={field} />
       <textarea name="message" required placeholder="¿En qué te ayudamos?" rows={5} className={`${field} resize-none`} />

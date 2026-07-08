@@ -21,13 +21,16 @@ export function trackLead(lead: Lead): void {
   }
 }
 
-/** POST a lead and await the result (for forms that show success/error). */
-export async function submitLead(lead: Lead): Promise<boolean> {
+/**
+ * POST a lead and await the result (for forms that show success/error).
+ * `hp` is the honeypot value — pass the hidden field so the server can drop bots.
+ */
+export async function submitLead(lead: Lead, hp = ''): Promise<boolean> {
   try {
     const res = await fetch('/api/v1/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(lead),
+      body: JSON.stringify(hp ? { ...lead, hp } : lead),
     });
     if (!res.ok) return false;
     const json = (await res.json()) as { ok?: boolean };

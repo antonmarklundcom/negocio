@@ -11,7 +11,7 @@ export const CATEGORIES: Category[] = [
   { slug: 'tiendas', label: 'Tienda', labelPlural: 'Tiendas y comercios', icon: 'bag', blockKind: 'shop' },
   { slug: 'hogar', label: 'Servicio para el hogar', labelPlural: 'Servicios para el hogar', icon: 'home', blockKind: 'service' },
   { slug: 'talleres', label: 'Taller', labelPlural: 'Talleres y mecánica', icon: 'wrench', blockKind: 'service' },
-  { slug: 'salud', label: 'Salud', labelPlural: 'Salud', icon: 'heart', blockKind: 'default' },
+  { slug: 'salud', label: 'Salud', labelPlural: 'Salud', icon: 'heart', blockKind: 'service' },
   { slug: 'belleza', label: 'Belleza y estética', labelPlural: 'Belleza y estética', icon: 'scissors', blockKind: 'service' },
   { slug: 'profesionales', label: 'Profesional', labelPlural: 'Profesionales', icon: 'briefcase', blockKind: 'service' },
   { slug: 'ferreterias', label: 'Ferretería', labelPlural: 'Ferreterías', icon: 'hammer', blockKind: 'shop' },
