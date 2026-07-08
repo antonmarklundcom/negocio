@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { submitLead } from '@/lib/lead-client';
+import { Honeypot } from './Honeypot';
 import { Send } from './icons';
 
 /**
@@ -21,11 +22,15 @@ export function ListingMessageForm({
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!message.trim()) return;
     setStatus('sending');
-    const ok = await submitLead({ source: 'listing_message', listingId, slug, message: message.trim() });
+    const hp = new FormData(e.currentTarget).get('hp');
+    const ok = await submitLead(
+      { source: 'listing_message', listingId, slug, message: message.trim() },
+      typeof hp === 'string' ? hp : '',
+    );
     setStatus(ok ? 'sent' : 'error');
     if (ok) setMessage('');
   }
@@ -41,6 +46,7 @@ export function ListingMessageForm({
   if (variant === 'textarea') {
     return (
       <form onSubmit={onSubmit}>
+        <Honeypot />
         <div className="mb-2 text-[13px] font-bold">Enviá una consulta</div>
         <textarea
           value={message}
@@ -62,6 +68,7 @@ export function ListingMessageForm({
 
   return (
     <form onSubmit={onSubmit} className="flex gap-2">
+      <Honeypot />
       <input
         value={message}
         onChange={(e) => setMessage(e.target.value)}

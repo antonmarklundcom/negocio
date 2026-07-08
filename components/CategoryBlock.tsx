@@ -95,19 +95,26 @@ function ShopBlock({ listing }: { listing: Listing }) {
 }
 
 function ServiceBlock({ listing }: { listing: Listing }) {
-  const { servicios } = listing;
-  if (!servicios?.length) return null;
+  const { servicios, especialidades } = listing;
+  if (!servicios?.length && !especialidades?.length) return null;
   return (
     <section>
       <SectionTitle>Servicios</SectionTitle>
-      <ul className="divide-y divide-line2 overflow-hidden rounded-card border border-line bg-paper">
-        {servicios.map((s) => (
-          <li key={s.title} className="px-4 py-3">
-            <div className="text-[14px] font-semibold">{s.title}</div>
-            {s.desc && <div className="text-[13px] text-ink2">{s.desc}</div>}
-          </li>
-        ))}
-      </ul>
+      {especialidades?.length ? (
+        <div className="mb-4">
+          <Chips items={especialidades} />
+        </div>
+      ) : null}
+      {servicios?.length ? (
+        <ul className="divide-y divide-line2 overflow-hidden rounded-card border border-line bg-paper">
+          {servicios.map((s) => (
+            <li key={s.title} className="px-4 py-3">
+              <div className="text-[14px] font-semibold">{s.title}</div>
+              {s.desc && <div className="text-[13px] text-ink2">{s.desc}</div>}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {listing.whatsapp && (
         <div className="mt-4">
           <WhatsAppButton

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { submitLead } from '@/lib/lead-client';
 import { CATEGORIES } from '@/lib/categories';
 import { CITIES } from '@/lib/cities';
+import { Honeypot } from './Honeypot';
 
 const field = 'w-full rounded-[10px] border border-line bg-cream px-3.5 py-3 text-[15px] text-ink outline-none focus:border-blue';
 
@@ -15,14 +16,17 @@ export function SumateForm() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     setStatus('sending');
-    const ok = await submitLead({
-      source: 'sumate',
-      businessName: String(fd.get('businessName') ?? ''),
-      category: String(fd.get('category') ?? ''),
-      city: String(fd.get('city') ?? ''),
-      contactName: String(fd.get('contactName') ?? ''),
-      phone: String(fd.get('phone') ?? ''),
-    });
+    const ok = await submitLead(
+      {
+        source: 'sumate',
+        businessName: String(fd.get('businessName') ?? ''),
+        category: String(fd.get('category') ?? ''),
+        city: String(fd.get('city') ?? ''),
+        contactName: String(fd.get('contactName') ?? ''),
+        phone: String(fd.get('phone') ?? ''),
+      },
+      String(fd.get('hp') ?? ''),
+    );
     setStatus(ok ? 'sent' : 'error');
     if (ok) e.currentTarget.reset();
   }
@@ -38,6 +42,7 @@ export function SumateForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
+      <Honeypot />
       <input name="businessName" required placeholder="Nombre del negocio" className={field} />
       <div className="grid gap-3 sm:grid-cols-2">
         <select name="category" required defaultValue="" className={field}>
