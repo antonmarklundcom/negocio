@@ -127,7 +127,9 @@ See `.env.example`. The **minimum-to-launch** subset (site runs on seed data):
 
 Add when ready: `NEXT_PUBLIC_PANEL_URL`, `WP_APP_USER`, `WP_APP_PASSWORD`
 (backend); `GHL_WEBHOOK_URL`, `SHEETS_WEBHOOK_URL`, `LEADS_WEBHOOK_TOKEN`
-(lead routing); `NEXT_PUBLIC_MAP_TILES` (map style).
+(lead routing); `NEXT_PUBLIC_MAP_TILES` (map style); `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`
+(cookieless visitor analytics — create a free/self-hosted Plausible site for your
+domain, set this to the domain, redeploy; no cookie banner needed either way).
 
 ---
 
