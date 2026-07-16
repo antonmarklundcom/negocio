@@ -28,6 +28,9 @@ export const REVIEWS_ENABLED = process.env.NEXT_PUBLIC_REVIEWS_ENABLED === 'true
 /** Launch promo banner — OFF unless explicitly enabled. */
 export const PROMO_BANNER_ON = process.env.NEXT_PUBLIC_PROMO_BANNER === 'on';
 
+/** Cookieless analytics (Plausible) — off until a domain is set. See components/Analytics.tsx. */
+export const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || '';
+
 export const TIMEZONE = 'America/Asuncion';
 
 export const DEFAULT_PAGE_SIZE = 12;

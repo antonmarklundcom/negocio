@@ -6,6 +6,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
 import { PromoBanner } from '@/components/PromoBanner';
+import { Analytics } from '@/components/Analytics';
 
 const newsreader = Newsreader({
   subsets: ['latin'],
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="pb-20 md:pb-0">{children}</main>
         <Footer />
         <BottomNav />
+        <Analytics />
       </body>
     </html>
   );
