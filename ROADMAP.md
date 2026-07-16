@@ -25,9 +25,10 @@ maps, SEO, Hostinger entry (`server.js`).
 - [ ] **USER:** Hostinger panel — Build command `npm run build`, Entry file
       `server.js`, Node 22, env vars from `.env.example` minimum block; deploy `main`
 - [ ] **USER:** point domain + SSL at the deployment
+- [x] Add analytics (Plausible, cookieless, off until `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set)
 - [ ] Post-deploy smoke test on the real domain (`/`, a listing, `/buscar`, sitemap)
 - [ ] Submit `sitemap.xml` to Google Search Console
-- [ ] Add analytics (recommend Plausible/Umami — cookieless; or GA4)
+- [ ] **USER:** create a Plausible site for the domain, set `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, redeploy
 
 ## Phase B — Live backend (JetEngine)
 
