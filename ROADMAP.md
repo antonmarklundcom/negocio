@@ -271,11 +271,30 @@ Repo, docs and comments in English.
 
 ## Phase C — Hardening
 
-- [ ] Error monitoring (Sentry free tier) + uptime monitor (UptimeRobot)
+- [x] Error monitoring (Sentry free tier) + uptime monitor (UptimeRobot)
+      *Shipped: `instrumentation.ts` + `sentry.server.config.ts` +
+      `sentry.edge.config.ts` (server/edge only — no `sentry.client.config.ts`;
+      a client `Sentry.init` roughly doubled the shared JS bundle, 87.8 kB →
+      155 kB, for a mostly server-rendered site where 500s and admin-action
+      errors matter more than browser render errors). Env-gated like every
+      other integration: `SENTRY_DSN` unset → `enabled: false`, no network
+      calls, verified the app still boots and serves normally either way.
+      `GET /api/health` added for UptimeRobot to poll — deliberately does not
+      touch the database, so a MySQL blip doesn't page anyone for a site that
+      still serves fine without it.*
+      **USER:** create a free Sentry project → `SENTRY_DSN` (+ optionally
+      `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` for source maps) in the
+      Hostinger env panel, redeploy. Create a free UptimeRobot monitor against
+      `https://negocio.com.py/api/health`.
 - [ ] Watch Hostinger build memory; if OOM: `NODE_OPTIONS=--max-old-space-size=1536`
 - [ ] Next.js 15/16 upgrade (clears remaining `npm audit` highs) — **own PR, not
       bundled with any Phase B work**
-- [ ] Basic e2e smoke tests (Playwright) run in CI
+- [x] Basic e2e smoke tests (Playwright) run in CI
+      *Shipped: `playwright.config.ts`, `e2e/smoke.spec.ts` (home, a listing
+      page, search, a category page, sitemap.xml, robots.txt, `/api/health`,
+      an unknown route 404s, `/admin` 404s with no `DATABASE_URL`), a new `e2e`
+      job in `.github/workflows/ci.yml` running against a production build on
+      seed data — no database needed.*
 
 ## Phase D — Revenue features (ordered by effort→revenue)
 
