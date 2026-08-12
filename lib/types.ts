@@ -56,6 +56,7 @@ export type Listing = {
   // flags / monetization:
   verified: boolean; // drives "Verificado" chip
   premiumUntil?: number; // unix seconds; premium = premiumUntil > now
+  featuredUntil?: number; // unix seconds; "destacado en portada" home-page slot, sold separately from premium
 
   // optional/honesty-gated stats (default hidden, see §6.6):
   rating?: number;
@@ -87,6 +88,8 @@ export type ListingQuery = {
   zona?: string;
   q?: string;
   abierto?: boolean;
+  /** Only listings with an active "destacado en portada" slot (ROADMAP Phase D item 3). */
+  destacado?: boolean;
   sort?: 'relevancia' | 'destacados' | 'nombre';
   premiumFirst?: boolean;
   page?: number;

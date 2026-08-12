@@ -38,6 +38,7 @@ function row(overrides: Partial<ListingRow> = {}): ListingRow {
     servicios: null,
     verified: true,
     premiumUntil: 1893456000,
+    featuredUntil: null,
     rating: null,
     reviewsCount: null,
     yearsActive: 12,

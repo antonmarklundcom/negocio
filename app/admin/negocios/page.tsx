@@ -29,6 +29,9 @@ const COLUMNS: AdminColumn<AdminListingRow>[] = [
         {row.premiumUntil && row.premiumUntil > Date.now() / 1000 && (
           <span className="rounded-full bg-terragold/20 px-2 py-0.5 text-[12px] font-bold text-terra">Premium</span>
         )}
+        {row.featuredUntil && row.featuredUntil > Date.now() / 1000 && (
+          <span className="rounded-full bg-terra/20 px-2 py-0.5 text-[12px] font-bold text-terra">Portada</span>
+        )}
         {row.verified && (
           <span className="rounded-full bg-blue/10 px-2 py-0.5 text-[12px] font-bold text-blue">Verificado</span>
         )}

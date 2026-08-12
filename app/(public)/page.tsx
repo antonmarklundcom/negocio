@@ -3,13 +3,17 @@ import { getListings, getCategories } from '@/lib/listings-repo';
 import { CategoryIcon, Search } from '@/components/icons';
 import { ListingCard } from '@/components/ListingCard';
 import { JsonLd, siteJsonLd } from '@/lib/jsonld';
+import { MAX_FEATURED_SLOTS } from '@/lib/config';
 
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [categories, featured] = await Promise.all([
+  const [categories, featured, destacadoPortada] = await Promise.all([
     getCategories(),
     getListings({ sort: 'destacados', premiumFirst: true, pageSize: 6, page: 1 }),
+    // "Destacado en portada" (ROADMAP Phase D item 3) — a limited, separately
+    // sold home-page slot, distinct from the general Premium pool above.
+    getListings({ destacado: true, sort: 'nombre', pageSize: MAX_FEATURED_SLOTS, page: 1 }),
   ]);
 
   return (
@@ -46,6 +50,19 @@ export default async function HomePage() {
           </form>
         </div>
       </section>
+
+      {/* Destacado en portada — a separately sold, limited slot (ROADMAP
+          Phase D item 3), so it renders above the general Premium pool. */}
+      {destacadoPortada.items.length > 0 && (
+        <section className="mx-auto max-w-content px-4 pt-12 md:px-8">
+          <h2 className="mb-6 font-serif text-[24px] font-semibold md:text-[28px]">Destacado en portada</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {destacadoPortada.items.map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Categories */}
       <section className="mx-auto max-w-content px-4 py-12 md:px-8">

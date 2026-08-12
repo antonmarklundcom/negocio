@@ -1,5 +1,5 @@
 import type { CategoryCityCombo, Listing, ListingQuery, ListingResult } from '../types';
-import { isPremium } from '../listing';
+import { isFeatured, isPremium } from '../listing';
 import { computeOpenState } from '../hours';
 import { DEFAULT_PAGE_SIZE } from '../config';
 
@@ -18,6 +18,7 @@ export function applyQuery(all: Listing[], params: ListingQuery): ListingResult 
       const state = computeOpenState(l.hours);
       if (!('open' in state) || !state.open) return false;
     }
+    if (params.destacado && !isFeatured(l)) return false;
     if (q) {
       const hay = `${l.name} ${l.categoriaLabel} ${l.ciudadLabel} ${l.zona ?? ''} ${l.subtitle ?? ''} ${
         l.description ?? ''

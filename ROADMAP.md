@@ -358,7 +358,29 @@ Repo, docs and comments in English.
        there for anything the packages don't cover. A "Vender por WhatsApp"
        link (when the listing has a WhatsApp number) opens the sales chat
        with a canned opener. No migration.*
-3. [ ] "Destacado en portada" — home page featured slots as paid add-on
+3. [x] "Destacado en portada" — home page featured slots as paid add-on
+       *Shipped, with a migration (`drizzle/0002_woozy_tattoo.sql` — one
+       nullable additive column + an index, `npm run db:generate` was run,
+       `db:migrate` was NOT; apply it by hand before deploying, same as
+       every earlier migration). `listings.featured_until` (unix seconds)
+       is deliberately separate from `premium_until`: Premium alone
+       competes for the home page's general "Negocios destacados" section
+       (which shrinks as more businesses go premium), so a featured slot is
+       sold separately to guarantee a spot. `MAX_FEATURED_SLOTS = 6`
+       (`lib/config.ts`, shared by the public home page and the admin cap
+       check so they can't drift) is enforced in
+       `lib/db/listings-admin.ts`'s `extendListingFeatured`, not just by how
+       many buttons the admin UI shows — a renewal of an already-featured
+       listing never counts against the cap, only a brand-new slot does.
+       Home page (`app/(public)/page.tsx`) renders a "Destacado en portada"
+       section above the general destacados one, via a new
+       `ListingQuery.destacado` filter implemented in both providers
+       (`isFeaturedSql` for MySQL, `isFeatured()` for the seed engine) so
+       local dev without a database still shows the section correctly.
+       Design decision made here, not asked: featured slots are sold in
+       fixed 30/90-day packages (not arbitrary dates), mirroring PR-5's
+       premium-package pattern — reconsider if a business wants a custom
+       duration.*
 4. [ ] QR code per premium listing (printable sticker → profile)
 5. [ ] First-party reviews (UI gate `NEXT_PUBLIC_REVIEWS_ENABLED` already exists)
 6. [ ] SEO content: barrio pages + "Los mejores [rubro] en [ciudad]" pages

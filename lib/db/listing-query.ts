@@ -19,6 +19,11 @@ export function isPremiumSql(nowSeconds: number): SQL<boolean> {
   return sql<boolean>`(${listings.premiumUntil} is not null and ${listings.premiumUntil} > ${nowSeconds})`;
 }
 
+/** "Destacado en portada" (Phase D item 3) — same point-in-time shape as `isPremiumSql`, a separate paid slot. */
+export function isFeaturedSql(nowSeconds: number): SQL<boolean> {
+  return sql<boolean>`(${listings.featuredUntil} is not null and ${listings.featuredUntil} > ${nowSeconds})`;
+}
+
 /**
  * "Abierto ahora", mirroring `isRangeOpenAt` in ./open-now.ts one-for-one:
  * a range open today, a range that started today and runs past midnight, or a
@@ -47,7 +52,7 @@ export function openNowSql(at: WallClock): SQL<unknown> {
   );
 }
 
-export function buildListingWhere(params: ListingQuery, at: WallClock): SQL | undefined {
+export function buildListingWhere(params: ListingQuery, at: WallClock, nowSeconds: number): SQL | undefined {
   const conditions: SQL[] = [];
 
   if (params.categoria) conditions.push(eq(listings.categoria, params.categoria));
@@ -56,6 +61,7 @@ export function buildListingWhere(params: ListingQuery, at: WallClock): SQL | un
     conditions.push(sql`lower(${listings.zona}) = ${params.zona.trim().toLowerCase()}`);
   }
   if (params.abierto) conditions.push(openNowSql(at));
+  if (params.destacado) conditions.push(isFeaturedSql(nowSeconds));
 
   const q = params.q?.trim();
   if (q) {

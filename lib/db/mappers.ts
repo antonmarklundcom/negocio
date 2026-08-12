@@ -122,6 +122,7 @@ export function rowToListing(
 
     verified: row.verified,
     premiumUntil: orUndefined(row.premiumUntil),
+    featuredUntil: orUndefined(row.featuredUntil),
 
     rating: toNumber(row.rating),
     reviewsCount: orUndefined(row.reviewsCount),
@@ -169,6 +170,7 @@ export function listingToRow(listing: Listing): ListingInsert {
 
     verified: listing.verified,
     premiumUntil: listing.premiumUntil ?? null,
+    featuredUntil: listing.featuredUntil ?? null,
 
     rating: listing.rating !== undefined ? String(listing.rating) : null,
     reviewsCount: listing.reviewsCount ?? null,
