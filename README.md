@@ -47,8 +47,8 @@ app/                       Routes (App Router)
 components/                UI (cards, pills, maps, forms, detail blocks)
 lib/                       Domain logic
   listings-repo.ts         THE single data-access surface (the seam)
-  providers/               seed.ts · jetengine.ts · db.ts · query.ts (shared filtering)
-  db/                      schema.ts · client.ts · mappers.ts · listing-query.ts
+  providers/               seed.ts · db.ts · query.ts (shared filtering)
+  db/                      schema.ts · client.ts · mappers.ts · listing-query.ts · leads.ts
   types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts
   leads.ts                 Lead orchestrator (zod + fan-out)
   jsonld.tsx               schema.org builders
@@ -79,19 +79,19 @@ getCategoryCityCombosWithListings()       // SEO pages + sitemap
 
 Selection logic (in `listings-repo.ts`):
 
-- `NEXT_PUBLIC_BACKEND=jetengine` **and** WP creds present → **JetEngine**, with
-  the **seed as an automatic fallback** on any error.
-- otherwise → **seed** (the permanent fallback).
+- `DATABASE_URL` set (`dbConfigured()`) → **MySQL** (`lib/providers/db.ts`).
+- otherwise → **seed** (`lib/providers/seed.ts` — the local-dev path, and the
+  importer's source of truth).
+
+There is **no fallback**: a DB error surfaces to the caller instead of
+silently serving stale seed data. That is deliberate — a page that renders
+wrong is loud; a page that quietly renders stale data is not.
 
 ### Swapping the backend later
 
 1. Add a provider under `lib/providers/` implementing `ListingsProvider`.
 2. Change the **one** `selectPrimary()` line in `listings-repo.ts`.
    Nothing else in the app changes.
-
-`lib/providers/db.ts` (MySQL) exists and is fully implemented, but **is not
-selected yet** — PR-2 flips `selectPrimary()` and deletes the JetEngine
-provider. Until then the site still renders from the seed dataset.
 
 ---
 
@@ -145,33 +145,6 @@ is irrelevant and must stay that way.
 
 ---
 
-## JetEngine field mapping — how to correct the keys
-
-The WordPress/JetEngine provider lives in `lib/providers/jetengine.ts`. It reads
-the `negocios` custom post type over the WP REST API using a **WordPress
-Application Password (Basic Auth), server-side only** — credentials never reach
-the client.
-
-The meta field keys are **UNVERIFIED guesses** until checked against the live
-setup. They are isolated in **one block** marked:
-
-```
-// ============================ JETENGINE FIELD MAP ============================
-```
-
-Each line carries a `// TODO: verify field key against live JetEngine`. After
-the post type is configured:
-
-1. Open `lib/providers/jetengine.ts`, find that block.
-2. Replace the meta key strings (e.g. `meta['telefono']`) with the real keys.
-3. Confirm the taxonomy slugs `categoria` and `ciudad`, the featured-image
-   mapping, and the `premium_until` / `verificado` keys.
-
-A missing field maps to `undefined` and **never** hard-fails; a down panel
-degrades to the seed. See also `FIELD-MAP.md`.
-
----
-
 ## Environment variables
 
 See `.env.example`. The **minimum-to-launch** subset (site runs on seed data):
@@ -180,15 +153,14 @@ See `.env.example`. The **minimum-to-launch** subset (site runs on seed data):
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL (sitemaps, JSON-LD) |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Platform WhatsApp (header/contact), E.164 digits |
-| `NEXT_PUBLIC_BACKEND` | `seed` (default) or `jetengine` |
 | `NEXT_PUBLIC_REVIEWS_ENABLED` | `false` — ratings/reviews UI gate (honesty) |
 | `NEXT_PUBLIC_PROMO_BANNER` | `off` — launch promo banner toggle |
 
-`DATABASE_URL` (MySQL) is required only once the DB provider is selected (PR-2)
-and for running the migrations and the seed importer locally.
+`DATABASE_URL` (MySQL) selects the DB provider (see **Database** above) and is
+required for running the migrations and the seed importer locally. Unset in
+local dev, the app renders from the seed dataset instead.
 
-Add when ready: `NEXT_PUBLIC_PANEL_URL`, `WP_APP_USER`, `WP_APP_PASSWORD`
-(backend); `GHL_WEBHOOK_URL`, `SHEETS_WEBHOOK_URL`, `LEADS_WEBHOOK_TOKEN`
+Add when ready: `GHL_WEBHOOK_URL`, `SHEETS_WEBHOOK_URL`, `LEADS_WEBHOOK_TOKEN`
 (lead routing); `NEXT_PUBLIC_MAP_TILES` (map style); `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`
 (cookieless visitor analytics — create a free/self-hosted Plausible site for your
 domain, set this to the domain, redeploy; no cookie banner needed either way).
@@ -222,11 +194,11 @@ All contact paths converge on **`lib/leads.ts`** + `POST /api/v1/leads`:
   to `snake_case`.
 - Fan-out is **parallel** (`Promise.allSettled`) to the GoHighLevel and Google
   Sheets webhooks, each with **3× exponential-backoff retries**.
-- A sink failure **never** fails the visitor's request. Until the webhook envs
-  are set, leads are logged to the server console and still succeed.
-- Leads are still **not persisted**: the `leads` table exists in the schema, but
-  writing to it comes with the cutover. Until then a lead that no sink accepts
-  survives only in the server log.
+- Every lead is **persisted to the `leads` table first**, before the webhook
+  fan-out (`lib/db/leads.ts`), so it survives a dead webhook. A DB write
+  failure is caught and logged, never surfaced to the visitor.
+- A sink or DB failure **never** fails the visitor's request. Until the webhook
+  envs are set, leads are logged to the server console and still succeed.
 
 To activate routing, set `GHL_WEBHOOK_URL` and/or `SHEETS_WEBHOOK_URL` (and
 optionally `LEADS_WEBHOOK_TOKEN`), then redeploy — one at a time.

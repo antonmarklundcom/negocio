@@ -21,11 +21,12 @@ import { wallClockNow } from '../db/open-now';
  * the app that contains SQL; everything it returns is a plain
  * `Listing`/`Category`/`City`.
  *
- * Unlike the seed and JetEngine providers it does NOT materialise every listing
- * and filter in memory: filtering, sorting and pagination are pushed into SQL
- * and only the current page's rows (plus their children) are read.
+ * Unlike the seed provider it does NOT materialise every listing and filter in
+ * memory: filtering, sorting and pagination are pushed into SQL and only the
+ * current page's rows (plus their children) are read.
  *
- * Nothing here is live until PR-2 flips `selectPrimary()` in lib/listings-repo.
+ * Selected by `selectPrimary()` in lib/listings-repo whenever `DATABASE_URL`
+ * is set (PR-2).
  */
 
 type HoursRow = { listingId: string; day: number; openMinute: number; closeMinute: number };

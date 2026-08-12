@@ -2,7 +2,7 @@
   "name": "negocio-frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "negocio.com.py — consumer business directory for Paraguay. Next.js (App Router) + TypeScript + Tailwind. SSR over a swappable listings repository (seed → JetEngine → Supabase).",
+  "description": "negocio.com.py — consumer business directory for Paraguay. Next.js (App Router) + TypeScript + Tailwind. SSR over a swappable listings repository (seed → MySQL).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

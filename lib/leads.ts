@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { insertLead, updateLeadDelivery, type NewLead } from './db/leads';
 
 /**
  * Single lead orchestrator (§7). Every contact path on the site converges here:
@@ -7,10 +8,13 @@ import { z } from 'zod';
  * Design rules:
  *  - zod-validated discriminated union on `source`.
  *  - flat snake_case payload sent to each sink.
+ *  - the lead is persisted to the `leads` table BEFORE the webhook fan-out, so
+ *    it survives a dead webhook (a DB write failure is caught and logged, and
+ *    NEVER fails the visitor's request — the lead still fans out to the sinks).
  *  - parallel fan-out (Promise.allSettled) with 3× exponential-backoff retries.
- *  - a logger/webhook failure NEVER fails the user's request; if the lead was
- *    accepted we return success. Until GHL/Sheets envs are set we log to the
- *    server console and still succeed (graceful degradation).
+ *  - a DB write or webhook failure NEVER fails the user's request; if the lead
+ *    was well-formed we return success. Until GHL/Sheets envs are set we log to
+ *    the server console and still succeed (graceful degradation).
  */
 
 export const leadSchema = z.discriminatedUnion('source', [
@@ -81,6 +85,54 @@ function toFlatPayload(lead: Lead): Record<string, string> {
   }
 }
 
+/** Map a validated lead into a `leads` row. Unset fields become NULL. */
+function toLeadRow(lead: Lead): NewLead {
+  const base: NewLead = { source: lead.source };
+  switch (lead.source) {
+    case 'listing_message':
+      return {
+        ...base,
+        listingId: lead.listingId,
+        listingSlug: lead.slug,
+        message: lead.message,
+        name: lead.name ?? null,
+        contact: lead.contact ?? null,
+      };
+    case 'listing_whatsapp':
+      return { ...base, listingId: lead.listingId, listingSlug: lead.slug ?? null };
+    case 'sumate':
+      return {
+        ...base,
+        businessName: lead.businessName,
+        category: lead.category,
+        city: lead.city,
+        name: lead.contactName,
+        phone: lead.phone,
+      };
+    case 'contacto':
+      return { ...base, name: lead.name, email: lead.email, message: lead.message };
+  }
+}
+
+/** Best-effort insert: logs and swallows any DB error, never throws to the caller. */
+async function tryInsertLead(lead: Lead): Promise<number | undefined> {
+  try {
+    return await insertLead(toLeadRow(lead));
+  } catch (err) {
+    console.error('[leads] failed to persist lead to the database:', err);
+    return undefined;
+  }
+}
+
+/** Best-effort delivery update: logs and swallows any DB error. */
+async function tryUpdateLeadDelivery(id: number, delivered: number, configured: number): Promise<void> {
+  try {
+    await updateLeadDelivery(id, delivered, configured);
+  } catch (err) {
+    console.error('[leads] failed to record delivery outcome for lead', id, err);
+  }
+}
+
 async function postWithRetry(url: string, body: Record<string, string>, label: string): Promise<void> {
   const payload = LEADS_WEBHOOK_TOKEN ? { ...body, token: LEADS_WEBHOOK_TOKEN } : body;
   let lastErr: unknown;
@@ -114,6 +166,9 @@ export type LeadOutcome = { accepted: true; delivered: number; sinks: number };
 export async function handleLead(lead: Lead): Promise<LeadOutcome> {
   const payload = toFlatPayload(lead);
 
+  // Persist first, so the lead survives a dead webhook. Never fails the request.
+  const leadId = await tryInsertLead(lead);
+
   const sinks: { url: string; label: string }[] = [];
   if (GHL_WEBHOOK_URL) sinks.push({ url: GHL_WEBHOOK_URL, label: 'GoHighLevel' });
   if (SHEETS_WEBHOOK_URL) sinks.push({ url: SHEETS_WEBHOOK_URL, label: 'Google Sheets' });
@@ -121,6 +176,7 @@ export async function handleLead(lead: Lead): Promise<LeadOutcome> {
   if (sinks.length === 0) {
     // No routing configured yet — degrade gracefully but never lose the lead.
     console.info('[leads] (no sinks configured) lead accepted:', payload);
+    if (leadId !== undefined) await tryUpdateLeadDelivery(leadId, 0, 0);
     return { accepted: true, delivered: 0, sinks: 0 };
   }
 
@@ -133,6 +189,8 @@ export async function handleLead(lead: Lead): Promise<LeadOutcome> {
     if (r.status === 'fulfilled') delivered++;
     else console.error(`[leads] sink "${sinks[i]!.label}" failed after retries:`, r.reason);
   });
+
+  if (leadId !== undefined) await tryUpdateLeadDelivery(leadId, delivered, sinks.length);
 
   return { accepted: true, delivered, sinks: sinks.length };
 }

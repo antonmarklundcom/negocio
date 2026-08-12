@@ -9,63 +9,45 @@ import type {
 } from './types';
 import type { ListingsProvider } from './providers/types';
 import { seedProvider } from './providers/seed';
-import { jetengineProvider, jetengineConfigured } from './providers/jetengine';
+import { dbProvider, dbConfigured } from './providers/db';
 
 /**
  * THE single data-access surface (§5.1). Every page and API route imports from
- * here — nothing else calls WordPress or fetch directly.
+ * here — nothing else touches a database or fetches an external CMS directly.
  *
  * Provider selection:
- *   NEXT_PUBLIC_BACKEND=jetengine + creds present → JetEngine, with the seed as
- *   an automatic fallback on any error. Otherwise → seed.
+ *   DATABASE_URL set → the MySQL provider. Otherwise → seed (local dev, and the
+ *   importer's own source of truth).
  *
- * To swap to Supabase later: add lib/providers/supabase.ts and change the one
- * `primary` line below. Nothing else in the app changes.
+ * There is no fallback: a DB error surfaces to the caller instead of silently
+ * serving stale seed data. That is the point of the cutover — a page that
+ * renders wrong is loud; a page that quietly renders stale data is not.
  */
-function selectPrimary(): ListingsProvider {
-  if (process.env.NEXT_PUBLIC_BACKEND === 'jetengine' && jetengineConfigured()) {
-    return jetengineProvider;
-    // return supabaseProvider; // ← future: one-line swap
+export function selectPrimary(): ListingsProvider {
+  if (dbConfigured()) {
+    return dbProvider;
   }
   return seedProvider;
 }
 
 const primary = selectPrimary();
-const fallback = seedProvider;
-const usingFallback = primary === fallback;
-
-/** Run against the primary provider; on any error fall back to the seed. */
-async function withFallback<T>(
-  run: (p: ListingsProvider) => Promise<T>,
-  label: string,
-): Promise<T> {
-  try {
-    return await run(primary);
-  } catch (err) {
-    if (!usingFallback) {
-      console.error(`[listings-repo] ${primary.name} failed for ${label}; using seed fallback.`, err);
-      return run(fallback);
-    }
-    throw err;
-  }
-}
 
 export function getListings(params: ListingQuery): Promise<ListingResult> {
-  return withFallback((p) => p.getListings(params), 'getListings');
+  return primary.getListings(params);
 }
 
 export function getListingBySlug(slug: string): Promise<Listing | null> {
-  return withFallback((p) => p.getListingBySlug(slug), `getListingBySlug(${slug})`);
+  return primary.getListingBySlug(slug);
 }
 
 export function getCategories(): Promise<Category[]> {
-  return withFallback((p) => p.getCategories(), 'getCategories');
+  return primary.getCategories();
 }
 
 export function getCities(): Promise<City[]> {
-  return withFallback((p) => p.getCities(), 'getCities');
+  return primary.getCities();
 }
 
 export function getCategoryCityCombosWithListings(): Promise<CategoryCityCombo[]> {
-  return withFallback((p) => p.getCategoryCityCombosWithListings(), 'getCategoryCityCombosWithListings');
+  return primary.getCategoryCityCombosWithListings();
 }
