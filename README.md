@@ -347,3 +347,31 @@ Standard Next.js server (`next build` / `next start`). **Never** use
 Merge to `main` = redeploy. Adding an integration = add its env vars + redeploy.
 **Database migrations are not part of the deploy** — apply them from a local
 machine before merging the PR that needs them (see **Database** above).
+
+### The production build has no devDependencies
+
+Hostinger sets `NODE_ENV=production` as an app environment variable, so its
+`npm install` **omits `devDependencies`** — `drizzle-kit`, `vitest`, `tsx` and
+`eslint` do not exist on the build machine.
+
+`next build` type-checks every file `tsconfig.json` includes. A tooling file
+that imports a devDependency therefore fails the **production** build while
+passing locally and in CI, where those packages are installed. That is exactly
+how `drizzle.config.ts` (added in PR-1) broke every deploy from PR-1 onward
+while CI stayed green.
+
+The arrangement that prevents it:
+
+- **`tsconfig.json`** — what `next build` checks. Excludes `tests/`,
+  `drizzle.config.ts` and `vitest.config.ts`: tooling, unreachable from the app.
+- **`tsconfig.typecheck.json`** — what `npm run typecheck` and CI check.
+  Includes everything, so those files stay strictly typed.
+- **CI's `production-build` job** — installs with `npm ci --omit=dev` under
+  `NODE_ENV=production`, reproducing the Hostinger install. This is the only
+  job that can catch a production-only build failure.
+
+Do **not** remove `NODE_ENV=production` from the Hostinger panel to work around
+this. `server.js` boots Next programmatically rather than via `next start`, so
+nothing else sets it — and `lib/auth/session.ts` reads it to decide whether the
+session cookie carries the `secure` flag. Unsetting it would ship the admin
+session cookie over plain HTTP.

@@ -1,0 +1,16 @@
+{
+  // Full-coverage type check: the app PLUS the tooling that `tsconfig.json`
+  // has to exclude so the production build survives an install without
+  // devDependencies (see the comment there).
+  //
+  // This is what `npm run typecheck` and CI run, so tests, the Drizzle config
+  // and the vitest config are still strictly checked — just not by `next build`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // A separate project would otherwise fight `tsconfig.json` over the same
+    // .tsbuildinfo file and report stale results.
+    "incremental": false
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", "legacy", "design", "project"]
+}

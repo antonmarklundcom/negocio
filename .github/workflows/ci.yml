@@ -17,8 +17,7 @@ jobs:
           node-version: 22.x
           cache: npm
 
-      # Mirrors Hostinger's production install so a broken build is caught here,
-      # not at deploy time.
+      # Full install: devDependencies are what type-check and test the repo.
       - run: npm ci
 
       - name: Type check
@@ -27,6 +26,29 @@ jobs:
       # Every test is pure — no MySQL, no DATABASE_URL. Keep it that way.
       - name: Test
         run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  # The job above CANNOT catch a production-only build failure: it installs
+  # devDependencies, and Hostinger does not. Hostinger sets NODE_ENV=production
+  # as an app env var, so its `npm install` omits them — which is exactly how a
+  # `drizzle-kit` import in drizzle.config.ts broke the deploy while CI stayed
+  # green. This job reproduces that install so it cannot happen again.
+  production-build:
+    name: Production build (no devDependencies, as on Hostinger)
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - run: npm ci --omit=dev
 
       - name: Build
         run: npm run build

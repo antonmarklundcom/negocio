@@ -20,5 +20,21 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "legacy", "design", "project"]
+  // `next build` type-checks every file this config includes. Hostinger sets
+  // NODE_ENV=production, so its `npm install` omits devDependencies — and a
+  // file importing `drizzle-kit` or `vitest` then fails the PRODUCTION build
+  // while passing locally and in CI, where devDependencies are present.
+  //
+  // These four entries are tooling, not application code, and none of them is
+  // reachable from the app. They are still fully type-checked by
+  // `npm run typecheck` (tsconfig.typecheck.json), which is what CI runs.
+  "exclude": [
+    "node_modules",
+    "legacy",
+    "design",
+    "project",
+    "tests",
+    "drizzle.config.ts",
+    "vitest.config.ts"
+  ]
 }
