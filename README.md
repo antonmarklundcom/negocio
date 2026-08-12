@@ -128,9 +128,24 @@ npm run db:migrate
 npm run db:import-seed -- --dry-run    # prints counts, writes nothing
 npm run db:import-seed
 
+# 4. prove the DB provider answers exactly like the seed provider (read-only)
+npm run db:verify
+
 # after changing lib/db/schema.ts, generate a new migration and commit it
 npm run db:generate
 ```
+
+`npm run db:verify` is the parity check, and it is not optional before the
+cutover. Every test in `tests/` is pure — they prove the mapping and the shape
+of the SQL, not that MySQL accepts it. `scripts/verify-db.ts` runs every
+`ListingsProvider` method against the real database and compares the answers to
+the seed provider: the taxonomies, all listings field by field, the filters, the
+open-now set against the live Asunción clock, sorting tiers and pagination. Run
+it after the import and before the provider is flipped, so a Drizzle or
+collation surprise shows up in a terminal instead of as a 500 in production.
+(It reads `server-only` modules from Node via
+`tsx --conditions=react-server`, which resolves that marker package to its
+empty stub.)
 
 On Hostinger the database host must have the app's IP whitelisted under
 hPanel → Databases → **Remote MySQL**, and `DATABASE_URL` set in the Node.js
