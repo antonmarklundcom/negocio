@@ -3,6 +3,7 @@ import type {
   Category,
   City,
   CategoryCityCombo,
+  CategoryCityZonaCombo,
   Listing,
   ListingQuery,
   ListingResult,
@@ -50,4 +51,8 @@ export function getCities(): Promise<City[]> {
 
 export function getCategoryCityCombosWithListings(): Promise<CategoryCityCombo[]> {
   return primary.getCategoryCityCombosWithListings();
+}
+
+export function getCategoryCityZonaCombosWithListings(): Promise<CategoryCityZonaCombo[]> {
+  return primary.getCategoryCityZonaCombosWithListings();
 }

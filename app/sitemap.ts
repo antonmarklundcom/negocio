@@ -1,14 +1,21 @@
 import type { MetadataRoute } from 'next';
-import { getListings, getCategoryCityCombosWithListings, getCategories } from '@/lib/listings-repo';
+import {
+  getListings,
+  getCategoryCityCombosWithListings,
+  getCategoryCityZonaCombosWithListings,
+  getCategories,
+} from '@/lib/listings-repo';
 import { SITE_URL, listingPath } from '@/lib/config';
+import { slugify } from '@/lib/format';
 
 export const revalidate = 3600;
 
 /** sitemap.xml generated from the listings repo (§9). */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [{ items }, combos, categories] = await Promise.all([
+  const [{ items }, combos, zonaCombos, categories] = await Promise.all([
     getListings({ pageSize: 5000, page: 1 }),
     getCategoryCityCombosWithListings(),
+    getCategoryCityZonaCombosWithListings(),
     getCategories(),
   ]);
 
@@ -28,11 +35,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  const barrioRoutes: MetadataRoute.Sitemap = zonaCombos.map((c) => ({
+    url: `${SITE_URL}/${c.categoria}/${c.ciudad}/${slugify(c.zona)}`,
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  }));
+
   const listingRoutes: MetadataRoute.Sitemap = items.map((l) => ({
     url: `${SITE_URL}${listingPath(l.slug)}`,
     changeFrequency: 'weekly',
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...comboRoutes, ...listingRoutes];
+  return [...staticRoutes, ...categoryRoutes, ...comboRoutes, ...barrioRoutes, ...listingRoutes];
 }

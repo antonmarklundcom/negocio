@@ -106,3 +106,11 @@ export type CategoryCityCombo = {
   ciudad: string;
   count: number;
 };
+
+/** A rubro × ciudad × zona (barrio) combination that has at least one listing — the SEO barrio pages (ROADMAP Phase D item 6). */
+export type CategoryCityZonaCombo = {
+  categoria: string;
+  ciudad: string;
+  zona: string;
+  count: number;
+};

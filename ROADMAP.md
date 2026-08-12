@@ -398,7 +398,22 @@ Repo, docs and comments in English.
        Premium — a business considering Premium can be shown the sticker as
        part of the pitch before buying. No migration.*
 5. [ ] First-party reviews (UI gate `NEXT_PUBLIC_REVIEWS_ENABLED` already exists)
-6. [ ] SEO content: barrio pages + "Los mejores [rubro] en [ciudad]" pages
+6. [x] SEO content: barrio pages + "Los mejores [rubro] en [ciudad]" pages
+       *Shipped: the "[rubro] en [ciudad]" pages already existed from Phase A
+       (`/[categoria]/[ciudad]`, title/meta already read "Los mejores…" —
+       nothing to add there). What was missing was the barrio level. New
+       route `/[categoria]/[ciudad]/[barrio]`, following the exact same
+       "never render an empty shell" pattern as the two levels above it
+       (§6.3): `zona` is free text an editor typed (BUILD-SPEC-PR4 §1, no
+       controlled vocabulary), so the URL segment is `slugify(zona)` and the
+       page resolves back to the real string via a new
+       `getCategoryCityZonaCombosWithListings()` (implemented in both
+       providers — `combosWithZonaListings()` for seed, grouped SQL for
+       MySQL). No artificial minimum-listings threshold, same policy the
+       rubro×ciudad pages already use — one real listing is enough for a
+       real page. Added to `sitemap.xml` and as "Por barrio" internal links
+       on the rubro×ciudad page (both SEO wins: more indexed URLs, more
+       internal link equity). No migration — `zona` already existed.*
 7. [ ] Paid "Verificado" visit as a service
 8. [ ] Claim-this-listing flow (WhatsApp OTP) — pairs with PR-6
 

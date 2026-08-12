@@ -1,10 +1,16 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getListings, getCategoryCityCombosWithListings } from '@/lib/listings-repo';
+import {
+  getListings,
+  getCategoryCityCombosWithListings,
+  getCategoryCityZonaCombosWithListings,
+} from '@/lib/listings-repo';
 import { isKnownCategory, getCategory, categoryLabelPlural } from '@/lib/categories';
 import { isKnownCity, cityLabel } from '@/lib/cities';
 import { RESERVED_SLUGS, SITE_URL } from '@/lib/config';
 import { toListingQuery, type RawParams } from '@/lib/search-params';
+import { slugify } from '@/lib/format';
 import { ResultsSection } from '@/components/ResultsSection';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
@@ -49,8 +55,16 @@ export default async function CategoryCityPage(
     categoria: params.categoria,
     ciudad: params.ciudad,
   });
-  const { total } = await getListings(query);
+  const [{ total }, zonaCombos] = await Promise.all([
+    getListings(query),
+    getCategoryCityZonaCombosWithListings(),
+  ]);
   if (total === 0) notFound(); // empty combos 404, never an empty shell (§6.3)
+
+  // Internal links into the barrio pages for this rubro×ciudad (ROADMAP Phase D item 6).
+  const barrios = zonaCombos
+    .filter((c) => c.categoria === params.categoria && c.ciudad === params.ciudad)
+    .sort((a, b) => a.zona.localeCompare(b.zona, 'es'));
 
   const plural = categoryLabelPlural(params.categoria);
   const city = cityLabel(params.ciudad);
@@ -81,6 +95,20 @@ export default async function CategoryCityPage(
           {cat.labelPlural} en {city}: {total} {total === 1 ? 'negocio' : 'negocios'} con fotos, horarios y
           contacto directo. Elegí, comparás y escribís en segundos.
         </p>
+        {barrios.length > 0 && (
+          <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-ink2">
+            <span className="font-semibold">Por barrio:</span>
+            {barrios.map((b) => (
+              <Link
+                key={b.zona}
+                href={`/${params.categoria}/${params.ciudad}/${slugify(b.zona)}`}
+                className="text-blue hover:underline"
+              >
+                {b.zona}
+              </Link>
+            ))}
+          </p>
+        )}
       </header>
 
       <ResultsSection

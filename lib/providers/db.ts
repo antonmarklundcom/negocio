@@ -1,9 +1,10 @@
 import 'server-only';
-import { asc, count, eq, exists, inArray, sql } from 'drizzle-orm';
+import { asc, count, eq, exists, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { ListingsProvider } from './types';
 import type {
   Category,
   CategoryCityCombo,
+  CategoryCityZonaCombo,
   City,
   Listing,
   ListingQuery,
@@ -154,6 +155,20 @@ export const dbProvider: ListingsProvider = {
       .groupBy(listings.categoria, listings.ciudad);
 
     return rows.map((r) => ({ categoria: r.categoria, ciudad: r.ciudad, count: r.count }));
+  },
+
+  /** SEO barrio pages (ROADMAP Phase D item 6). `zona` is nullable free text — excluded, never grouped as "". */
+  async getCategoryCityZonaCombosWithListings(): Promise<CategoryCityZonaCombo[]> {
+    const db = getDb();
+    const rows = await db
+      .select({ categoria: listings.categoria, ciudad: listings.ciudad, zona: listings.zona, count: count() })
+      .from(listings)
+      .where(isNotNull(listings.zona))
+      .groupBy(listings.categoria, listings.ciudad, listings.zona);
+
+    return rows
+      .filter((r): r is typeof r & { zona: string } => !!r.zona)
+      .map((r) => ({ categoria: r.categoria, ciudad: r.ciudad, zona: r.zona, count: r.count }));
   },
 };
 

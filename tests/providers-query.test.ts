@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyQuery } from '@/lib/providers/query';
+import { applyQuery, combosWithZonaListings } from '@/lib/providers/query';
 import { isFeatured, isPremium } from '@/lib/listing';
 import type { Listing } from '@/lib/types';
 
@@ -59,5 +59,25 @@ describe('isPremium (regression guard — unaffected by the featured-slot additi
   it('is still independent of featuredUntil', () => {
     expect(isPremium(listing({ premiumUntil: FUTURE, featuredUntil: PAST }))).toBe(true);
     expect(isPremium(listing({ premiumUntil: PAST, featuredUntil: FUTURE }))).toBe(false);
+  });
+});
+
+describe('combosWithZonaListings (SEO barrio pages)', () => {
+  it('groups by rubro × ciudad × zona and counts', () => {
+    const all: Listing[] = [
+      listing({ id: 'a', zona: 'Villa Morra' }),
+      listing({ id: 'b', zona: 'Villa Morra' }),
+      listing({ id: 'c', zona: 'Recoleta' }),
+      listing({ id: 'd', ciudad: 'luque', ciudadLabel: 'Luque', zona: 'Villa Morra' }),
+    ];
+    const combos = combosWithZonaListings(all);
+    expect(combos).toContainEqual({ categoria: 'restaurantes', ciudad: 'asuncion', zona: 'Villa Morra', count: 2 });
+    expect(combos).toContainEqual({ categoria: 'restaurantes', ciudad: 'asuncion', zona: 'Recoleta', count: 1 });
+    expect(combos).toContainEqual({ categoria: 'restaurantes', ciudad: 'luque', zona: 'Villa Morra', count: 1 });
+  });
+
+  it('excludes listings with no zona — there is nothing to name the page after', () => {
+    const all: Listing[] = [listing({ id: 'a' }), listing({ id: 'b', zona: '   ' })];
+    expect(combosWithZonaListings(all)).toEqual([]);
   });
 });

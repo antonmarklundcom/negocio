@@ -2,6 +2,7 @@ import type {
   Category,
   City,
   CategoryCityCombo,
+  CategoryCityZonaCombo,
   Listing,
   ListingQuery,
   ListingResult,
@@ -19,4 +20,6 @@ export interface ListingsProvider {
   getCategories(): Promise<Category[]>;
   getCities(): Promise<City[]>;
   getCategoryCityCombosWithListings(): Promise<CategoryCityCombo[]>;
+  /** SEO barrio pages (ROADMAP Phase D item 6). */
+  getCategoryCityZonaCombosWithListings(): Promise<CategoryCityZonaCombo[]>;
 }
