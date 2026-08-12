@@ -42,11 +42,12 @@ const COLUMNS: AdminColumn<AdminListingRow>[] = [
   },
 ];
 
-export default async function ListingsPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export default async function ListingsPage(
+  props: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { q, page, categoria, ciudad, estado } = parseListingListParams(searchParams);
   const nowSeconds = Math.floor(Date.now() / 1000);
 

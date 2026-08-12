@@ -17,11 +17,12 @@ export const metadata: Metadata = { robots: { index: false, follow: false }, tit
 
 type Row = AdminCategoryRow & { id: string; negocios: number };
 
-export default async function CategoriesPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export default async function CategoriesPage(
+  props: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { q, page } = parseListParams(searchParams);
   const actor = await currentUser();
 

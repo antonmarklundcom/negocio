@@ -22,8 +22,8 @@ import { rateLimit } from '@/lib/rate-limit';
 
 const LOGIN_RATE_LIMIT = { limit: 8, windowMs: 15 * 60 * 1000 };
 
-function clientIp(): string {
-  const h = headers();
+async function clientIp(): Promise<string> {
+  const h = await headers();
   const forwarded = h.get('x-forwarded-for');
   return forwarded?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown';
 }
@@ -34,7 +34,8 @@ export async function loginAction(_prev: AdminFormState, fd: FormData): Promise<
     return { formError: 'El panel no está disponible en este momento.' };
   }
 
-  const limit = rateLimit(`login:${clientIp()}`, LOGIN_RATE_LIMIT);
+  const ip = await clientIp();
+  const limit = rateLimit(`login:${ip}`, LOGIN_RATE_LIMIT);
   if (!limit.ok) {
     return { formError: 'Demasiados intentos. Esperá unos minutos y probá de nuevo.' };
   }
@@ -54,7 +55,7 @@ export async function loginAction(_prev: AdminFormState, fd: FormData): Promise<
   }
 
   if (!result.ok) {
-    console.warn(`[auth] failed login for "${email}" (${result.reason}) from ${clientIp()}`);
+    console.warn(`[auth] failed login for "${email}" (${result.reason}) from ${ip}`);
     return { formError: LOGIN_ERROR };
   }
 

@@ -21,7 +21,8 @@ import { LockedRow, LockedGallery, LockedCategory, UpgradeCta } from '@/componen
 import { Phone, Clock } from '@/components/icons';
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const l = await getListingBySlug(params.slug);
   if (!l) return { title: 'Negocio no encontrado' };
   const where = l.zona ? `${l.zona}, ${l.ciudadLabel}` : l.ciudadLabel;
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ListingPage({ params }: { params: { slug: string } }) {
+export default async function ListingPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const listing = await getListingBySlug(params.slug);
   if (!listing) notFound();
 

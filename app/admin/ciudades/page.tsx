@@ -16,11 +16,12 @@ export const metadata: Metadata = { robots: { index: false, follow: false }, tit
 
 type Row = AdminCityRow & { id: string; negocios: number };
 
-export default async function CitiesPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export default async function CitiesPage(
+  props: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { q, page } = parseListParams(searchParams);
   const actor = await currentUser();
 

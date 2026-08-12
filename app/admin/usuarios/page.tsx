@@ -31,11 +31,12 @@ const COLUMNS: AdminColumn<AdminUserRow>[] = [
   },
 ];
 
-export default async function UsersPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export default async function UsersPage(
+  props: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { q, page } = parseListParams(searchParams);
 
   // `listUsers` calls requireRole itself; an editor reaching this URL directly

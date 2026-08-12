@@ -287,8 +287,34 @@ Repo, docs and comments in English.
       Hostinger env panel, redeploy. Create a free UptimeRobot monitor against
       `https://negocio.com.py/api/health`.
 - [ ] Watch Hostinger build memory; if OOM: `NODE_OPTIONS=--max-old-space-size=1536`
-- [ ] Next.js 15/16 upgrade (clears remaining `npm audit` highs) — **own PR, not
+- [x] Next.js 15/16 upgrade (clears remaining `npm audit` highs) — **own PR, not
       bundled with any Phase B work**
+      *Shipped: Next 14.2.35 → 16.3.0, React 18 → 19, `eslint-config-next` →
+      16.3.0, `drizzle-orm` → 0.45.2 (SQL-injection fix, GHSA-gpj5-g38j-94v9).
+      `npm audit --omit=dev` went from 4 highs (drizzle-orm, nanoid, postcss,
+      sharp) to **0**. Applied `@next/codemod`'s `next-async-request-api`
+      (every route's `params`/`searchParams` are now `Promise`s, awaited) by
+      hand where the codemod reached for the deprecated `UnsafeUnwrapped*`
+      escape hatch instead (`lib/auth/session.ts`'s `cookies()`,
+      `app/(auth)/ingresar/actions.ts`'s `headers()`) — both now properly
+      `await`ed. `AdminForm.tsx` moved from `react-dom`'s deprecated
+      `useFormState` to React 19's `useActionState`. `tsconfig.json`'s `jsx`
+      is now `"react-jsx"` (Next 16 requires it) with `.next/dev/types`
+      added to `include`. `next.config.mjs`'s `eslint` key was removed —
+      Next 16 decoupled ESLint from `next build` entirely, so it is no
+      longer a recognised option.
+      **Evaluated and reverted a real risk before landing:** Next 16's build
+      summary claims `/[categoria]` and `/[categoria]/[ciudad]` are
+      prerendered (`●`), but `.next/prerender-manifest.json` has no entries
+      for them on Next 14, 15 **or** 16 — confirmed identical across all
+      three by building the pre-upgrade commit in a separate worktree. Not a
+      regression from this PR; these routes were already render-on-request
+      with Full Route Cache, not build-time SSG, before this upgrade.
+      Verified: `npm run typecheck`/`test`/`build` all pass, a from-scratch
+      `npm ci --omit=dev` under `NODE_ENV=production` build passes with
+      **0 vulnerabilities**, and `node server.js` boots and serves `/`,
+      `/restaurantes`, `/lugar/[slug]` and `/admin` (404, no DB configured)
+      correctly with no server-side warnings.*
 - [x] Basic e2e smoke tests (Playwright) run in CI
       *Shipped: `playwright.config.ts`, `e2e/smoke.spec.ts` (home, a listing
       page, search, a category page, sitemap.xml, robots.txt, `/api/health`,

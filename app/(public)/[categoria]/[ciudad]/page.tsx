@@ -19,11 +19,12 @@ function valid(categoria: string, ciudad: string): boolean {
   return !RESERVED_SLUGS.has(categoria) && isKnownCategory(categoria) && isKnownCity(ciudad);
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { categoria: string; ciudad: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ categoria: string; ciudad: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   if (!valid(params.categoria, params.ciudad)) return { title: 'Página no encontrada' };
   const plural = categoryLabelPlural(params.categoria);
   const city = cityLabel(params.ciudad);
@@ -34,13 +35,14 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryCityPage({
-  params,
-  searchParams,
-}: {
-  params: { categoria: string; ciudad: string };
-  searchParams: RawParams;
-}) {
+export default async function CategoryCityPage(
+  props: {
+    params: Promise<{ categoria: string; ciudad: string }>;
+    searchParams: Promise<RawParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   if (!valid(params.categoria, params.ciudad)) notFound();
 
   const query = toListingQuery(searchParams, {

@@ -1,11 +1,12 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 
 /**
  * THE ONLY CLIENT COMPONENT IN THE ADMIN.
  *
- * Justification: `useFormState` keeps the submitted values on the DOM and
+ * Justification: `useActionState` keeps the submitted values on the DOM and
  * renders field errors inline when validation fails. The server-only
  * alternative — throwing to the nearest `error.tsx` — discards everything the
  * user typed on every mistake.
@@ -14,8 +15,8 @@ import { useFormState, useFormStatus } from 'react-dom';
  * would mean a second validation style, and the pure tests in
  * `tests/validation.test.ts` would not cover it.
  *
- * `useFormState` (not React 19's `useActionState`) because this app is on
- * React 18 / Next 14 — the Next upgrade is its own PR in Phase C.
+ * `useActionState` (React 19, moved here from `react-dom`'s `useFormState` in
+ * the Next.js 15/React 19 upgrade — same signature, new home).
  */
 
 export type FieldDef =
@@ -61,7 +62,7 @@ export interface AdminFormProps {
 const EMPTY: AdminFormState = {};
 
 export function AdminForm({ fields, action, submitLabel, defaultValues = {}, children }: AdminFormProps) {
-  const [state, formAction] = useFormState(action, EMPTY);
+  const [state, formAction] = useActionState(action, EMPTY);
 
   return (
     <form action={formAction} className="space-y-5" noValidate>

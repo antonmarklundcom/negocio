@@ -20,7 +20,8 @@ function valid(categoria: string): boolean {
   return !RESERVED_SLUGS.has(categoria) && isKnownCategory(categoria);
 }
 
-export async function generateMetadata({ params }: { params: { categoria: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ categoria: string }> }): Promise<Metadata> {
+  const params = await props.params;
   if (!valid(params.categoria)) return { title: 'Página no encontrada' };
   const plural = categoryLabelPlural(params.categoria);
   return {
@@ -30,13 +31,14 @@ export async function generateMetadata({ params }: { params: { categoria: string
   };
 }
 
-export default async function CategoryPage({
-  params,
-  searchParams,
-}: {
-  params: { categoria: string };
-  searchParams: RawParams;
-}) {
+export default async function CategoryPage(
+  props: {
+    params: Promise<{ categoria: string }>;
+    searchParams: Promise<RawParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   if (!valid(params.categoria)) notFound();
 
   const query = toListingQuery(searchParams, { categoria: params.categoria });
