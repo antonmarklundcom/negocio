@@ -11,8 +11,10 @@ import {
   addGalleryImage,
   createListing,
   deleteListing,
+  extendListingPremium,
   isListingSlugTaken,
   moveGalleryImage,
+  type PremiumPackageDays,
   removeGalleryImage,
   setCoverImage,
   setListingFlags,
@@ -123,6 +125,24 @@ export async function saveFlagsAction(id: string, _prev: AdminFormState, fd: For
 
   revalidatePath(`/admin/negocios/${id}`);
   return { notice: 'Guardado.' };
+}
+
+// ---------------------------------------------------------------------------
+// manual premium sales flow (ROADMAP Phase D item 2)
+// ---------------------------------------------------------------------------
+
+export async function extendPremiumAction(id: string, days: PremiumPackageDays): Promise<void> {
+  const actor = await currentUser();
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  try {
+    await extendListingPremium(actor, id, days, nowSeconds);
+  } catch (err) {
+    redirect(`/admin/negocios/${id}?flagsError=${encodeURIComponent(messageFor(err))}`);
+  }
+
+  revalidatePath(`/admin/negocios/${id}`);
+  redirect(`/admin/negocios/${id}`);
 }
 
 // ---------------------------------------------------------------------------

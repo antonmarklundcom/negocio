@@ -11,9 +11,12 @@ import { getListingLeadReport } from '@/lib/db/leads-admin';
 import { asuncionMonthRange } from '@/lib/hours';
 import { mediaConfigured } from '@/lib/media/upload';
 import { mediaUrl } from '@/lib/media/url';
+import { PREMIUM_PACKAGE_DAYS } from '@/lib/db/listings-admin';
+import { waLink } from '@/lib/format';
 import { flagsDefaultValues, flagsFields, hoursDefaultValues, hoursFields, listingFields } from '../fields';
 import {
   deleteListingAction,
+  extendPremiumAction,
   moveGalleryImageAction,
   removeGalleryImageAction,
   saveFlagsAction,
@@ -58,7 +61,9 @@ export default async function EditListingPage(
   const saveFlags = saveFlagsAction.bind(null, params.id);
   const upload = uploadGalleryImageAction.bind(null, params.id);
   const galleryError = typeof searchParams.galleryError === 'string' ? searchParams.galleryError : undefined;
+  const flagsError = typeof searchParams.flagsError === 'string' ? searchParams.flagsError : undefined;
   const isAdmin = hasRole(actor, ['admin']);
+  const isCurrentlyPremium = !!listing.premiumUntil && listing.premiumUntil > Date.now() / 1000;
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -217,6 +222,50 @@ export default async function EditListingPage(
           <p className="mt-1 text-[15px] text-ink2">
             Solo visible para administradores. Estos campos no aparecen en el formulario de un editor.
           </p>
+
+          {flagsError && (
+            <p role="alert" className="mt-2 text-[14px] font-medium text-terra">
+              {flagsError}
+            </p>
+          )}
+
+          {/* Manual premium sales flow (ROADMAP Phase D item 2): sell the
+              package over WhatsApp, invoice outside the app, then apply it
+              here in one click instead of computing a date by hand. */}
+          <div className="mt-4 rounded-card border border-line bg-cream/60 p-4">
+            <p className="text-[13px] font-bold uppercase tracking-wide text-ink2">Vender premium</p>
+            <p className="mt-1 text-[14px] text-ink2">
+              {isCurrentlyPremium
+                ? 'Ya está premium. Extender suma días desde el vencimiento actual, no desde hoy.'
+                : 'No está premium. Un paquete lo activa desde hoy.'}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {PREMIUM_PACKAGE_DAYS.map((days) => (
+                <form key={days} action={extendPremiumAction.bind(null, params.id, days)}>
+                  <button
+                    type="submit"
+                    className="rounded-card border-[1.5px] border-blue px-3.5 py-2 text-[13px] font-bold text-blue"
+                  >
+                    {days === 365 ? '+ 1 año' : `+ ${days} días`}
+                  </button>
+                </form>
+              ))}
+              {listing.whatsapp && (
+                <a
+                  href={waLink(
+                    listing.whatsapp,
+                    `Hola ${listing.name}, te escribo de negocio.com.py por el plan Premium.`,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto rounded-card bg-[#25D366] px-3.5 py-2 text-[13px] font-bold text-white"
+                >
+                  Vender por WhatsApp
+                </a>
+              )}
+            </div>
+          </div>
+
           <div className="mt-4">
             <AdminForm
               fields={flagsFields()}

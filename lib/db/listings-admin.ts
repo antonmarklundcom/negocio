@@ -479,6 +479,60 @@ export async function setListingFlags(
   });
 }
 
+/**
+ * The manual premium sales flow (ROADMAP Phase D item 2): staff sells premium
+ * over WhatsApp and invoices outside the app (Pagopar/Bancard/Tigo Money —
+ * none of that is this app's concern), then applies the sold package here in
+ * one click instead of computing and typing a date.
+ *
+ * `PREMIUM_PACKAGE_DAYS` are the only durations sold; the query module, not
+ * just the UI, is what enforces that — a caller cannot pass an arbitrary
+ * number of days.
+ *
+ * Extends from the CURRENT expiry when the listing is still premium, not from
+ * today — a renewal bought before the old package runs out must not shorten
+ * what was already paid for. Only falls back to "from today" when the
+ * listing is not currently premium (expired or never was).
+ */
+export const PREMIUM_PACKAGE_DAYS = [30, 90, 365] as const;
+export type PremiumPackageDays = (typeof PREMIUM_PACKAGE_DAYS)[number];
+
+export async function extendListingPremium(
+  actor: SessionUser | null,
+  id: string,
+  days: PremiumPackageDays,
+  nowSeconds: number,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin']);
+  if (!PREMIUM_PACKAGE_DAYS.includes(days)) {
+    throw new AuthError('Ese paquete de premium no existe.', 'forbidden');
+  }
+
+  await database.transaction(async (tx) => {
+    const [before] = await tx
+      .select({ verified: listings.verified, premiumUntil: listings.premiumUntil })
+      .from(listings)
+      .where(eq(listings.id, id))
+      .limit(1);
+    if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    const base = before.premiumUntil && before.premiumUntil > nowSeconds ? before.premiumUntil : nowSeconds;
+    const premiumUntil = base + days * 86400;
+
+    await tx.update(listings).set({ premiumUntil }).where(eq(listings.id, id));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing',
+      entityId: id,
+      action: 'update',
+      before: { premiumUntil: before.premiumUntil },
+      after: { premiumUntil, packageDays: days },
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // gallery (BUILD-SPEC-PR5 §2.4)
 // ---------------------------------------------------------------------------
