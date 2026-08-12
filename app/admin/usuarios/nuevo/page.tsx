@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminForm } from '@/components/admin/AdminForm';
-import { currentUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { requireRole } from '@/lib/auth/roles';
 import { userFields } from '../fields';
 import { createUserAction } from '../actions';
@@ -12,7 +12,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false }, tit
 
 export default async function NewUserPage() {
   try {
-    requireRole(await currentUser(), ['admin']);
+    requireRole(await currentAccount(), ['admin']);
   } catch {
     notFound();
   }

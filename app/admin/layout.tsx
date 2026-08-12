@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { currentUser, type SessionUser } from '@/lib/auth/session';
+import type { SessionUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { requireRole } from '@/lib/auth/roles';
 import { dbConfigured } from '@/lib/db/client';
 import { AdminNav } from '@/components/admin/AdminNav';
@@ -31,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   let session: SessionUser;
   try {
-    session = requireRole(await currentUser(), ['editor']);
+    session = requireRole(await currentAccount(), ['editor']);
   } catch {
     notFound();
   }

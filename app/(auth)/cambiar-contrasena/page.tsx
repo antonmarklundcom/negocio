@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { AdminForm, type FieldDef } from '@/components/admin/AdminForm';
-import { currentUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { MIN_PASSWORD_LENGTH } from '@/lib/auth/password';
 import { changePasswordAction } from './actions';
 
@@ -22,7 +22,7 @@ const FIELDS: FieldDef[] = [
 ];
 
 export default async function ChangePasswordPage() {
-  const user = await currentUser();
+  const user = await currentAccount();
   if (!user) redirect('/ingresar');
 
   return (

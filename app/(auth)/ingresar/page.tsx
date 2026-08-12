@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { AdminForm, type FieldDef } from '@/components/admin/AdminForm';
-import { currentUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { loginAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,7 @@ const LOGIN_FIELDS: FieldDef[] = [
 ];
 
 export default async function LoginPage() {
-  const user = await currentUser();
+  const user = await currentAccount();
   if (user) redirect(user.mustChangePassword ? '/cambiar-contrasena' : '/admin');
 
   return (

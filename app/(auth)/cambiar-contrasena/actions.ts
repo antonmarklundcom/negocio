@@ -2,7 +2,8 @@
 
 import { redirect } from 'next/navigation';
 import type { AdminFormState } from '@/components/admin/AdminForm';
-import { currentUser, startSession } from '@/lib/auth/session';
+import { startSession } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { isAuthError } from '@/lib/auth/roles';
 import { hashPassword, verifyPassword, PasswordLengthError } from '@/lib/auth/password';
 import { parsePasswordChangeInput } from '@/lib/admin/validation';
@@ -17,7 +18,7 @@ import { changeOwnPassword, findAccountById } from '@/lib/db/users';
  * right now knows the password.
  */
 export async function changePasswordAction(_prev: AdminFormState, fd: FormData): Promise<AdminFormState> {
-  const session = await currentUser();
+  const session = await currentAccount();
   if (!session) redirect('/ingresar');
 
   const parsed = parsePasswordChangeInput(fd);

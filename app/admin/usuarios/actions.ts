@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { AdminFormState } from '@/components/admin/AdminForm';
-import { currentUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { isAuthError } from '@/lib/auth/roles';
 import { generatePassword } from '@/lib/auth/password';
 import { parseUserInput } from '@/lib/admin/validation';
@@ -24,7 +24,7 @@ function messageFor(err: unknown): string {
 }
 
 export async function createUserAction(_prev: AdminFormState, fd: FormData): Promise<AdminFormState> {
-  const actor = await currentUser();
+  const actor = await currentAccount();
 
   const parsed = parseUserInput(fd, 'create');
   if (!parsed.ok) return { errors: parsed.errors };
@@ -43,7 +43,7 @@ export async function createUserAction(_prev: AdminFormState, fd: FormData): Pro
 }
 
 export async function updateUserAction(id: number, _prev: AdminFormState, fd: FormData): Promise<AdminFormState> {
-  const actor = await currentUser();
+  const actor = await currentAccount();
 
   const parsed = parseUserInput(fd, 'update');
   if (!parsed.ok) return { errors: parsed.errors };
@@ -75,7 +75,7 @@ export async function resetPasswordAction(
   _prev: AdminFormState,
   _fd: FormData,
 ): Promise<AdminFormState> {
-  const actor = await currentUser();
+  const actor = await currentAccount();
 
   const plaintext = generatePassword();
   try {

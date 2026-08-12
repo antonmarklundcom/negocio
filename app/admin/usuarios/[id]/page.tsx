@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminForm } from '@/components/admin/AdminForm';
-import { currentUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { getUser } from '@/lib/db/users';
 import { userFields } from '../fields';
 import { resetPasswordAction, updateUserAction } from '../actions';
@@ -18,7 +18,7 @@ export default async function EditUserPage({ params }: { params: { id: string } 
   // would turn the URL space into an oracle for which ids exist.
   let user;
   try {
-    user = await getUser(await currentUser(), id);
+    user = await getUser(await currentAccount(), id);
   } catch {
     notFound();
   }

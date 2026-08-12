@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
-import { currentUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { ROLE_LABELS } from '@/lib/auth/roles';
 import { STATUS_LABELS } from '@/lib/admin/labels';
 import { parseListParams } from '@/lib/admin/validation';
@@ -42,7 +42,7 @@ export default async function UsersPage({
   // gets the same 404 the layout would have given them.
   let result;
   try {
-    result = await listUsers(await currentUser(), { q, page });
+    result = await listUsers(await currentAccount(), { q, page });
   } catch {
     notFound();
   }

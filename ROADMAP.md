@@ -140,6 +140,11 @@ any `fields.ts` at all, which is the enforcement (PR-5 adds them behind `admin`)
       - ***`app/(public)/` route group.*** The root layout kept the consumer
         header, footer, bottom nav and promo banner, which `/admin` would have
         inherited. Chrome moved into the group; URLs are unchanged.
+      - ***`currentAccount()` re-reads the account every admin request.*** The
+        minimal cookie only pays off if something actually re-reads; nothing did
+        at first, which made "suspended" and "demoted" decorative for the 8-hour
+        life of a cookie. Role and the must-change flag now come from the
+        database, not the cookie. Pure rule in `lib/auth/account-rules.ts`.
 - [ ] **USER (PR-3, in this order — the panel 404s until all three are done):**
       1. `npm run db:migrate` from a local machine — applies `drizzle/0001_*`.
          Do this **before** the deploy or `/admin` 500s.

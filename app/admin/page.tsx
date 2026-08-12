@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { currentUser } from '@/lib/auth/session';
+import { currentAccount } from '@/lib/auth/account';
 import { hasRole } from '@/lib/auth/roles';
 import { getListings, getCategories, getCities } from '@/lib/listings-repo';
 import { recentActivity } from '@/lib/db/activity-log';
@@ -18,7 +18,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false }, tit
  * rather than linking to screens that do not exist.
  */
 export default async function AdminHome() {
-  const user = await currentUser();
+  const user = await currentAccount();
   const isAdmin = hasRole(user, ['admin']);
 
   const [listings, categories, cities] = await Promise.all([

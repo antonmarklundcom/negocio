@@ -56,7 +56,8 @@ lib/                       Domain logic
   providers/               seed.ts · db.ts · query.ts (shared filtering)
   db/                      schema.ts · client.ts · mappers.ts · listing-query.ts ·
                            leads.ts · users.ts · activity-log.ts
-  auth/                    session.ts · roles.ts · password.ts · login.ts
+  auth/                    session.ts · roles.ts · password.ts · login.ts ·
+                           account.ts + account-rules.ts (per-request revocation)
   admin/                   validation.ts (pure) · labels.ts
   types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts
   leads.ts                 Lead orchestrator (zod + fan-out)
@@ -216,8 +217,14 @@ bypasses the panel's own audit log. Every further account is created from
   time is not an account-enumeration oracle. The real reason goes to the log.
 - **The session cookie carries only** id, role, scope id and
   `mustChangePassword`; 8-hour TTL, `httpOnly`, `sameSite: lax`, `secure` in
-  production. Everything else is read from the database at use time, so
-  suspending an account takes effect on the next request.
+  production. **`lib/auth/account.ts` re-reads the account on every admin
+  request** (`currentAccount()`, deduped per request with React `cache`) and
+  takes the role and the must-change flag from the *database*, not the cookie.
+  Without that re-read, suspending or demoting someone would be decorative for
+  the eight hours their cookie lives, and the minimal payload would buy nothing.
+  The rule itself is pure and unit-tested in `lib/auth/account-rules.ts`.
+  `currentUser()` (cookie only) survives for the paths that must not hit the
+  database.
 - **No default password anywhere.** Admin-issued resets generate a random one
   and return it as a one-time on-screen notice — deliberately not a redirect
   carrying it in a query string, which would land in access logs and history.
