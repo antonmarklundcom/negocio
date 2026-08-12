@@ -24,5 +24,9 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      # Every test is pure — no MySQL, no DATABASE_URL. Keep it that way.
+      - name: Test
+        run: npm run test
+
       - name: Build
         run: npm run build

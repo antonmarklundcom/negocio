@@ -84,12 +84,17 @@ Explicit "what each role satisfies" map — **not a numeric ladder**.
 
 ### The PR sequence — one PR each, in order, nothing parallel
 
-- [ ] **PR-1 — Schema + DB provider.** Drizzle + `mysql2` + vitest. Tables from
+- [x] **PR-1 — Schema + DB provider.** Drizzle + `mysql2` + vitest. Tables from
       `lib/types.ts`, never from JetEngine's meta keys. `lib/providers/db.ts`
       implements `ListingsProvider`. Seed data becomes an idempotent `tsx`
       import script keyed on `slug`. Migrations are generated in the repo and
       **applied from a local machine** — every later PR is planned around that,
       or code lands needing a column nobody applied and 500s in production.
+      *Shipped: `lib/db/{schema,client,connection,mappers,listing-query,open-now,query-helpers}.ts`,
+      `lib/providers/db.ts`, `scripts/import-seed.ts`, `drizzle/0000_*.sql`,
+      61 vitest tests wired into CI. The provider is **not selected** — the site
+      still renders from seed until PR-2. The migration and the seed import are
+      run by hand from a local machine (README → Database).*
 - [ ] **PR-2 — Cutover + cleanup.** Flip `selectPrimary()` to the DB provider;
       delete `lib/providers/jetengine.ts`, `FIELD-MAP.md`, the WP env vars, and
       `withFallback`. *(Moved ahead of the admin: with no WP data there is
@@ -196,8 +201,8 @@ Repo, docs and comments in English.
 ## Phase D — Revenue features (ordered by effort→revenue)
 
 1. [ ] **Monthly lead report per business** — "Este mes: 47 clics a tu WhatsApp,
-       12 consultas". **Blocked on persisting leads to the `leads` table
-       (PR-1).** Leads are currently fire-and-forget at a webhook: if it is down
+       12 consultas". The `leads` table now exists (PR-1); what is still missing
+       is the write path — `lib/leads.ts` must persist before it fans out. Leads are currently fire-and-forget at a webhook: if it is down
        the lead is gone and there is no history to report on. This is the
        churn-killer.
 2. [ ] Manual premium sales flow — sell via WhatsApp, invoice via
