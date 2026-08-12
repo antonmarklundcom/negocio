@@ -7,6 +7,8 @@ import { currentUser } from '@/lib/auth/session';
 import { hasRole } from '@/lib/auth/roles';
 import { getCategories, getCities } from '@/lib/listings-repo';
 import { getListingForEdit } from '@/lib/db/listings-admin';
+import { getListingLeadReport } from '@/lib/db/leads-admin';
+import { asuncionMonthRange } from '@/lib/hours';
 import { mediaConfigured } from '@/lib/media/upload';
 import { mediaUrl } from '@/lib/media/url';
 import { flagsDefaultValues, flagsFields, hoursDefaultValues, hoursFields, listingFields } from '../fields';
@@ -44,7 +46,12 @@ export default async function EditListingPage(
   }
   if (!listing) notFound();
 
-  const [categories, cities] = await Promise.all([getCategories(), getCities()]);
+  const monthRange = asuncionMonthRange();
+  const [categories, cities, leadReport] = await Promise.all([
+    getCategories(),
+    getCities(),
+    getListingLeadReport(actor, listing.id, monthRange),
+  ]);
   const update = updateListingAction.bind(null, params.id);
   const remove = deleteListingAction.bind(null, params.id);
   const saveHours = saveHoursAction.bind(null, params.id);
@@ -62,6 +69,20 @@ export default async function EditListingPage(
         <h1 className="mt-2 font-serif text-[28px] font-semibold">{listing.name}</h1>
         <p className="mt-1 font-mono text-[14px] text-ink2">/lugar/{listing.slug}</p>
       </div>
+
+      <section className="rounded-card border border-line bg-cream/60 p-5">
+        <h2 className="font-serif text-[18px] font-semibold capitalize">{monthRange.monthLabel}</h2>
+        <p className="mt-1 text-[15px] text-ink2">
+          {leadReport.total > 0 ? (
+            <>
+              <span className="font-bold text-ink">{leadReport.whatsappClicks}</span> clics a su WhatsApp,{' '}
+              <span className="font-bold text-ink">{leadReport.messages}</span> consultas por mensaje.
+            </>
+          ) : (
+            'Todavía no llegó ningún lead este mes.'
+          )}
+        </p>
+      </section>
 
       <AdminForm
         fields={listingFields(

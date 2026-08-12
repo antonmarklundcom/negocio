@@ -324,11 +324,23 @@ Repo, docs and comments in English.
 
 ## Phase D — Revenue features (ordered by effort→revenue)
 
-1. [ ] **Monthly lead report per business** — "Este mes: 47 clics a tu WhatsApp,
+1. [x] **Monthly lead report per business** — "Este mes: 47 clics a tu WhatsApp,
        12 consultas". The `leads` table now exists (PR-1); what is still missing
        is the write path — `lib/leads.ts` must persist before it fans out. Leads are currently fire-and-forget at a webhook: if it is down
        the lead is gone and there is no history to report on. This is the
        churn-killer.
+       *Shipped: the write path (`lib/leads.ts` persisting before the webhook
+       fan-out) landed in PR-2 — this item is the reporting view.
+       `lib/hours.ts`'s `asuncionMonthRange()` (pure, unit-tested) computes
+       the current calendar month's `[start, end)` in `America/Asuncion`;
+       `lib/db/leads-admin.ts`'s `getListingLeadReport()` (guarded
+       `['admin', 'editor']` — a per-business count, not the public's contact
+       details, so the stricter `listLeads` guard doesn't apply) counts
+       `listing_whatsapp`/`listing_message` leads in that range. Rendered as
+       a small "Este mes: N clics a su WhatsApp, N consultas" section at the
+       top of `/admin/negocios/[id]`. No owner-facing surface — PR-6 (owner
+       portal) is still deferred; staff read this themselves for now. No
+       migration.*
 2. [ ] Manual premium sales flow — sell via WhatsApp, invoice via
        Pagopar/Bancard/Tigo Money, set `premiumUntil` in the admin.
 3. [ ] "Destacado en portada" — home page featured slots as paid add-on

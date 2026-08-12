@@ -94,3 +94,45 @@ export async function countLeadsSince(actor: SessionUser | null, since: Date, da
     .where(sql`${leads.createdAt} >= ${since}`);
   return Number(row?.total ?? 0);
 }
+
+/**
+ * The monthly lead report per business (ROADMAP Phase D item 1): "Este mes:
+ * 47 clics a tu WhatsApp, 12 consultas." `['admin', 'editor']`, not
+ * `['admin']` like the rest of this module — this is a per-business count,
+ * not a list of the public's contact details, so the stricter guard on
+ * `listLeads` doesn't apply here.
+ *
+ * `[start, end)` is computed by the caller (`lib/hours.ts`'s
+ * `asuncionMonthRange`) — nothing here calls NOW().
+ */
+export interface ListingLeadReport {
+  whatsappClicks: number;
+  messages: number;
+  total: number;
+}
+
+export async function getListingLeadReport(
+  actor: SessionUser | null,
+  listingId: string,
+  range: { start: Date; end: Date },
+  database: Db = getDb(),
+): Promise<ListingLeadReport> {
+  requireRole(actor, ['admin', 'editor']);
+
+  const rows = await database
+    .select({ source: leads.source, total: sql<number>`count(*)` })
+    .from(leads)
+    .where(
+      and(
+        eq(leads.listingId, listingId),
+        sql`${leads.createdAt} >= ${range.start}`,
+        sql`${leads.createdAt} < ${range.end}`,
+      ),
+    )
+    .groupBy(leads.source);
+
+  const bySource = Object.fromEntries(rows.map((r) => [r.source, Number(r.total)]));
+  const whatsappClicks = bySource['listing_whatsapp'] ?? 0;
+  const messages = bySource['listing_message'] ?? 0;
+  return { whatsappClicks, messages, total: whatsappClicks + messages };
+}
