@@ -95,12 +95,20 @@ Explicit "what each role satisfies" map — **not a numeric ladder**.
       61 vitest tests wired into CI. The provider is **not selected** — the site
       still renders from seed until PR-2. The migration and the seed import are
       run by hand from a local machine (README → Database).*
-- [ ] **PR-2 — Cutover + cleanup.** Flip `selectPrimary()` to the DB provider;
+- [x] **PR-2 — Cutover + cleanup.** Flip `selectPrimary()` to the DB provider;
       delete `lib/providers/jetengine.ts`, `FIELD-MAP.md`, the WP env vars, and
       `withFallback`. *(Moved ahead of the admin: with no WP data there is
       nothing to watch for a day, and leaving `withFallback` alive through the
       admin PRs means a DB error silently serves stale seed data and looks
       fine.)*
+      *Shipped: `selectPrimary()` in `lib/listings-repo.ts` now returns
+      `dbProvider` when `dbConfigured()` (i.e. `DATABASE_URL` is set), else
+      `seedProvider` — `withFallback` is gone, so a DB error surfaces instead
+      of silently serving stale seed data. Deleted `lib/providers/jetengine.ts`,
+      `FIELD-MAP.md`, the WP env vars, and `NEXT_PUBLIC_BACKEND`. `lib/leads.ts`
+      now persists every lead to the `leads` table (`lib/db/leads.ts`) before
+      the webhook fan-out; a DB write failure is caught and logged, never fails
+      the visitor's request.
 - [ ] **PR-3 — Auth foundation.** `iron-session`, `node:crypto` scrypt, `users`
       table, `requireRole()`, `scopeToOwner()`, login/logout, forced password
       change, `scripts/bootstrap-admin.ts`. **This is the PR to get right;**

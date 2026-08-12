@@ -3,8 +3,8 @@ import type { Category } from './types';
 /**
  * The known category set (rubros). This is the authority used to validate
  * `/[categoria]` params (§4) and to drive the CategoryBlock variant (§6.4).
- * When the backend goes live these labels can be reconciled with JetEngine
- * taxonomy terms, but slugs must stay stable (they are public URLs).
+ * Also seeds the `categories` table (§ Database); slugs must stay stable
+ * (they are public URLs).
  */
 export const CATEGORIES: Category[] = [
   { slug: 'restaurantes', label: 'Restaurante', labelPlural: 'Restaurantes y cafés', icon: 'utensils', blockKind: 'food' },

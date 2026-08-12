@@ -4,8 +4,8 @@ import { cityLabel, CITY_COORDS } from '../cities';
 import { initialOf } from '../format';
 
 /**
- * Built-in seed dataset — the permanent fallback (§5.4). The site renders this
- * until the live JetEngine API is wired. Mix of premium (cover + gallery +
+ * Built-in seed dataset — the local-dev path when `DATABASE_URL` is unset, and
+ * the importer's source of truth for MySQL. Mix of premium (cover + gallery +
  * category block + verified) and free (no cover, no whatsapp) businesses across
  * real Paraguayan cities. All images are local first-party SVGs in /public/seed.
  */

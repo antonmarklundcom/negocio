@@ -4,9 +4,9 @@ import { computeOpenState } from '../hours';
 import { DEFAULT_PAGE_SIZE } from '../config';
 
 /**
- * Pure, in-memory query engine shared by every provider that materialises the
- * full listing set (seed today; JetEngine as a fallback path). Keeping it here
- * means filtering/sorting/pagination behave identically regardless of source.
+ * Pure, in-memory query engine used by the seed provider, which materialises
+ * the full listing set. Keeping it here means filtering/sorting/pagination
+ * behave identically regardless of source.
  */
 export function applyQuery(all: Listing[], params: ListingQuery): ListingResult {
   const q = params.q?.trim().toLowerCase();
