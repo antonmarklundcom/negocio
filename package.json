@@ -8,7 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:import-seed": "tsx scripts/import-seed.ts"
   },
   "engines": {
     "node": ">=22"
@@ -18,7 +23,9 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
+    "drizzle-orm": "^0.44.7",
     "maplibre-gl": "^4.7.1",
+    "mysql2": "^3.23.3",
     "next": "^14.2.35",
     "postcss": "^8.4.47",
     "react": "^18.3.1",
@@ -29,8 +36,11 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.10",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.35"
+    "eslint-config-next": "^14.2.35",
+    "tsx": "^4.23.12",
+    "vitest": "^2.1.9"
   },
   "license": "UNLICENSED"
 }

@@ -32,7 +32,7 @@ const restaurantHours: DayHours[] = days([
   { d: 0, ranges: [r('11:00', '16:00')] },
 ]);
 
-type Seed = Omit<Listing, 'categoriaLabel' | 'ciudadLabel' | 'logoInitial' | 'lat' | 'lng'> &
+export type Seed = Omit<Listing, 'categoriaLabel' | 'ciudadLabel' | 'logoInitial' | 'lat' | 'lng'> &
   Partial<Pick<Listing, 'lat' | 'lng'>>;
 
 const SEED: Seed[] = [
@@ -714,6 +714,14 @@ const SEED: Seed[] = [
     premiumUntil: PREMIUM,
   },
 ];
+
+/**
+ * The raw seed rows, before derived fields are filled in. The DB importer reads
+ * this rather than SEED_LISTINGS so it never persists a derived value (the
+ * city-centre coordinate fallback in particular) as if it were a fact about the
+ * business.
+ */
+export const SEED_RAW: readonly Seed[] = SEED;
 
 /** Materialise derived fields (labels, initial, coords) once at module load. */
 export const SEED_LISTINGS: Listing[] = SEED.map((s) => {
