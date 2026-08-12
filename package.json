@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:import-seed": "tsx scripts/import-seed.ts"
+    "db:import-seed": "tsx scripts/import-seed.ts",
+    "bootstrap-admin": "tsx scripts/bootstrap-admin.ts"
   },
   "engines": {
     "node": ">=22"
@@ -24,6 +25,7 @@
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
     "drizzle-orm": "^0.44.7",
+    "iron-session": "^8.0.4",
     "maplibre-gl": "^4.7.1",
     "mysql2": "^3.23.3",
     "next": "^14.2.35",
