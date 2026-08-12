@@ -3,6 +3,7 @@ import Image from 'next/image';
 import type { Listing } from '@/lib/types';
 import { isPremium } from '@/lib/listing';
 import { listingPath } from '@/lib/config';
+import { mediaUrl } from '@/lib/media/url';
 import { PhotoFallback } from './PhotoFallback';
 import { VerifiedPill, CategoryChip, DestacadoPill } from './Pills';
 import { Pin } from './icons';
@@ -29,7 +30,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
         <div className="relative h-[130px] w-full overflow-hidden">
           {listing.coverImage ? (
             <Image
-              src={listing.coverImage}
+              src={mediaUrl(listing.coverImage)}
               alt={listing.name}
               fill
               sizes="(max-width: 768px) 100vw, 360px"

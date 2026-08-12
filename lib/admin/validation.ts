@@ -1,6 +1,8 @@
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from '@/lib/auth/password';
 import { BLOCK_KINDS, STAFF_ROLES, USER_STATUSES, type BlockKind, type UserRole, type UserStatus } from '@/lib/db/schema';
 import { parseLines, parsePipedLines, type LineError } from './blocks';
+import { toMinutes } from '@/lib/db/open-now';
+import type { DayHours } from '@/lib/types';
 
 /**
  * All admin form validation, for every entity, in one pure module.
@@ -373,6 +375,161 @@ export function parseCityInput(fd: FormData, mode: 'create' | 'update'): ParseRe
 }
 
 // ---------------------------------------------------------------------------
+// hours (BUILD-SPEC-PR5 §1) — a section of the listing edit form, not its own
+// route. Seven days × up to three ranges, as flat text inputs:
+//   hours_<day>_<slot>_open / hours_<day>_<slot>_close   day 0..6, slot 0..2
+// ---------------------------------------------------------------------------
+
+const DAY_LABELS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const HOURS_SLOTS_PER_DAY = 3;
+
+interface ParsedRange {
+  open: string;
+  close: string;
+  openMinute: number;
+  closeMinute: number;
+}
+
+/** `close <= open` means the range crosses midnight — its effective close for overlap math is `close + 1440`. */
+function effectiveClose(r: Pick<ParsedRange, 'openMinute' | 'closeMinute'>): number {
+  return r.closeMinute <= r.openMinute ? r.closeMinute + 1440 : r.closeMinute;
+}
+
+function rangesOverlap(a: ParsedRange, b: ParsedRange): boolean {
+  return a.openMinute < effectiveClose(b) && b.openMinute < effectiveClose(a);
+}
+
+/**
+ * Pure: no clock, no DB. Both blank means the slot does not exist (that is how
+ * a day is marked closed — every slot blank); one blank and the other filled
+ * is a field error naming the day, never inferred. `close <= open` is VALID —
+ * it means the range crosses midnight and is never "fixed" by swapping.
+ */
+export function parseHoursInput(fd: FormData): ParseResult<DayHours[]> {
+  const errors: Errors = {};
+  const byDay = new Map<number, ParsedRange[]>();
+
+  for (let day = 0; day <= 6; day++) {
+    const dayLabel = DAY_LABELS_ES[day];
+    const ranges: ParsedRange[] = [];
+
+    for (let slot = 0; slot < HOURS_SLOTS_PER_DAY; slot++) {
+      const openKey = `hours_${day}_${slot}_open`;
+      const closeKey = `hours_${day}_${slot}_close`;
+      const openRaw = value(fd, openKey);
+      const closeRaw = value(fd, closeKey);
+
+      if (!openRaw && !closeRaw) continue; // the slot does not exist
+
+      if (!openRaw || !closeRaw) {
+        errors[!openRaw ? openKey : closeKey] = 'Completá la hora de apertura y la de cierre.';
+        continue;
+      }
+      if (!TIME_PATTERN.test(openRaw)) {
+        errors[openKey] = `Hora inválida (${dayLabel}). Usá el formato HH:MM.`;
+        continue;
+      }
+      if (!TIME_PATTERN.test(closeRaw)) {
+        errors[closeKey] = `Hora inválida (${dayLabel}). Usá el formato HH:MM.`;
+        continue;
+      }
+      if (openRaw === closeRaw) {
+        errors[closeKey] = 'Un turno no puede abrir y cerrar a la misma hora.';
+        continue;
+      }
+
+      const openMinute = toMinutes(openRaw);
+      const closeMinute = toMinutes(closeRaw);
+
+      if (ranges.some((r) => r.openMinute === openMinute)) {
+        errors[openKey] = `Ya hay un turno del ${dayLabel} que empieza a esa hora.`;
+        continue;
+      }
+
+      ranges.push({ open: openRaw, close: closeRaw, openMinute, closeMinute });
+    }
+
+    for (let i = 0; i < ranges.length; i++) {
+      for (let j = i + 1; j < ranges.length; j++) {
+        if (rangesOverlap(ranges[i]!, ranges[j]!)) {
+          errors[`hours_${day}_${j}_open`] = `Los turnos del ${dayLabel} se superponen.`;
+        }
+      }
+    }
+
+    if (ranges.length > 0) byDay.set(day, ranges);
+  }
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  const data: DayHours[] = [...byDay.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([day, ranges]) => ({
+      day: day as DayHours['day'],
+      ranges: [...ranges]
+        .sort((a, b) => a.openMinute - b.openMinute)
+        .map((r) => ({ open: r.open, close: r.close })),
+    }));
+
+  return { ok: true, data };
+}
+
+// ---------------------------------------------------------------------------
+// premiumUntil / verified (BUILD-SPEC-PR5 §3) — admin only
+// ---------------------------------------------------------------------------
+
+/** Paraguay is UTC-3 year round (no DST since 2024) — see README → Database. */
+const ASUNCION_UTC_OFFSET_HOURS = 3;
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * `YYYY-MM-DD` → unix seconds at 23:59:59 `America/Asuncion` on that date —
+ * end of day, so "premium until the 31st" means the whole 31st. A UTC
+ * round-trip would drift the date by one day for Asunción (UTC−3).
+ */
+export function parsePremiumUntilDate(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const match = DATE_PATTERN.exec(trimmed);
+  if (!match) return null;
+  const [, y, m, d] = match.map(Number) as unknown as [string, number, number, number];
+  const localAsUtcMs = Date.UTC(y, m - 1, d, 23, 59, 59);
+  if (Number.isNaN(localAsUtcMs)) return null;
+  // Reject an out-of-range calendar date (e.g. 2026-02-30) rather than
+  // silently rolling it into March.
+  const check = new Date(localAsUtcMs);
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d) return null;
+  return Math.floor(localAsUtcMs / 1000) + ASUNCION_UTC_OFFSET_HOURS * 3600;
+}
+
+/** Inverse of `parsePremiumUntilDate`, for rendering the stored value back into the form. */
+export function formatPremiumUntilDate(seconds: number): string {
+  const localMs = seconds * 1000 - ASUNCION_UTC_OFFSET_HOURS * 3600 * 1000;
+  return new Date(localMs).toISOString().slice(0, 10);
+}
+
+export interface ListingFlagsInput {
+  verified: boolean;
+  premiumUntil: number | null;
+}
+
+export function parseListingFlagsInput(fd: FormData): ParseResult<ListingFlagsInput> {
+  const errors: Errors = {};
+  const verified = value(fd, 'verified') === 'on' || fd.get('verified') === 'true';
+  const rawDate = value(fd, 'premiumUntil');
+
+  let premiumUntil: number | null = null;
+  if (rawDate) {
+    premiumUntil = parsePremiumUntilDate(rawDate);
+    if (premiumUntil === null) errors['premiumUntil'] = 'Escribí una fecha válida (AAAA-MM-DD).';
+  }
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return { ok: true, data: { verified, premiumUntil } };
+}
+
+// ---------------------------------------------------------------------------
 // users
 // ---------------------------------------------------------------------------
 
@@ -471,15 +628,22 @@ function oneOf(params: Record<string, string | string[] | undefined>, name: stri
   return v || undefined;
 }
 
-/** `listListings` search params: `q` + `page` plus the two taxonomy filters. */
+const LISTING_ESTADOS = ['por-vencer', 'vencido', 'sin-actualizar', 'sin-contacto'] as const;
+
+/** `listListings` search params: `q` + `page`, the two taxonomy filters, and the staleness-dashboard `estado` link. */
 export function parseListingListParams(params: Record<string, string | string[] | undefined>): {
   q: string;
   page: number;
   categoria?: string;
   ciudad?: string;
+  estado?: (typeof LISTING_ESTADOS)[number];
 } {
   const base = parseListParams(params);
-  return { ...base, categoria: oneOf(params, 'categoria'), ciudad: oneOf(params, 'ciudad') };
+  const rawEstado = oneOf(params, 'estado');
+  const estado = (LISTING_ESTADOS as readonly string[]).includes(rawEstado ?? '')
+    ? (rawEstado as (typeof LISTING_ESTADOS)[number])
+    : undefined;
+  return { ...base, categoria: oneOf(params, 'categoria'), ciudad: oneOf(params, 'ciudad'), estado };
 }
 
 /** `listLeads` search params: `q` + `page` plus the source filter. */

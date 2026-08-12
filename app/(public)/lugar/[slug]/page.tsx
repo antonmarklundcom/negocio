@@ -6,6 +6,7 @@ import { isPremium } from '@/lib/listing';
 import { computeOpenState } from '@/lib/hours';
 import { formatPhone } from '@/lib/format';
 import { FREE_PHONE_TAPTOCALL, REVIEWS_ENABLED, SITE_URL, listingPath } from '@/lib/config';
+import { mediaUrl } from '@/lib/media/url';
 import { Breadcrumb, type Crumb } from '@/components/Breadcrumb';
 import { Gallery } from '@/components/detail/Gallery';
 import { HoursTable } from '@/components/detail/HoursTable';
@@ -31,7 +32,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     openGraph: {
       title: l.name,
       description: l.description?.slice(0, 160),
-      images: l.coverImage ? [`${SITE_URL}${l.coverImage}`] : undefined,
+      images: l.coverImage
+        ? [/^https?:\/\//.test(mediaUrl(l.coverImage)) ? mediaUrl(l.coverImage) : `${SITE_URL}${mediaUrl(l.coverImage)}`]
+        : undefined,
     },
   };
 }
@@ -87,7 +90,7 @@ function Rating({ rating, reviewsCount }: { rating?: number; reviewsCount?: numb
 // ---------------------------------------------------------------- PREMIUM ----
 function PremiumDetail({ listing: l, open, crumbs }: DetailProps) {
   const gallery = l.coverImage ? [l.coverImage, ...(l.gallery ?? [])] : l.gallery ?? [];
-  const dedup = [...new Set(gallery)];
+  const dedup = [...new Set(gallery)].map(mediaUrl);
 
   return (
     <>

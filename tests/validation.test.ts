@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatPremiumUntilDate,
   parseCategoryInput,
   parseCityInput,
+  parseHoursInput,
+  parseListingFlagsInput,
   parseListingInput,
   parseListParams,
   parseLoginInput,
   parsePasswordChangeInput,
+  parsePremiumUntilDate,
   parseUserInput,
 } from '@/lib/admin/validation';
 import { MIN_PASSWORD_LENGTH } from '@/lib/auth/password';
@@ -350,6 +354,170 @@ describe('parseCityInput', () => {
 
     const lone = parseCityInput(form({ ...base, lat: '-25.3' }), 'create');
     expect(lone.ok).toBe(false);
+  });
+});
+
+describe('parseHoursInput', () => {
+  function hoursForm(entries: Record<string, string>): FormData {
+    return form(entries);
+  }
+
+  it('both blank means the slot does not exist — an empty form is valid and empty', () => {
+    const result = parseHoursInput(hoursForm({}));
+    expect(result).toEqual({ ok: true, data: [] });
+  });
+
+  it('accepts a normal day', () => {
+    const result = parseHoursInput(hoursForm({ hours_3_0_open: '08:00', hours_3_0_close: '17:00' }));
+    expect(result).toEqual({ ok: true, data: [{ day: 3, ranges: [{ open: '08:00', close: '17:00' }] }] });
+  });
+
+  it('accepts a split day (the siesta gap) with two slots, sorted by opening time', () => {
+    const result = parseHoursInput(
+      hoursForm({
+        hours_3_1_open: '15:00',
+        hours_3_1_close: '19:00',
+        hours_3_0_open: '08:00',
+        hours_3_0_close: '12:00',
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      data: [
+        {
+          day: 3,
+          ranges: [
+            { open: '08:00', close: '12:00' },
+            { open: '15:00', close: '19:00' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('accepts a midnight crosser (close <= open) without swapping it', () => {
+    const result = parseHoursInput(hoursForm({ hours_5_0_open: '22:00', hours_5_0_close: '02:00' }));
+    expect(result).toEqual({ ok: true, data: [{ day: 5, ranges: [{ open: '22:00', close: '02:00' }] }] });
+  });
+
+  it('accepts a 00:00 close as midnight, not "closes before it opens"', () => {
+    const result = parseHoursInput(hoursForm({ hours_5_0_open: '18:00', hours_5_0_close: '00:00' }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data[0]!.ranges[0]).toEqual({ open: '18:00', close: '00:00' });
+  });
+
+  it('one blank and the other filled is a field error on the blank one', () => {
+    const result = parseHoursInput(hoursForm({ hours_1_0_open: '08:00' }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['hours_1_0_close']).toBeTruthy();
+    expect(result.errors['hours_1_0_open']).toBeFalsy();
+  });
+
+  it('rejects a malformed time, naming the day', () => {
+    const result = parseHoursInput(hoursForm({ hours_2_0_open: '25:00', hours_2_0_close: '18:00' }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['hours_2_0_open']).toContain('Martes');
+  });
+
+  it('open === close is rejected — zero-length and indistinguishable from 24h', () => {
+    const result = parseHoursInput(hoursForm({ hours_1_0_open: '09:00', hours_1_0_close: '09:00' }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['hours_1_0_close']).toBeTruthy();
+  });
+
+  it('two slots starting at the same minute on the same day is an error on the second', () => {
+    const result = parseHoursInput(
+      hoursForm({
+        hours_1_0_open: '08:00',
+        hours_1_0_close: '12:00',
+        hours_1_1_open: '08:00',
+        hours_1_1_close: '20:00',
+      }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['hours_1_1_open']).toBeTruthy();
+  });
+
+  it('overlapping ranges on the same day are rejected', () => {
+    const result = parseHoursInput(
+      hoursForm({
+        hours_1_0_open: '08:00',
+        hours_1_0_close: '14:00',
+        hours_1_1_open: '12:00',
+        hours_1_1_close: '18:00',
+      }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(Object.values(result.errors).some((m) => m.includes('superponen'))).toBe(true);
+  });
+
+  it('result is sorted by day', () => {
+    const result = parseHoursInput(
+      hoursForm({
+        hours_5_0_open: '08:00',
+        hours_5_0_close: '12:00',
+        hours_1_0_open: '08:00',
+        hours_1_0_close: '12:00',
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.map((d) => d.day)).toEqual([1, 5]);
+  });
+});
+
+describe('premiumUntil', () => {
+  it('parses YYYY-MM-DD to unix seconds at 23:59:59 America/Asuncion (UTC-3)', () => {
+    const seconds = parsePremiumUntilDate('2026-08-31');
+    expect(seconds).not.toBeNull();
+    // 23:59:59 -03:00 on the 31st is 02:59:59 UTC on the 1st.
+    expect(new Date(seconds! * 1000).toISOString()).toBe('2026-09-01T02:59:59.000Z');
+  });
+
+  it('round-trips back to the same date string without shifting a day', () => {
+    for (const date of ['2026-01-01', '2026-08-31', '2026-12-31', '2027-02-28']) {
+      const seconds = parsePremiumUntilDate(date);
+      expect(seconds).not.toBeNull();
+      expect(formatPremiumUntilDate(seconds!)).toBe(date);
+    }
+  });
+
+  it('empty string is null', () => {
+    expect(parsePremiumUntilDate('')).toBeNull();
+  });
+
+  it('rejects a malformed date', () => {
+    for (const bad of ['not-a-date', '2026-13-01', '2026-02-30', '31-08-2026']) {
+      expect(parsePremiumUntilDate(bad)).toBeNull();
+    }
+  });
+});
+
+describe('parseListingFlagsInput', () => {
+  it('empty premiumUntil and unchecked verified parse to null/false', () => {
+    const result = parseListingFlagsInput(form({}));
+    expect(result).toEqual({ ok: true, data: { verified: false, premiumUntil: null } });
+  });
+
+  it('accepts a checked verified box and a valid date', () => {
+    const result = parseListingFlagsInput(form({ verified: 'on', premiumUntil: '2026-12-31' }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.verified).toBe(true);
+    expect(result.data.premiumUntil).not.toBeNull();
+  });
+
+  it('rejects a malformed premiumUntil', () => {
+    const result = parseListingFlagsInput(form({ premiumUntil: 'not-a-date' }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['premiumUntil']).toBeTruthy();
   });
 });
 

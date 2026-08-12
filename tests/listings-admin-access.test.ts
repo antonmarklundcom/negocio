@@ -7,14 +7,21 @@ import type { SessionUser } from '@/lib/auth/session';
 import type { Db } from '@/lib/db/connection';
 import type { UserRole } from '@/lib/db/schema';
 import {
+  addGalleryImage,
   createListing,
   deleteListing,
   getListingForEdit,
   isListingSlugTaken,
   listListings,
+  moveGalleryImage,
+  removeGalleryImage,
+  setCoverImage,
+  setListingFlags,
+  setListingHours,
+  updateGalleryAlt,
   updateListing,
 } from '@/lib/db/listings-admin';
-import type { ListingFormInput } from '@/lib/admin/validation';
+import type { ListingFlagsInput, ListingFormInput } from '@/lib/admin/validation';
 
 /**
  * Access tests, invoked DIRECTLY against the query module — same shape as
@@ -76,6 +83,8 @@ const INPUT: ListingFormInput = {
   destacadoItem: null,
 };
 
+const FLAGS_INPUT: ListingFlagsInput = { verified: true, premiumUntil: null };
+
 /** Every editor-reachable export — arguments valid enough that ONLY the guard can reject them. */
 const EDITOR_REACHABLE: { name: string; call: (actor: SessionUser | null, db: Db) => Promise<unknown> }[] = [
   { name: 'listListings', call: (actor, db) => listListings(actor, { page: 1 }, db) },
@@ -83,6 +92,12 @@ const EDITOR_REACHABLE: { name: string; call: (actor: SessionUser | null, db: Db
   { name: 'isListingSlugTaken', call: (actor, db) => isListingSlugTaken(actor, 'x', null, db) },
   { name: 'createListing', call: (actor, db) => createListing(actor, INPUT, db) },
   { name: 'updateListing', call: (actor, db) => updateListing(actor, 'x', INPUT, db) },
+  { name: 'setListingHours', call: (actor, db) => setListingHours(actor, 'x', [], db) },
+  { name: 'addGalleryImage', call: (actor, db) => addGalleryImage(actor, 'x', 'listings/x/a.webp', null, db) },
+  { name: 'updateGalleryAlt', call: (actor, db) => updateGalleryAlt(actor, 'x', 1, null, db) },
+  { name: 'moveGalleryImage', call: (actor, db) => moveGalleryImage(actor, 'x', 1, 'up', db) },
+  { name: 'removeGalleryImage', call: (actor, db) => removeGalleryImage(actor, 'x', 1, db) },
+  { name: 'setCoverImage', call: (actor, db) => setCoverImage(actor, 'x', 'listings/x/a.webp', db) },
 ];
 
 describe('lib/db/listings-admin — the authorization boundary', () => {
@@ -128,6 +143,53 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
     });
   });
 
+  describe('setListingFlags', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(setListingFlags(ANONYMOUS, 'x', FLAGS_INPUT, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects an editor AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(setListingFlags(EDITOR, 'x', FLAGS_INPUT, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('is reachable by an admin', async () => {
+      const { db, touched } = recordingDb();
+      await expect(setListingFlags(ADMIN, 'x', FLAGS_INPUT, db)).rejects.toThrow(/the database was reached/);
+      expect(touched.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('gallery mutations reject a foreign imageId — same error as a non-existent one (ROADMAP rule 5)', () => {
+    it('moveGalleryImage changes nothing for an imageId belonging to a different listing', async () => {
+      const { tx, writesRecorded } = fakeGalleryTx([{ id: 5, url: 'listings/x/a.webp', alt: null, position: 0 }]);
+      const db = { transaction: (cb: (tx: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(moveGalleryImage(ADMIN, 'x', 999, 'up', db)).rejects.toMatchObject({
+        message: 'No encontramos esa foto.',
+      });
+      expect(writesRecorded()).toBe(false);
+    });
+
+    it('removeGalleryImage throws the identical message for a foreign imageId as for one that never existed', async () => {
+      const foreign = fakeGalleryTx([{ id: 5, url: 'listings/x/a.webp', alt: null, position: 0 }]);
+      const dbForeign = { transaction: (cb: (tx: unknown) => unknown) => cb(foreign.tx) } as unknown as Db;
+      const missing = fakeGalleryTx([]);
+      const dbMissing = { transaction: (cb: (tx: unknown) => unknown) => cb(missing.tx) } as unknown as Db;
+
+      const [foreignErr, missingErr] = await Promise.all([
+        removeGalleryImage(ADMIN, 'x', 999, dbForeign).catch((e) => e),
+        removeGalleryImage(ADMIN, 'x', 999, dbMissing).catch((e) => e),
+      ]);
+      expect(foreignErr.message).toBe(missingErr.message);
+      expect(foreign.writesRecorded()).toBe(false);
+      expect(missing.writesRecorded()).toBe(false);
+    });
+  });
+
   describe('the editor-facing write path cannot set admin-only fields', () => {
     it('updateListing writes only the columns in ListingFormInput — verified/premiumUntil are not parameters at all', () => {
       // Structural assertion, not a runtime one: ListingFormInput has no
@@ -140,3 +202,48 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
     });
   });
 });
+
+/**
+ * A minimal fake transaction handle for the gallery mutations: `select` always
+ * returns the given rows (whatever listingId/imageId the code filters on —
+ * this fake does not itself enforce scoping, `lib/db/listings-admin.ts` does),
+ * and `delete`/`insert`/`update` just record whether a write happened.
+ */
+function fakeGalleryTx(rows: { id: number; url: string; alt: string | null; position: number }[]) {
+  let wrote = false;
+
+  function chain(result: unknown) {
+    const obj: Record<string, unknown> = {
+      from: () => obj,
+      where: () => obj,
+      orderBy: () => obj,
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject),
+    };
+    return obj;
+  }
+
+  const tx = {
+    select: () => chain(rows),
+    delete: () => {
+      wrote = true;
+      return { where: () => Promise.resolve() };
+    },
+    insert: () => ({
+      values: () => {
+        wrote = true;
+        return Promise.resolve();
+      },
+    }),
+    update: () => ({
+      set: () => ({
+        where: () => {
+          wrote = true;
+          return Promise.resolve();
+        },
+      }),
+    }),
+  };
+
+  return { tx, writesRecorded: () => wrote };
+}

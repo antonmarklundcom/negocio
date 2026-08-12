@@ -162,9 +162,35 @@ any `fields.ts` at all, which is the enforcement (PR-5 adds them behind `admin`)
       from every function in both new query modules, all 50 access tests in
       `tests/listings-admin-access.test.ts` and `tests/taxonomy-admin-access.test.ts`
       went red, guard restored.*
-- [ ] **PR-5 — The awkward fields.** Hours editor, gallery/photo upload to
+- [x] **PR-5 — The awkward fields.** Hours editor, gallery/photo upload to
       object storage, `premiumUntil`, the `verified` flag, staleness/expiry
       dashboard.
+      *Shipped: `setListingHours` (delete-then-insert, reusing
+      `rowsToDayHours`/`dayHoursToRows`/`toMinutes`/`toHHMM` from PR-1 — no
+      second time parser), `lib/admin/validation.ts`'s `parseHoursInput`
+      (siesta gaps, midnight crossers, a `00:00` close, overlap/duplicate
+      detection) and `parsePremiumUntilDate`/`formatPremiumUntilDate`
+      (`YYYY-MM-DD` ⇄ unix seconds at 23:59:59 America/Asuncion). Gallery:
+      `lib/media/upload.ts` (magic-byte sniffed, EXIF-stripped via
+      `sharp().rotate()`, re-encoded to WebP, `aws4fetch` SigV4 PUT to R2) and
+      `lib/media/url.ts`'s `mediaUrl()`, routed through every render site
+      (`lugar/[slug]`, `ListingCard`, `jsonld.tsx`, `CategoryBlock`).
+      `setListingFlags` (`verified`/`premiumUntil`) is a separate
+      `admin`-only function from `updateListing`, not a widened one — the
+      editor write path is physically unable to set them. Staleness dashboard
+      on `/admin` links into `/admin/negocios?estado=…`.
+      **R2_* unset** (the bucket does not exist yet — open question 1): the
+      gallery section shows "Falta configurar el almacenamiento de imágenes"
+      instead of an upload button; the app boots and serves normally either
+      way (verified: production build + `node server.js` with no DB/R2 env,
+      `/` 200, `/admin` 404, no server errors). The redeploy test (upload →
+      redeploy → confirm the photo still renders) is **UNTESTED PENDING
+      CREDENTIALS** — no R2 account exists to test against; do not read this
+      as passing. "Stale" = 180 days since `updated_at` (open question 2).
+      No migration — every column shipped in PR-1. Canary run: `requireRole`
+      deleted from every function in `lib/db/listings-admin.ts` (14 guards),
+      all 26 affected tests in `tests/listings-admin-access.test.ts` went red,
+      guard restored.*
 - [ ] **PR-6 — Self-serve business dashboard.** *(LATER — only at ≥20 paying
       businesses.)* Do not build before then, and **do not announce it to real
       businesses until password reset by email exists.** On educacion the portal

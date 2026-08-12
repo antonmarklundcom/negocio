@@ -1,14 +1,17 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, like, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNull, like, lt, ne, or, sql } from 'drizzle-orm';
 import { getDb } from './client';
 import type { Db } from './connection';
 import { requireRole, AuthError } from '@/lib/auth/roles';
 import type { SessionUser } from '@/lib/auth/session';
 import { logActivity } from './activity-log';
-import { categories, cities, listings } from './schema';
+import { categories, cities, listingGallery, listingHours, listings } from './schema';
 import { serialiseLines, serialisePiped } from '@/lib/admin/blocks';
-import type { ListingFormInput } from '@/lib/admin/validation';
+import { dayHoursToRows, rowsToDayHours } from './mappers';
+import type { DayHours } from '../types';
+import type { ListingFormInput, ListingFlagsInput } from '@/lib/admin/validation';
+import { MAX_GALLERY_IMAGES } from '@/lib/media/upload';
 
 /**
  * All listing SQL. THIS MODULE IS THE AUTHORIZATION BOUNDARY: every exported
@@ -48,6 +51,13 @@ export interface ListingListResult {
  * and re-saved as if they were data. Block fields come back pre-serialised
  * (one line per item) so they drop straight into `AdminForm`'s `defaultValues`.
  */
+export interface GalleryImage {
+  id: number;
+  key: string;
+  alt: string | null;
+  position: number;
+}
+
 export interface AdminListingForm {
   id: string;
   slug: string;
@@ -73,6 +83,9 @@ export interface AdminListingForm {
   destacadoPrice: string;
   verified: boolean;
   premiumUntil: number | null;
+  coverImage: string | null;
+  hours: DayHours[];
+  gallery: GalleryImage[];
   updatedAt: Date;
 }
 
@@ -89,20 +102,50 @@ const LIST_COLUMNS = {
   updatedAt: listings.updatedAt,
 } as const;
 
+/** The staleness-dashboard filters (BUILD-SPEC-PR5 §4), so a stat tile links somewhere real. */
+export type ListingEstadoFilter = 'por-vencer' | 'vencido' | 'sin-actualizar' | 'sin-contacto';
+
+const STALE_DAYS = 180;
+
+function estadoCondition(estado: ListingEstadoFilter | undefined, nowSeconds: number) {
+  if (!estado) return undefined;
+  if (estado === 'por-vencer') {
+    return and(gt(listings.premiumUntil, nowSeconds), lt(listings.premiumUntil, nowSeconds + 30 * 86400));
+  }
+  if (estado === 'vencido') {
+    return and(lt(listings.premiumUntil, nowSeconds), gt(listings.premiumUntil, nowSeconds - 90 * 86400));
+  }
+  if (estado === 'sin-actualizar') {
+    return sql`${listings.updatedAt} < from_unixtime(${nowSeconds - STALE_DAYS * 86400})`;
+  }
+  // sin-contacto
+  return and(isNull(listings.phone), isNull(listings.whatsapp), isNull(listings.email), isNull(listings.website));
+}
+
 export async function listListings(
   actor: SessionUser | null,
-  params: { q?: string; categoria?: string; ciudad?: string; page?: number } = {},
+  params: {
+    q?: string;
+    categoria?: string;
+    ciudad?: string;
+    estado?: ListingEstadoFilter;
+    nowSeconds?: number;
+    page?: number;
+  } = {},
   database: Db = getDb(),
 ): Promise<ListingListResult> {
   requireRole(actor, ['admin', 'editor']);
 
   const page = Math.max(1, Math.floor(params.page ?? 1));
   const q = params.q?.trim() ?? '';
+  const nowSeconds = params.nowSeconds ?? Math.floor(Date.now() / 1000);
 
   const conditions = [];
   if (q) conditions.push(or(like(listings.name, `%${q}%`), like(listings.slug, `%${q}%`)));
   if (params.categoria) conditions.push(eq(listings.categoria, params.categoria));
   if (params.ciudad) conditions.push(eq(listings.ciudad, params.ciudad));
+  const estadoWhere = estadoCondition(params.estado, nowSeconds);
+  if (estadoWhere) conditions.push(estadoWhere);
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   // The admin's question is "what did we touch lately", not "what is
@@ -135,6 +178,11 @@ export async function getListingForEdit(
   const [row] = await database.select().from(listings).where(eq(listings.id, id)).limit(1);
   if (!row) return null;
 
+  const [hourRows, galleryRows] = await Promise.all([
+    database.select().from(listingHours).where(eq(listingHours.listingId, id)),
+    database.select().from(listingGallery).where(eq(listingGallery.listingId, id)).orderBy(asc(listingGallery.position)),
+  ]);
+
   return {
     id: row.id,
     slug: row.slug,
@@ -158,6 +206,9 @@ export async function getListingForEdit(
     destacadoTitle: row.destacadoItem?.title ?? '',
     destacadoDesc: row.destacadoItem?.desc ?? '',
     destacadoPrice: row.destacadoItem?.price ?? '',
+    coverImage: row.coverImage,
+    hours: rowsToDayHours(hourRows),
+    gallery: galleryRows.map((g) => ({ id: g.id, key: g.url, alt: g.alt, position: g.position })),
     verified: row.verified,
     premiumUntil: row.premiumUntil,
     updatedAt: row.updatedAt,
@@ -352,4 +403,293 @@ export async function deleteListing(actor: SessionUser | null, id: string, datab
       before: auditViewFromRow(before),
     });
   });
+}
+
+// ---------------------------------------------------------------------------
+// hours (BUILD-SPEC-PR5 §1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Delete-then-insert, not a diff: the rows have no stable identity (the
+ * autoincrement id is not meaningful), a diff would be more code and its bugs
+ * would be silent. One small table per listing, inside a transaction, so
+ * there is no window where the hours look empty to any reader.
+ */
+export async function setListingHours(
+  actor: SessionUser | null,
+  listingId: string,
+  hours: DayHours[],
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  await database.transaction(async (tx) => {
+    const existing = await tx.select().from(listingHours).where(eq(listingHours.listingId, listingId));
+    const before = rowsToDayHours(existing);
+
+    await tx.delete(listingHours).where(eq(listingHours.listingId, listingId));
+
+    const rows = dayHoursToRows(listingId, hours);
+    if (rows.length > 0) await tx.insert(listingHours).values(rows);
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing_hours',
+      entityId: listingId,
+      action: 'update',
+      before: { hours: before },
+      after: { hours },
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// premiumUntil / verified (BUILD-SPEC-PR5 §3) — admin only, and deliberately a
+// SEPARATE function from updateListing rather than a widening of it: that
+// keeps the editor-facing write path physically unable to set these fields,
+// which is stronger than a conditional inside one function.
+// ---------------------------------------------------------------------------
+
+export async function setListingFlags(
+  actor: SessionUser | null,
+  id: string,
+  input: ListingFlagsInput,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin']);
+
+  await database.transaction(async (tx) => {
+    const [before] = await tx
+      .select({ verified: listings.verified, premiumUntil: listings.premiumUntil })
+      .from(listings)
+      .where(eq(listings.id, id))
+      .limit(1);
+    if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    await tx.update(listings).set({ verified: input.verified, premiumUntil: input.premiumUntil }).where(eq(listings.id, id));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing',
+      entityId: id,
+      action: 'update',
+      before,
+      after: { verified: input.verified, premiumUntil: input.premiumUntil },
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// gallery (BUILD-SPEC-PR5 §2.4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Every gallery mutation filters on BOTH `listingId` and `imageId` — an image
+ * id alone is an object reference from a URL, and filtering on it alone would
+ * let a crafted id touch another listing's row (ROADMAP rule 4). A row that
+ * does not exist and a row that belongs to someone else look identical here
+ * on purpose (ROADMAP rule 5): both simply are not found by this query.
+ */
+async function galleryRowsFor(tx: Pick<Db, 'select'>, listingId: string) {
+  return tx.select().from(listingGallery).where(eq(listingGallery.listingId, listingId)).orderBy(asc(listingGallery.position));
+}
+
+/** Renormalises positions to 0..n-1 and rewrites the whole set, exactly like hours — the unique (listing_id, position) index means a naive swap collides mid-update. */
+async function rewriteGallery(
+  tx: Db,
+  listingId: string,
+  rows: { url: string; alt: string | null }[],
+): Promise<void> {
+  await tx.delete(listingGallery).where(eq(listingGallery.listingId, listingId));
+  if (rows.length === 0) return;
+  await tx.insert(listingGallery).values(rows.map((r, i) => ({ listingId, url: r.url, alt: r.alt, position: i })));
+}
+
+export async function addGalleryImage(
+  actor: SessionUser | null,
+  listingId: string,
+  key: string,
+  alt: string | null,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  await database.transaction(async (tx) => {
+    const existing = await galleryRowsFor(tx, listingId);
+    if (existing.length >= MAX_GALLERY_IMAGES) {
+      throw new AuthError(`Ya hay ${MAX_GALLERY_IMAGES} fotos, el máximo por negocio.`, 'forbidden');
+    }
+
+    const next = [...existing.map((r) => ({ url: r.url, alt: r.alt })), { url: key, alt }];
+    await rewriteGallery(tx, listingId, next);
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing_gallery',
+      entityId: listingId,
+      action: 'create',
+      after: { added: key },
+    });
+  });
+}
+
+export async function updateGalleryAlt(
+  actor: SessionUser | null,
+  listingId: string,
+  imageId: number,
+  alt: string | null,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  await database.transaction(async (tx) => {
+    const existing = await galleryRowsFor(tx, listingId);
+    const target = existing.find((r) => r.id === imageId);
+    if (!target) throw new AuthError('No encontramos esa foto.', 'forbidden');
+
+    await tx.update(listingGallery).set({ alt }).where(and(eq(listingGallery.id, imageId), eq(listingGallery.listingId, listingId)));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing_gallery',
+      entityId: listingId,
+      action: 'update',
+      before: { alt: target.alt },
+      after: { alt },
+    });
+  });
+}
+
+export async function moveGalleryImage(
+  actor: SessionUser | null,
+  listingId: string,
+  imageId: number,
+  dir: 'up' | 'down',
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  await database.transaction(async (tx) => {
+    const existing = await galleryRowsFor(tx, listingId);
+    const index = existing.findIndex((r) => r.id === imageId);
+    if (index === -1) throw new AuthError('No encontramos esa foto.', 'forbidden');
+
+    const swapWith = dir === 'up' ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= existing.length) return; // already at the edge; a no-op, not an error
+
+    const reordered = [...existing];
+    [reordered[index], reordered[swapWith]] = [reordered[swapWith]!, reordered[index]!];
+
+    await rewriteGallery(
+      tx,
+      listingId,
+      reordered.map((r) => ({ url: r.url, alt: r.alt })),
+    );
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing_gallery',
+      entityId: listingId,
+      action: 'update',
+      before: { order: existing.map((r) => r.id) },
+      after: { order: reordered.map((r) => r.id) },
+    });
+  });
+}
+
+/** Deleting a row does not delete the R2 object — storage is cheap and an orphan is recoverable; a deleted object is not. */
+export async function removeGalleryImage(
+  actor: SessionUser | null,
+  listingId: string,
+  imageId: number,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  await database.transaction(async (tx) => {
+    const existing = await galleryRowsFor(tx, listingId);
+    const target = existing.find((r) => r.id === imageId);
+    if (!target) throw new AuthError('No encontramos esa foto.', 'forbidden');
+
+    const remaining = existing.filter((r) => r.id !== imageId).map((r) => ({ url: r.url, alt: r.alt }));
+    await rewriteGallery(tx, listingId, remaining);
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing_gallery',
+      entityId: listingId,
+      action: 'delete',
+      before: { removed: target.url },
+    });
+  });
+}
+
+export async function setCoverImage(
+  actor: SessionUser | null,
+  listingId: string,
+  key: string | null,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  await database.transaction(async (tx) => {
+    const [before] = await tx.select({ coverImage: listings.coverImage }).from(listings).where(eq(listings.id, listingId)).limit(1);
+    if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    await tx.update(listings).set({ coverImage: key }).where(eq(listings.id, listingId));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing',
+      entityId: listingId,
+      action: 'update',
+      before: { coverImage: before.coverImage },
+      after: { coverImage: key },
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// staleness / expiry dashboard (BUILD-SPEC-PR5 §4)
+// ---------------------------------------------------------------------------
+
+export interface StalenessSummary {
+  porVencer: number;
+  vencido: number;
+  sinActualizar: number;
+  sinContacto: number;
+  topPorVencer: AdminListingRow[];
+}
+
+/** `nowSeconds` is computed in Node and passed in — nothing here calls NOW(). */
+export async function listingStaleness(
+  actor: SessionUser | null,
+  nowSeconds: number,
+  database: Db = getDb(),
+): Promise<StalenessSummary> {
+  requireRole(actor, ['admin', 'editor']);
+
+  const countWhere = (where: ReturnType<typeof estadoCondition>) =>
+    database
+      .select({ total: sql<number>`count(*)` })
+      .from(listings)
+      .where(where)
+      .then(([r]) => Number(r?.total ?? 0));
+
+  const [porVencer, vencido, sinActualizar, sinContacto, topPorVencer] = await Promise.all([
+    countWhere(estadoCondition('por-vencer', nowSeconds)),
+    countWhere(estadoCondition('vencido', nowSeconds)),
+    countWhere(estadoCondition('sin-actualizar', nowSeconds)),
+    countWhere(estadoCondition('sin-contacto', nowSeconds)),
+    database
+      .select(LIST_COLUMNS)
+      .from(listings)
+      .innerJoin(categories, eq(categories.slug, listings.categoria))
+      .innerJoin(cities, eq(cities.slug, listings.ciudad))
+      .where(estadoCondition('por-vencer', nowSeconds))
+      .orderBy(asc(listings.premiumUntil))
+      .limit(5),
+  ]);
+
+  return { porVencer, vencido, sinActualizar, sinContacto, topPorVencer };
 }
