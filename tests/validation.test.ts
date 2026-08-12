@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  parseCategoryInput,
+  parseCityInput,
+  parseListingInput,
   parseListParams,
   parseLoginInput,
   parsePasswordChangeInput,
   parseUserInput,
 } from '@/lib/admin/validation';
 import { MIN_PASSWORD_LENGTH } from '@/lib/auth/password';
+
+const CATEGORIES = ['restaurantes', 'tiendas'];
+const CITIES = ['asuncion', 'luque'];
+const ICONS = ['utensils', 'bag'];
 
 function form(values: Record<string, string>): FormData {
   const fd = new FormData();
@@ -135,6 +142,214 @@ describe('parsePasswordChangeInput', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors['current']).toBeTruthy();
+  });
+});
+
+describe('parseListingInput', () => {
+  const base = {
+    name: 'Parrilla Don José',
+    slug: 'parrilla-don-jose',
+    categoria: 'restaurantes',
+    ciudad: 'asuncion',
+  };
+
+  it('accepts a minimal valid create form', () => {
+    const result = parseListingInput(form(base), 'create', CATEGORIES, CITIES);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.name).toBe('Parrilla Don José');
+    expect(result.data.slug).toBe('parrilla-don-jose');
+    expect(result.data.lat).toBeNull();
+    expect(result.data.lng).toBeNull();
+  });
+
+  it('omits slug entirely on update', () => {
+    const { slug: _slug, ...rest } = base;
+    const result = parseListingInput(form(rest), 'update', CATEGORIES, CITIES);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect('slug' in result.data).toBe(false);
+  });
+
+  it.each(['UPPER-CASE', 'has spaces', '-leading-hyphen', 'trailing-hyphen-', 'x'.repeat(192)])(
+    'rejects an invalid slug: %s',
+    (slug) => {
+      const result = parseListingInput(form({ ...base, slug }), 'create', CATEGORIES, CITIES);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.errors['slug']).toBeTruthy();
+    },
+  );
+
+  it('fails an unselected categoria/ciudad rather than defaulting to one', () => {
+    const result = parseListingInput(form({ ...base, categoria: '', ciudad: '' }), 'create', CATEGORIES, CITIES);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['categoria']).toBeTruthy();
+    expect(result.errors['ciudad']).toBeTruthy();
+  });
+
+  it('rejects a categoria/ciudad that is not in the database-backed option list', () => {
+    const result = parseListingInput(
+      form({ ...base, categoria: 'no-existe', ciudad: 'no-existe' }),
+      'create',
+      CATEGORIES,
+      CITIES,
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  describe('coordinates', () => {
+    it('accepts an empty pair', () => {
+      const result = parseListingInput(form(base), 'create', CATEGORIES, CITIES);
+      expect(result.ok && result.data.lat).toBeNull();
+    });
+
+    it('accepts a comma decimal separator', () => {
+      const result = parseListingInput(form({ ...base, lat: '-25,29', lng: '-57,33' }), 'create', CATEGORIES, CITIES);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.lat).toBeCloseTo(-25.29);
+      expect(result.data.lng).toBeCloseTo(-57.33);
+    });
+
+    it('rejects an out-of-range value', () => {
+      const result = parseListingInput(form({ ...base, lat: '95', lng: '10' }), 'create', CATEGORIES, CITIES);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.errors['lat']).toBeTruthy();
+    });
+
+    it('rejects lat without lng and vice versa', () => {
+      const onlyLat = parseListingInput(form({ ...base, lat: '-25.29' }), 'create', CATEGORIES, CITIES);
+      expect(onlyLat.ok).toBe(false);
+      if (!onlyLat.ok) expect(onlyLat.errors['lng']).toBeTruthy();
+
+      const onlyLng = parseListingInput(form({ ...base, lng: '-57.33' }), 'create', CATEGORIES, CITIES);
+      expect(onlyLng.ok).toBe(false);
+      if (!onlyLng.ok) expect(onlyLng.errors['lat']).toBeTruthy();
+    });
+  });
+
+  describe('optional email', () => {
+    it('is ok when empty', () => {
+      const result = parseListingInput(form(base), 'create', CATEGORIES, CITIES);
+      expect(result.ok && result.data.email).toBeNull();
+    });
+
+    it('rejects a malformed value', () => {
+      const result = parseListingInput(form({ ...base, email: 'not-an-email' }), 'create', CATEGORIES, CITIES);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.errors['email']).toBeTruthy();
+    });
+  });
+
+  describe('block fields', () => {
+    it('parses especialidades, productos and servicios', () => {
+      const result = parseListingInput(
+        form({
+          ...base,
+          especialidades: 'Empanadas\nMilanesas',
+          productos: 'Remera | Gs. 80.000\nGorra',
+          servicios: 'Delivery | Hasta las 23:00\nRetiro en local',
+        }),
+        'create',
+        CATEGORIES,
+        CITIES,
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.especialidades).toEqual(['Empanadas', 'Milanesas']);
+      expect(result.data.productos).toEqual([
+        { title: 'Remera', price: 'Gs. 80.000' },
+        { title: 'Gorra' },
+      ]);
+      expect(result.data.servicios).toEqual([
+        { title: 'Delivery', desc: 'Hasta las 23:00' },
+        { title: 'Retiro en local' },
+      ]);
+    });
+
+    it('an empty textarea parses to null, not an empty list', () => {
+      const result = parseListingInput(form(base), 'create', CATEGORIES, CITIES);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.especialidades).toBeNull();
+      expect(result.data.productos).toBeNull();
+      expect(result.data.servicios).toBeNull();
+    });
+
+    it('destacadoItem stays null unless a title is given', () => {
+      const withoutTitle = parseListingInput(
+        form({ ...base, destacadoPrice: 'Gs. 50.000' }),
+        'create',
+        CATEGORIES,
+        CITIES,
+      );
+      expect(withoutTitle.ok).toBe(false);
+      if (!withoutTitle.ok) expect(withoutTitle.errors['destacadoTitle']).toBeTruthy();
+
+      const withTitle = parseListingInput(
+        form({ ...base, destacadoTitle: 'Menú del día', destacadoPrice: 'Gs. 50.000' }),
+        'create',
+        CATEGORIES,
+        CITIES,
+      );
+      expect(withTitle.ok).toBe(true);
+      if (!withTitle.ok) return;
+      expect(withTitle.data.destacadoItem).toEqual({ title: 'Menú del día', price: 'Gs. 50.000' });
+    });
+  });
+});
+
+describe('parseCategoryInput', () => {
+  const base = { slug: 'mascotas', label: 'Mascotas', labelPlural: 'Tiendas de mascotas', icon: 'bag', blockKind: 'shop', sortOrder: '3' };
+
+  it('accepts a complete create form', () => {
+    const result = parseCategoryInput(form(base), 'create', ICONS);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data).toEqual({ ...base, sortOrder: 3 });
+  });
+
+  it('rejects an icon not in the resolvable set', () => {
+    const result = parseCategoryInput(form({ ...base, icon: 'not-a-real-icon' }), 'create', ICONS);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['icon']).toBeTruthy();
+  });
+
+  it('fails an unselected blockKind rather than defaulting to one', () => {
+    const result = parseCategoryInput(form({ ...base, blockKind: '' }), 'create', ICONS);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors['blockKind']).toBeTruthy();
+  });
+
+  it('omits slug on update', () => {
+    const { slug: _slug, ...rest } = base;
+    const result = parseCategoryInput(form(rest), 'update', ICONS);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect('slug' in result.data).toBe(false);
+  });
+});
+
+describe('parseCityInput', () => {
+  const base = { slug: 'aregua', label: 'Areguá', sortOrder: '9' };
+
+  it('accepts a complete create form', () => {
+    const result = parseCityInput(form(base), 'create');
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts a coordinate pair and rejects a lone one', () => {
+    const paired = parseCityInput(form({ ...base, lat: '-25.3', lng: '-57.6' }), 'create');
+    expect(paired.ok).toBe(true);
+
+    const lone = parseCityInput(form({ ...base, lat: '-25.3' }), 'create');
+    expect(lone.ok).toBe(false);
   });
 });
 

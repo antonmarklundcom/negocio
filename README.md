@@ -234,8 +234,10 @@ bypasses the panel's own audit log. Every further account is created from
 
 ### What is not built yet
 
-Listing / category / city CRUD, the hours editor, gallery upload, `premiumUntil`
-and the `verified` flag. See ROADMAP Phase B, PR-4 and PR-5.
+The hours editor, gallery upload, `premiumUntil` and the `verified` flag. See
+ROADMAP Phase B, PR-5. Listing / category / city CRUD (`/admin/negocios`,
+`/admin/rubros`, `/admin/ciudades`) and a read-only `/admin/leads` list
+(`admin`-only) shipped in PR-4.
 
 ---
 

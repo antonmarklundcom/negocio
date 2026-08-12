@@ -4,18 +4,16 @@ import { currentUser } from '@/lib/auth/session';
 import { hasRole } from '@/lib/auth/roles';
 import { getListings, getCategories, getCities } from '@/lib/listings-repo';
 import { recentActivity } from '@/lib/db/activity-log';
+import { countLeadsSince } from '@/lib/db/leads-admin';
 import { ACTION_LABELS } from '@/lib/admin/labels';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: 'Panel' };
 
 /**
- * The dashboard. Counts come through `lib/listings-repo` — the same seam every
- * public page reads through — so the admin can never drift from what visitors
- * actually see.
- *
- * Listing/category/city CRUD is PR-4; this page names what is not built yet
- * rather than linking to screens that do not exist.
+ * The dashboard. Listing/category/city counts come through
+ * `lib/listings-repo` — the same seam every public page reads through — so
+ * the admin can never drift from what visitors actually see.
  */
 export default async function AdminHome() {
   const user = await currentUser();
@@ -27,6 +25,10 @@ export default async function AdminHome() {
     getCities(),
   ]);
   const activity = isAdmin ? await recentActivity(user, 10) : [];
+  const startOfMonth = new Date();
+  startOfMonth.setUTCDate(1);
+  startOfMonth.setUTCHours(0, 0, 0, 0);
+  const leadsThisMonth = isAdmin ? await countLeadsSince(user, startOfMonth) : null;
 
   return (
     <div className="space-y-8">
@@ -37,15 +39,40 @@ export default async function AdminHome() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="Negocios publicados" value={listings.total} />
         <Stat label="Rubros" value={categories.length} />
         <Stat label="Ciudades" value={cities.length} />
+        {leadsThisMonth !== null && <Stat label="Leads este mes" value={leadsThisMonth} />}
       </div>
 
       <section className="rounded-card border border-line bg-white p-5">
         <h2 className="font-serif text-[20px] font-semibold">Qué podés hacer hoy</h2>
         <ul className="mt-3 space-y-2 text-[15px]">
+          <li>
+            <Link href="/admin/negocios" className="font-bold text-blue hover:underline">
+              Negocios
+            </Link>{' '}
+            — cargá y editá las fichas de negocios.
+          </li>
+          <li>
+            <Link href="/admin/rubros" className="font-bold text-blue hover:underline">
+              Rubros
+            </Link>{' '}
+            y{' '}
+            <Link href="/admin/ciudades" className="font-bold text-blue hover:underline">
+              ciudades
+            </Link>{' '}
+            — administrá la taxonomía curada del sitio.
+          </li>
+          {isAdmin && (
+            <li>
+              <Link href="/admin/leads" className="font-bold text-blue hover:underline">
+                Leads
+              </Link>{' '}
+              — revisá los contactos que llegaron por el sitio.
+            </li>
+          )}
           {isAdmin && (
             <li>
               <Link href="/admin/usuarios" className="font-bold text-blue hover:underline">
@@ -54,10 +81,6 @@ export default async function AdminHome() {
               — creá y administrá las cuentas del equipo.
             </li>
           )}
-          <li className="text-ink2">
-            La edición de negocios, rubros y ciudades llega en la próxima entrega. Por ahora los datos
-            se cargan con <span className="font-mono text-[13px]">npm run db:import-seed</span>.
-          </li>
         </ul>
       </section>
 

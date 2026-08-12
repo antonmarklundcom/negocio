@@ -147,10 +147,21 @@ any `fields.ts` at all, which is the enforcement (PR-5 adds them behind `admin`)
          panel, then redeploy. The app throws at boot without it, by design.
       3. `npm run bootstrap-admin -- --email … --name "…"` — copy the printed
          password once, sign in at `/ingresar`, change it immediately.
-- [ ] **PR-4 — Core CRUD.** Listings, categories, cities, plus a read-only leads
+- [x] **PR-4 — Core CRUD.** Listings, categories, cities, plus a read-only leads
       list. The shell, `AdminTable`, `AdminForm`, the pure validation module and
       `activity_log` all landed in PR-3 — this PR is a `fields.ts` + column list
       + query module per entity, copying the `usuarios` slice exactly.
+      *Shipped: `lib/db/{listings-admin,taxonomy-admin,leads-admin}.ts`,
+      `lib/admin/blocks.ts` (pure parse/serialise for the JSON block fields),
+      four new `fields.ts`/`actions.ts` slices under `app/admin/{negocios,rubros,
+      ciudades,leads}`, 96 new vitest tests. `/admin/leads` is `admin`-only
+      (open question 1: a lead carries a member of the public's contact
+      details). Deleting a category or city with listings attached is refused
+      with the count, never a 500 (open question 2). No migration — every
+      column this PR touches shipped in PR-1. Canary run: `requireRole` deleted
+      from every function in both new query modules, all 50 access tests in
+      `tests/listings-admin-access.test.ts` and `tests/taxonomy-admin-access.test.ts`
+      went red, guard restored.*
 - [ ] **PR-5 — The awkward fields.** Hours editor, gallery/photo upload to
       object storage, `premiumUntil`, the `verified` flag, staleness/expiry
       dashboard.

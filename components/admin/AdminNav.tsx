@@ -25,6 +25,30 @@ export function AdminNav({ user }: { user: SessionUser }) {
                 Inicio
               </Link>
             </li>
+            <li>
+              <Link href="/admin/negocios" className="hover:text-blue">
+                Negocios
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/rubros" className="hover:text-blue">
+                Rubros
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/ciudades" className="hover:text-blue">
+                Ciudades
+              </Link>
+            </li>
+            {/* Hidden from editors is UX, not access control — `listLeads`'s own
+                guard is what actually stops them. */}
+            {isAdmin && (
+              <li>
+                <Link href="/admin/leads" className="hover:text-blue">
+                  Leads
+                </Link>
+              </li>
+            )}
             {isAdmin && (
               <li>
                 <Link href="/admin/usuarios" className="hover:text-blue">

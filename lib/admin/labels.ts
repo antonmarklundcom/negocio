@@ -1,4 +1,4 @@
-import type { ActivityAction, UserStatus } from '@/lib/db/schema';
+import type { ActivityAction, BlockKind, LeadSource, UserStatus } from '@/lib/db/schema';
 
 /**
  * User-facing labels for enum values. Kept apart from the schema so the
@@ -15,4 +15,18 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
 export const STATUS_LABELS: Record<UserStatus, string> = {
   active: 'Activo',
   suspended: 'Suspendido',
+};
+
+export const BLOCK_KIND_LABELS: Record<BlockKind, string> = {
+  food: 'Gastronomía (menú / especialidades)',
+  shop: 'Tienda (productos)',
+  service: 'Servicio (lista de servicios)',
+  default: 'Genérico (sin bloque especial)',
+};
+
+export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
+  listing_message: 'Mensaje desde ficha',
+  listing_whatsapp: 'WhatsApp desde ficha',
+  sumate: 'Sumate (alta de negocio)',
+  contacto: 'Contacto',
 };
