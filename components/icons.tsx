@@ -250,6 +250,13 @@ const CATEGORY_ICONS: Record<string, (p: IconProps) => JSX.Element> = {
   home: HomeCat,
 };
 
+/**
+ * The icon keys this module actually resolves. The admin category form builds
+ * its `icon` select from this list rather than offering free text — a typo
+ * there would render a missing icon on a live category page.
+ */
+export const CATEGORY_ICON_KEYS = Object.keys(CATEGORY_ICONS) as readonly string[];
+
 export function CategoryIcon({ name, ...p }: IconProps & { name: string }) {
   const Cmp = CATEGORY_ICONS[name] ?? Bag;
   return <Cmp {...p} />;

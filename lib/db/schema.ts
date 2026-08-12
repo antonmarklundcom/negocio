@@ -303,6 +303,8 @@ export type ActivityLogInsert = typeof activityLog.$inferInsert;
 export type UserRole = (typeof USER_ROLES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
+export type BlockKind = (typeof BLOCK_KINDS)[number];
+export type LeadSource = (typeof LEAD_SOURCES)[number];
 
 // Re-exported so the mapper's intent is readable next to the table it maps.
 export type { DayHours, Listing, Review };
