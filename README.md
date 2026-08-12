@@ -34,26 +34,36 @@ npm run test                    # vitest — pure tests, no MySQL needed
 
 ```
 app/                       Routes (App Router)
-  page.tsx                 Home
-  buscar/                  Search results (filters, list/map)
-  [categoria]/             Category landing (all cities)
-  [categoria]/[ciudad]/    Programmatic SEO landing
-  lugar/[slug]/            Business detail (Free & Premium = one template)
-  precios, sumar-negocio, contacto, nosotros
+  layout.tsx               <html>, fonts, analytics — nothing route-specific
+  (public)/                The consumer site; the group is NOT part of any URL
+    layout.tsx             Header / footer / bottom nav / promo banner
+    page.tsx               Home
+    buscar/                Search results (filters, list/map)
+    [categoria]/           Category landing (all cities)
+    [categoria]/[ciudad]/  Programmatic SEO landing
+    lugar/[slug]/          Business detail (Free & Premium = one template)
+    precios, sumar-negocio, contacto, nosotros
+  (auth)/                  ingresar · cambiar-contrasena (bare chrome)
+  admin/                   First-party staff panel (see "Admin & auth")
   api/v1/listings          GET list (zod-validated)
   api/v1/listings/[slug]   GET one
   api/v1/leads             POST single lead orchestrator
   sitemap.ts, robots.ts    Generated from the listings repo
 components/                UI (cards, pills, maps, forms, detail blocks)
+  admin/                   AdminTable · AdminForm · AdminNav (the whole panel UI)
 lib/                       Domain logic
   listings-repo.ts         THE single data-access surface (the seam)
   providers/               seed.ts · db.ts · query.ts (shared filtering)
-  db/                      schema.ts · client.ts · mappers.ts · listing-query.ts · leads.ts
+  db/                      schema.ts · client.ts · mappers.ts · listing-query.ts ·
+                           leads.ts · users.ts · activity-log.ts
+  auth/                    session.ts · roles.ts · password.ts · login.ts
+  admin/                   validation.ts (pure) · labels.ts
   types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts
   leads.ts                 Lead orchestrator (zod + fan-out)
   jsonld.tsx               schema.org builders
 drizzle/                   Generated SQL migrations (applied from a local machine)
 scripts/import-seed.ts     Idempotent seed → MySQL import (tsx)
+scripts/bootstrap-admin.ts Creates the first administrator, once (tsx)
 tests/                     vitest — pure, no database
 design/reference.html      Approved visual reference (the design source)
 legacy/                    The previous static prototype (kept for reference)
@@ -98,8 +108,8 @@ wrong is loud; a page that quietly renders stale data is not.
 ## Database (MySQL + Drizzle)
 
 Schema: `lib/db/schema.ts`, derived from `lib/types.ts` — never from a CMS's
-field names. Six tables: `listings`, `listing_hours`, `listing_gallery`,
-`categories`, `cities`, `leads`.
+field names. Eight tables: `listings`, `listing_hours`, `listing_gallery`,
+`categories`, `cities`, `leads`, `users`, `activity_log`.
 
 Two shape decisions, fixed in the schema and expensive to change afterwards:
 
@@ -145,6 +155,90 @@ is irrelevant and must stay that way.
 
 ---
 
+## Admin & auth
+
+The panel lives at **`/admin`** and replaces the need for any external CMS. Sign
+in at `/ingresar`. It requires **both** `DATABASE_URL` and `SESSION_SECRET`;
+without them `/admin` 404s, which is also why local dev on seed data has no
+panel at all.
+
+### Setting it up (once, from a local machine)
+
+```bash
+export DATABASE_URL="mysql://user:password@host:3306/database"
+npm run db:migrate                                   # applies drizzle/0001_* (users, activity_log)
+
+openssl rand -base64 32                              # → SESSION_SECRET in the app env panel, then redeploy
+
+npm run bootstrap-admin -- --email vos@negocio.com.py --name "Tu Nombre"
+```
+
+`bootstrap-admin` prints a random password **once**, sets
+`must_change_password`, and **refuses to run if an active admin already
+exists** — otherwise it would be a shell backdoor for minting admins that
+bypasses the panel's own audit log. Every further account is created from
+`/admin/usuarios`, where it is logged.
+
+### The rules this code is built on
+
+1. **`requireRole()` is the first statement of every function in
+   `lib/db/users.ts`**, before any database call. The `/admin` layout guard is a
+   **backstop**: a server action is reachable over HTTP without the layout ever
+   rendering, and Next.js does not re-run a layout for one.
+2. **Hidden buttons are UX, not access control.** The "Usuarios" link is hidden
+   from editors; the guard that stops them is in the query module.
+3. **No SQL outside `lib/db/`.** Pages get plain typed objects.
+4. **Every write logs before/after to `activity_log` inside the same
+   transaction** as the mutation — called from the query module, never a route.
+   Snapshots never contain a credential.
+5. **Validation is pure** (`lib/admin/validation.ts`): `FormData` in,
+   `{ok,data} | {ok:false,errors}` out. No DB, no session, no clock — which is
+   what lets every rule be tested without MySQL.
+6. **Server components by default.** `AdminForm` is the only client component in
+   the entire panel (`useFormState` keeps typed values on the page when
+   validation fails). Pagination is a link; search is `<form method="GET">`.
+7. **`/admin` 404s for the unauthorised, never 403.** "This exists but you may
+   not see it" is itself information.
+8. **`export const dynamic = 'force-dynamic'` on every admin route.** A session
+   is per-request; without it a guard added to a static page never runs.
+
+### Decisions worth not re-litigating
+
+- **scrypt from `node:crypto`, not bcrypt.** bcrypt is a native module compiled
+  against the Node ABI; on Hostinger's managed Node a platform upgrade turns
+  every login into a 500 until someone SSHs in and rebuilds. Hashes are stored
+  self-describing as `scrypt$N$r$p$salt$key`, so parameters can be raised later
+  and existing hashes upgrade transparently on next login. `maxmem` is raised
+  explicitly — Node's 32 MB default is below what N=2¹⁷ needs.
+- **Every login failure returns one identical message.** Unknown email, wrong
+  password, no password set, suspended. The unknown-email path hashes against a
+  cached decoy, and "suspended" is checked *after* the password, so response
+  time is not an account-enumeration oracle. The real reason goes to the log.
+- **The session cookie carries only** id, role, scope id and
+  `mustChangePassword`; 8-hour TTL, `httpOnly`, `sameSite: lax`, `secure` in
+  production. Everything else is read from the database at use time, so
+  suspending an account takes effect on the next request.
+- **No default password anywhere.** Admin-issued resets generate a random one
+  and return it as a one-time on-screen notice — deliberately not a redirect
+  carrying it in a query string, which would land in access logs and history.
+- **Roles are a satisfaction map, not a numeric ladder.** `admin` satisfies
+  `admin` + `editor`. The `owner_*` values exist in the enum (reserved for the
+  owner portal) but satisfy nothing staff-facing and cannot be assigned from any
+  form — with a numeric ladder, `owner_admin >= editor` would hand an owner a
+  staff screen.
+- **Password reset by email is deliberately deferred.** It needs another table
+  and a mail integration. That is acceptable only while nobody outside the team
+  has an account — a self-serve owner portal must not be announced to real
+  businesses until it exists, or a locked-out owner is recoverable only by an
+  admin.
+
+### What is not built yet
+
+Listing / category / city CRUD, the hours editor, gallery upload, `premiumUntil`
+and the `verified` flag. See ROADMAP Phase B, PR-4 and PR-5.
+
+---
+
 ## Environment variables
 
 See `.env.example`. The **minimum-to-launch** subset (site runs on seed data):
@@ -159,6 +253,11 @@ See `.env.example`. The **minimum-to-launch** subset (site runs on seed data):
 `DATABASE_URL` (MySQL) selects the DB provider (see **Database** above) and is
 required for running the migrations and the seed importer locally. Unset in
 local dev, the app renders from the seed dataset instead.
+
+`SESSION_SECRET` (≥32 chars, `openssl rand -base64 32`) seals the admin session
+cookie. The app **throws at boot** if it is missing or short rather than falling
+back to a default, because a default secret is a forgeable session. Changing it
+signs everyone out — which is also how you revoke every session at once.
 
 Add when ready: `GHL_WEBHOOK_URL`, `SHEETS_WEBHOOK_URL`, `LEADS_WEBHOOK_TOKEN`
 (lead routing); `NEXT_PUBLIC_MAP_TILES` (map style); `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`

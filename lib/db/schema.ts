@@ -218,6 +218,75 @@ export const leads = mysqlTable(
   }),
 );
 
+/**
+ * Staff and (from PR-6) business-owner accounts.
+ *
+ * The enum carries all four role values from day one even though only `admin`
+ * and `editor` are assignable today: widening a MySQL enum later is an ALTER on
+ * the live database, and the values cost nothing to reserve. The code surface is
+ * honestly two roles — `lib/auth/roles.ts` grants the owner roles nothing, and
+ * the users form offers only the staff pair.
+ */
+export const USER_ROLES = ['admin', 'editor', 'owner_admin', 'owner_editor'] as const;
+export const STAFF_ROLES = ['admin', 'editor'] as const;
+export const USER_STATUSES = ['active', 'suspended'] as const;
+
+export const users = mysqlTable(
+  'users',
+  {
+    id: int('id').autoincrement().primaryKey(),
+    email: varchar('email', { length: 160 }).notNull(),
+    name: varchar('name', { length: 120 }).notNull(),
+    /**
+     * Nullable so an invited-but-unset account can exist without a usable
+     * credential. That state must fail login with the SAME message as a wrong
+     * password — see `lib/auth/login.ts`.
+     */
+    passwordHash: varchar('password_hash', { length: 255 }),
+    role: mysqlEnum('role', USER_ROLES).notNull(),
+    status: mysqlEnum('status', USER_STATUSES).notNull().default('active'),
+    mustChangePassword: boolean('must_change_password').notNull().default(false),
+    lastLoginAt: timestamp('last_login_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+  },
+  (t) => ({
+    emailIdx: uniqueIndex('users_email_idx').on(t.email),
+  }),
+);
+
+export const ACTIVITY_ACTIONS = ['create', 'update', 'delete', 'archive'] as const;
+
+/**
+ * The audit trail. Written from inside the same transaction as every mutation
+ * (`lib/db/activity-log.ts`), never from a route.
+ *
+ * `entity_id` is a VARCHAR, not an INT — a deliberate deviation from the
+ * reference implementation. This schema keys `listings` on a varchar id and
+ * `categories`/`cities` on their slug, so an integer column could not log the
+ * site's three main entities at all.
+ *
+ * `user_id` is SET NULL on delete: an actor may leave, the record of what they
+ * did may not.
+ */
+export const activityLog = mysqlTable(
+  'activity_log',
+  {
+    id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+    userId: int('user_id').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+    entityType: varchar('entity_type', { length: 32 }).notNull(),
+    entityId: varchar('entity_id', { length: 64 }).notNull(),
+    action: mysqlEnum('action', ACTIVITY_ACTIONS).notNull(),
+    beforeJson: json('before_json').$type<Record<string, unknown>>(),
+    afterJson: json('after_json').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    entityIdx: index('activity_log_entity_idx').on(t.entityType, t.entityId),
+    createdIdx: index('activity_log_created_idx').on(t.createdAt),
+  }),
+);
+
 export type ListingRow = typeof listings.$inferSelect;
 export type ListingInsert = typeof listings.$inferInsert;
 export type ListingHoursRow = typeof listingHours.$inferSelect;
@@ -226,6 +295,14 @@ export type CategoryRow = typeof categories.$inferSelect;
 export type CityRow = typeof cities.$inferSelect;
 export type LeadRow = typeof leads.$inferSelect;
 export type LeadInsert = typeof leads.$inferInsert;
+export type UserRow = typeof users.$inferSelect;
+export type UserInsert = typeof users.$inferInsert;
+export type ActivityLogRow = typeof activityLog.$inferSelect;
+export type ActivityLogInsert = typeof activityLog.$inferInsert;
+
+export type UserRole = (typeof USER_ROLES)[number];
+export type UserStatus = (typeof USER_STATUSES)[number];
+export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 
 // Re-exported so the mapper's intent is readable next to the table it maps.
 export type { DayHours, Listing, Review };

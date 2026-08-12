@@ -2,11 +2,17 @@ import type { Metadata, Viewport } from 'next';
 import { Newsreader, Hanken_Grotesk } from 'next/font/google';
 import './globals.css';
 import { SITE_NAME, SITE_URL } from '@/lib/config';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { BottomNav } from '@/components/BottomNav';
-import { PromoBanner } from '@/components/PromoBanner';
 import { Analytics } from '@/components/Analytics';
+
+/**
+ * The root layout owns only what EVERY route needs: `<html>`, fonts, global CSS
+ * and analytics. The consumer chrome (header, footer, bottom nav, promo banner)
+ * lives in `app/(public)/layout.tsx` instead, so `/admin` and `/ingresar` can
+ * render their own chrome rather than inheriting a site header, a "Buscar"
+ * bottom bar and a promo banner aimed at visitors.
+ *
+ * Route groups do not affect URLs: `app/(public)/buscar` is still `/buscar`.
+ */
 
 const newsreader = Newsreader({
   subsets: ['latin'],
@@ -49,11 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es-PY" className={`${newsreader.variable} ${hanken.variable}`}>
       <body className="min-h-screen bg-cream text-ink antialiased">
-        <PromoBanner />
-        <Header />
-        <main className="pb-20 md:pb-0">{children}</main>
-        <Footer />
-        <BottomNav />
+        {children}
         <Analytics />
       </body>
     </html>

@@ -80,7 +80,12 @@ Explicit "what each role satisfies" map — **not a numeric ladder**.
 - `admin` — everything, including user management.
 - `editor` — listing/category/city CRUD, no user management, cannot set `verified`.
 - `owner_admin` / `owner_editor` — **PR-6 only.** Zero standing outside their
-  own listing.
+  own listing. The values exist in the `users.role` enum as of PR-3 (so PR-6
+  needs no enum migration) but satisfy nothing staff-facing and are rejected by
+  both the form and the query module.
+
+`editor` cannot set `verified` or `premiumUntil` — those fields do not exist in
+any `fields.ts` at all, which is the enforcement (PR-5 adds them behind `admin`).
 
 ### The PR sequence — one PR each, in order, nothing parallel
 
@@ -109,14 +114,43 @@ Explicit "what each role satisfies" map — **not a numeric ladder**.
       now persists every lead to the `leads` table (`lib/db/leads.ts`) before
       the webhook fan-out; a DB write failure is caught and logged, never fails
       the visitor's request.
-- [ ] **PR-3 — Auth foundation.** `iron-session`, `node:crypto` scrypt, `users`
-      table, `requireRole()`, `scopeToOwner()`, login/logout, forced password
-      change, `scripts/bootstrap-admin.ts`. **This is the PR to get right;**
-      PR-4 and PR-5 are mechanical once its two functions exist.
-- [ ] **PR-4 — `/admin` shell + core CRUD.** Listings, categories, cities. One
-      `AdminTable` (server component), one `AdminForm` (the only client
-      component in the entire admin), one pure validation module, `activity_log`
-      on every write.
+- [x] **PR-3 — Auth foundation.** `iron-session`, `node:crypto` scrypt, `users`
+      table, `requireRole()`, login/logout, forced password change,
+      `scripts/bootstrap-admin.ts`.
+      *Shipped: `lib/auth/{session,roles,password,login}.ts`,
+      `lib/db/{users,activity-log}.ts`, `lib/admin/{validation,labels}.ts`,
+      `components/admin/{AdminTable,AdminForm,AdminNav}.tsx`, `/ingresar`,
+      `/cambiar-contrasena`, `/admin` + `/admin/usuarios` CRUD,
+      `drizzle/0001_*.sql` (`users`, `activity_log`), 89 new vitest tests.
+      Four scope decisions taken here, recorded in README → Admin & auth:*
+      - ***No `scopeToOwner()`.*** Staff-only login; there is nothing to scope
+        against until `listings` gains an owner column, which is PR-6's
+        migration. Shipping unused scope functions would be dead code no test
+        could meaningfully guard. The `role` enum does carry all four values
+        already, so PR-6 needs no enum ALTER.
+      - ***Users CRUD landed here, not in PR-4.*** `bootstrap-admin` refuses to
+        run twice, so without it there is no way to create an editor except by
+        hand-written SQL — and account creation would live outside the activity
+        log. This pulls `AdminTable`/`AdminForm` forward, which is what makes
+        PR-4 "a field list and a column list per entity".
+      - ***`activity_log.entity_id` is VARCHAR(64), not INT*** — a deliberate
+        deviation from the reference build. `listings.id` is a varchar and
+        `categories`/`cities` are keyed on their slug, so an int column could not
+        log the site's three main entities.
+      - ***`app/(public)/` route group.*** The root layout kept the consumer
+        header, footer, bottom nav and promo banner, which `/admin` would have
+        inherited. Chrome moved into the group; URLs are unchanged.
+- [ ] **USER (PR-3, in this order — the panel 404s until all three are done):**
+      1. `npm run db:migrate` from a local machine — applies `drizzle/0001_*`.
+         Do this **before** the deploy or `/admin` 500s.
+      2. `openssl rand -base64 32` → `SESSION_SECRET` in the Hostinger app env
+         panel, then redeploy. The app throws at boot without it, by design.
+      3. `npm run bootstrap-admin -- --email … --name "…"` — copy the printed
+         password once, sign in at `/ingresar`, change it immediately.
+- [ ] **PR-4 — Core CRUD.** Listings, categories, cities, plus a read-only leads
+      list. The shell, `AdminTable`, `AdminForm`, the pure validation module and
+      `activity_log` all landed in PR-3 — this PR is a `fields.ts` + column list
+      + query module per entity, copying the `usuarios` slice exactly.
 - [ ] **PR-5 — The awkward fields.** Hours editor, gallery/photo upload to
       object storage, `premiumUntil`, the `verified` flag, staleness/expiry
       dashboard.
