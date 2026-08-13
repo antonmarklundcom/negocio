@@ -32,6 +32,34 @@ export function nowInAsuncion(now: Date = new Date()): { day: number; minutes: n
   return { day, minutes };
 }
 
+/** Asunción is UTC-3 year-round (DST was abolished in 2024) — see README → Database. */
+const ASUNCION_UTC_OFFSET_HOURS = 3;
+
+/**
+ * The current calendar month's `[start, end)` boundaries as UTC instants,
+ * computed from the `America/Asuncion` wall clock — for the monthly lead
+ * report (ROADMAP Phase D item 1). Pure over `now`, so it is unit-testable
+ * without waiting for a real month boundary.
+ */
+export function asuncionMonthRange(now: Date = new Date()): { start: Date; end: Date; monthLabel: string } {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: TIMEZONE, year: 'numeric', month: '2-digit' }).formatToParts(
+    now,
+  );
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  const year = parseInt(map.year ?? '1970', 10);
+  const month = parseInt(map.month ?? '1', 10); // 1-12
+
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0) + ASUNCION_UTC_OFFSET_HOURS * 3600 * 1000);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const end = new Date(Date.UTC(nextYear, nextMonth - 1, 1, 0, 0, 0) + ASUNCION_UTC_OFFSET_HOURS * 3600 * 1000);
+
+  const monthLabel = new Intl.DateTimeFormat('es-PY', { timeZone: TIMEZONE, month: 'long', year: 'numeric' }).format(now);
+
+  return { start, end, monthLabel };
+}
+
 function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(':');
   return parseInt(h ?? '0', 10) * 60 + parseInt(m ?? '0', 10);
