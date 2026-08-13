@@ -25,13 +25,14 @@ import {
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: 'Negocio' };
 
-export default async function EditListingPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export default async function EditListingPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const actor = await currentUser();
 
   // Not-found and not-allowed are the same 404 on purpose (ROADMAP rule 5).

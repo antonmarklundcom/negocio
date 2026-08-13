@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react';
+import type { ReactElement, SVGProps } from 'react';
 
 /**
  * Icon set — line icons matching the reference's stroke style (1.7–1.9 width,
@@ -237,7 +237,7 @@ function HomeCat(p: IconProps) {
   );
 }
 
-const CATEGORY_ICONS: Record<string, (p: IconProps) => JSX.Element> = {
+const CATEGORY_ICONS: Record<string, (p: IconProps) => ReactElement> = {
   utensils: Utensils,
   bag: Bag,
   wrench: Wrench,

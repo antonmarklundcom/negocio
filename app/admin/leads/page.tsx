@@ -19,11 +19,12 @@ function truncate(text: string | null, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-export default async function LeadsPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export default async function LeadsPage(
+  props: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { q, page, source } = parseLeadListParams(searchParams);
 
   // `listLeads` calls requireRole itself: admin-only (BUILD-SPEC-PR4 open

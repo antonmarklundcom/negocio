@@ -12,13 +12,14 @@ import { deleteCategoryAction, updateCategoryAction } from '../actions';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: 'Rubro' };
 
-export default async function EditCategoryPage({
-  params,
-  searchParams,
-}: {
-  params: { slug: string };
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export default async function EditCategoryPage(
+  props: {
+    params: Promise<{ slug: string }>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const actor = await currentUser();
 
   let category;

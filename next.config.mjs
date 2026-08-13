@@ -1,5 +1,11 @@
 import { withSentryConfig } from '@sentry/nextjs';
 
+// This app deliberately ships no `sentry.client.config.ts` / global-error.js
+// (README → Monitoring: the client SDK roughly doubled the shared JS bundle,
+// a bad trade for a mostly server-rendered site). Sentry's build-time warning
+// about that absence is expected, not a misconfiguration — suppress it.
+process.env.SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING = '1';
+
 // The R2/CDN host for uploaded listing photos (BUILD-SPEC-PR5 §2), derived
 // from the same env var `lib/media/url.ts` reads at render time — next/image
 // needs remote hosts allow-listed at BUILD time, so this has to be computed
@@ -21,10 +27,8 @@ const nextConfig = {
   // NEVER use output: 'export' — this site is server-rendered.
   reactStrictMode: true,
   poweredByHeader: false,
-  eslint: {
-    // Linting runs as its own CI step; never block production builds on it.
-    ignoreDuringBuilds: true,
-  },
+  // Next.js 16 decoupled ESLint from `next build` entirely (the `eslint`
+  // config key here is no longer recognised) — there is nothing to disable.
   images: {
     // Seed assets are first-party local SVGs; allow next/image to serve them.
     dangerouslyAllowSVG: true,
@@ -43,8 +47,8 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: true,
-  disableLogger: true,
   // No client-side source maps without a token: nothing to upload, and this
   // avoids widening the `next build` output for a feature that isn't active.
   sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  webpack: { treeshake: { removeDebugLogging: true } },
 });

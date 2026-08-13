@@ -21,7 +21,8 @@ function buildBaseParams(raw: RawParams): Record<string, string> {
   return out;
 }
 
-export default async function BuscarPage({ searchParams }: { searchParams: RawParams }) {
+export default async function BuscarPage(props: { searchParams: Promise<RawParams> }) {
+  const searchParams = await props.searchParams;
   const query = toListingQuery(searchParams);
   const { total } = await getListings(query);
 

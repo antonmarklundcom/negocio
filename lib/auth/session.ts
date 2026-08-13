@@ -75,8 +75,12 @@ export function sessionOptions(): SessionOptions {
   };
 }
 
-export function getSession(): Promise<IronSession<SessionData>> {
-  return getIronSession<SessionData>(cookies(), sessionOptions());
+export async function getSession(): Promise<IronSession<SessionData>> {
+  // Next.js 15 made `cookies()` async; iron-session 8.0.4 predates that and
+  // still expects the resolved cookie store, not a `Promise` — the fix is to
+  // await it here, not the codemod's `UnsafeUnwrappedCookies` escape hatch.
+  const cookieStore = await cookies();
+  return getIronSession<SessionData>(cookieStore, sessionOptions());
 }
 
 /**
