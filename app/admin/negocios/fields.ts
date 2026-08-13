@@ -1,4 +1,6 @@
 import type { FieldDef } from '@/components/admin/AdminForm';
+import type { DayHours } from '@/lib/types';
+import { formatPremiumUntilDate } from '@/lib/admin/validation';
 
 /**
  * The form, as data — same shape as `usuarios`. The taxonomy options are
@@ -107,4 +109,74 @@ export function listingFields(
   );
 
   return fields;
+}
+
+// ---------------------------------------------------------------------------
+// hours — a section of the same edit page (BUILD-SPEC-PR5 §1), its own
+// AdminForm/action. 42 flat text fields rather than a repeatable field: a
+// repeatable field means a second client component and a second validation
+// style outside the pure `parseHoursInput`.
+// ---------------------------------------------------------------------------
+
+const DAY_LABELS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const HOURS_SLOTS_PER_DAY = 3;
+
+export function hoursFields(): FieldDef[] {
+  const fields: FieldDef[] = [];
+  for (let day = 0; day <= 6; day++) {
+    for (let slot = 0; slot < HOURS_SLOTS_PER_DAY; slot++) {
+      const turno = slot + 1;
+      fields.push(
+        {
+          type: 'text',
+          name: `hours_${day}_${slot}_open`,
+          label: `${DAY_LABELS_ES[day]} — turno ${turno}: apertura`,
+          hint: turno === 1 ? 'Formato HH:MM. Dejá los dos campos vacíos si el negocio no abre ese día.' : 'HH:MM',
+        },
+        { type: 'text', name: `hours_${day}_${slot}_close`, label: `${DAY_LABELS_ES[day]} — turno ${turno}: cierre` },
+      );
+    }
+  }
+  return fields;
+}
+
+/** `DayHours[]` → the flat `hours_<day>_<slot>_open/close` keys `hoursFields()` expects. */
+export function hoursDefaultValues(hours: DayHours[]): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const dh of hours) {
+    dh.ranges.forEach((r, slot) => {
+      if (slot >= HOURS_SLOTS_PER_DAY) return; // the UI offers 3 slots; a 4th has never been needed
+      values[`hours_${dh.day}_${slot}_open`] = r.open;
+      values[`hours_${dh.day}_${slot}_close`] = r.close;
+    });
+  }
+  return values;
+}
+
+// ---------------------------------------------------------------------------
+// verified / premiumUntil (BUILD-SPEC-PR5 §3) — admin only, its own form and
+// its own query-module function, so the editor-facing update path is
+// physically unable to set these.
+// ---------------------------------------------------------------------------
+
+export function flagsFields(): FieldDef[] {
+  return [
+    {
+      type: 'checkbox',
+      name: 'verified',
+      label: 'Verificado',
+      hint: 'Marcá esto solo después de confirmar el negocio en persona o por teléfono.',
+    },
+    {
+      type: 'text',
+      name: 'premiumUntil',
+      label: 'Premium hasta',
+      hint:
+        'Formato AAAA-MM-DD. Vacío = no premium. Podés poner una fecha pasada para cortar el premium ya mismo.',
+    },
+  ];
+}
+
+export function flagsDefaultValues(verified: boolean, premiumUntil: number | null): Record<string, unknown> {
+  return { verified, premiumUntil: premiumUntil !== null ? formatPremiumUntilDate(premiumUntil) : '' };
 }

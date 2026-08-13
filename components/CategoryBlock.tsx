@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import type { Listing } from '@/lib/types';
 import { categoryBlockKind } from '@/lib/categories';
+import { mediaUrl } from '@/lib/media/url';
 import { WhatsAppButton } from './WhatsAppButton';
 
 /**
@@ -51,7 +52,7 @@ function FoodBlock({ listing }: { listing: Listing }) {
         <div className="mt-6 flex items-center gap-4 rounded-card bg-terra2 px-5 py-4">
           {destacadoItem.image && (
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
-              <Image src={destacadoItem.image} alt={destacadoItem.title} fill sizes="64px" className="object-cover" />
+              <Image src={mediaUrl(destacadoItem.image)} alt={destacadoItem.title} fill sizes="64px" className="object-cover" />
             </div>
           )}
           <div className="flex-1">
@@ -78,7 +79,7 @@ function ShopBlock({ listing }: { listing: Listing }) {
           <div key={p.title} className="overflow-hidden rounded-card border border-line bg-paper">
             <div className="relative h-24 w-full">
               {p.image ? (
-                <Image src={p.image} alt={p.title} fill sizes="160px" className="object-cover" />
+                <Image src={mediaUrl(p.image)} alt={p.title} fill sizes="160px" className="object-cover" />
               ) : (
                 <div className="h-full w-full bg-[linear-gradient(150deg,#F4E3D6,#E9D2BE)]" />
               )}

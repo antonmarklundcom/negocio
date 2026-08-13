@@ -5,6 +5,7 @@ import { hasRole } from '@/lib/auth/roles';
 import { getListings, getCategories, getCities } from '@/lib/listings-repo';
 import { recentActivity } from '@/lib/db/activity-log';
 import { countLeadsSince } from '@/lib/db/leads-admin';
+import { listingStaleness } from '@/lib/db/listings-admin';
 import { ACTION_LABELS } from '@/lib/admin/labels';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,13 @@ export default async function AdminHome() {
   startOfMonth.setUTCDate(1);
   startOfMonth.setUTCHours(0, 0, 0, 0);
   const leadsThisMonth = isAdmin ? await countLeadsSince(user, startOfMonth) : null;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  // `hasRole` mirrors the guard inside `listingStaleness` itself; checking
+  // here too just avoids calling it (and its default `getDb()` parameter)
+  // for a session the layout guard should already have turned away.
+  const staleness = hasRole(user, ['admin', 'editor'])
+    ? await listingStaleness(user, nowSeconds)
+    : { porVencer: 0, vencido: 0, sinActualizar: 0, sinContacto: 0, topPorVencer: [] };
 
   return (
     <div className="space-y-8">
@@ -84,6 +92,30 @@ export default async function AdminHome() {
         </ul>
       </section>
 
+      <section>
+        <h2 className="font-serif text-[20px] font-semibold">Vencimientos y calidad de datos</h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-4">
+          <StatLink label="Premium por vencer (30 días)" value={staleness.porVencer} href="/admin/negocios?estado=por-vencer" />
+          <StatLink label="Premium vencido (90 días)" value={staleness.vencido} href="/admin/negocios?estado=vencido" />
+          <StatLink label="Sin actualizar (180 días)" value={staleness.sinActualizar} href="/admin/negocios?estado=sin-actualizar" />
+          <StatLink label="Sin datos de contacto" value={staleness.sinContacto} href="/admin/negocios?estado=sin-contacto" />
+        </div>
+        {staleness.topPorVencer.length > 0 && (
+          <ul className="mt-3 divide-y divide-line rounded-card border border-line bg-white">
+            {staleness.topPorVencer.map((row) => (
+              <li key={row.id} className="flex flex-wrap gap-x-2 px-4 py-3 text-[14px]">
+                <Link href={`/admin/negocios/${row.id}`} className="font-bold text-blue hover:underline">
+                  {row.name}
+                </Link>
+                <span className="ml-auto font-mono text-[13px] tabular-nums text-ink2">
+                  {row.premiumUntil ? new Date(row.premiumUntil * 1000).toISOString().slice(0, 10) : '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {isAdmin && (
         <section>
           <h2 className="font-serif text-[20px] font-semibold">Actividad reciente</h2>
@@ -119,5 +151,14 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div className="font-mono text-[28px] font-bold tabular-nums">{value}</div>
       <div className="mt-1 text-[14px] text-ink2">{label}</div>
     </div>
+  );
+}
+
+function StatLink({ label, value, href }: { label: string; value: number; href: string }) {
+  return (
+    <Link href={href} className="block rounded-card border border-line bg-white p-5 hover:border-blue">
+      <div className="font-mono text-[28px] font-bold tabular-nums">{value}</div>
+      <div className="mt-1 text-[14px] text-ink2">{label}</div>
+    </Link>
   );
 }

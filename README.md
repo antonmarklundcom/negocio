@@ -234,10 +234,45 @@ bypasses the panel's own audit log. Every further account is created from
 
 ### What is not built yet
 
-The hours editor, gallery upload, `premiumUntil` and the `verified` flag. See
-ROADMAP Phase B, PR-5. Listing / category / city CRUD (`/admin/negocios`,
-`/admin/rubros`, `/admin/ciudades`) and a read-only `/admin/leads` list
-(`admin`-only) shipped in PR-4.
+Phase B (native backend) is complete as of PR-5: listing / category / city CRUD,
+a read-only `/admin/leads` list, the hours editor, gallery upload, `premiumUntil`
+and `verified`. See ROADMAP Phase D for what comes next.
+
+---
+
+## Media (Cloudflare R2)
+
+Listing photos (gallery + cover) are uploaded through a server action, never a
+browser-presigned direct PUT — the file passes through the app so `sharp` can
+strip EXIF (including GPS) and re-encode to WebP before anything is stored. See
+`lib/media/upload.ts`.
+
+**The database column stores the object KEY** (`listings/abc/def.webp`), never
+the full URL — moving to a different CDN origin later is a one-line env change,
+not a hand-written `UPDATE` over every row. `lib/media/url.ts`'s `mediaUrl()`
+resolves a stored value at render time and has two escape hatches that must
+keep working: an absolute URL (legacy data) and a root-relative `/seed/*.svg`
+path (the first-party seed placeholders in `public/`).
+
+Five env vars, **required together** (`mediaConfigured()` checks all five):
+
+```
+R2_ACCOUNT_ID
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET
+NEXT_PUBLIC_MEDIA_BASE_URL     # public bucket/CDN origin, no trailing slash
+```
+
+**The R2 bucket does not exist yet.** Until these five are set, the gallery
+section on `/admin/negocios/[id]` shows "Falta configurar el almacenamiento de
+imágenes" instead of an upload button — the rest of the panel, and the public
+site, are unaffected. The app boots and serves normally either way. Create the
+bucket and an API token in the Cloudflare dashboard, set the five vars in the
+Hostinger app env panel, and redeploy to activate uploads.
+
+Deleting a gallery row does not delete the R2 object — storage is cheap and an
+orphaned object is recoverable, a deleted one is not.
 
 ---
 

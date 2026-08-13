@@ -1,6 +1,7 @@
 import type { Listing } from './types';
 import { SITE_URL, SITE_NAME, listingPath, REVIEWS_ENABLED } from './config';
 import { toSchemaOpeningHours } from './hours';
+import { mediaUrl } from './media/url';
 import type { Crumb } from '@/components/Breadcrumb';
 
 /** schema.org LocalBusiness for a detail page (§9). Only emits real data. */
@@ -13,7 +14,11 @@ export function listingJsonLd(l: Listing): Record<string, unknown> {
     url: `${SITE_URL}${listingPath(l.slug)}`,
   };
   if (l.description) data.description = l.description;
-  if (l.coverImage) data.image = `${SITE_URL}${l.coverImage}`;
+  if (l.coverImage) {
+    const resolved = mediaUrl(l.coverImage);
+    // A relative key there would be invalid structured data — always emit an absolute URL.
+    data.image = /^https?:\/\//.test(resolved) ? resolved : `${SITE_URL}${resolved}`;
+  }
   if (l.phone) data.telephone = l.phone;
   if (l.address || l.ciudadLabel) {
     data.address = {

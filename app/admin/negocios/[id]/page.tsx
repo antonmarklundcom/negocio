@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminForm } from '@/components/admin/AdminForm';
@@ -6,13 +7,31 @@ import { currentUser } from '@/lib/auth/session';
 import { hasRole } from '@/lib/auth/roles';
 import { getCategories, getCities } from '@/lib/listings-repo';
 import { getListingForEdit } from '@/lib/db/listings-admin';
-import { listingFields } from '../fields';
-import { deleteListingAction, updateListingAction } from '../actions';
+import { mediaConfigured } from '@/lib/media/upload';
+import { mediaUrl } from '@/lib/media/url';
+import { flagsDefaultValues, flagsFields, hoursDefaultValues, hoursFields, listingFields } from '../fields';
+import {
+  deleteListingAction,
+  moveGalleryImageAction,
+  removeGalleryImageAction,
+  saveFlagsAction,
+  saveHoursAction,
+  setCoverImageAction,
+  updateGalleryAltAction,
+  updateListingAction,
+  uploadGalleryImageAction,
+} from '../actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: 'Negocio' };
 
-export default async function EditListingPage({ params }: { params: { id: string } }) {
+export default async function EditListingPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const actor = await currentUser();
 
   // Not-found and not-allowed are the same 404 on purpose (ROADMAP rule 5).
@@ -27,6 +46,11 @@ export default async function EditListingPage({ params }: { params: { id: string
   const [categories, cities] = await Promise.all([getCategories(), getCities()]);
   const update = updateListingAction.bind(null, params.id);
   const remove = deleteListingAction.bind(null, params.id);
+  const saveHours = saveHoursAction.bind(null, params.id);
+  const saveFlags = saveFlagsAction.bind(null, params.id);
+  const upload = uploadGalleryImageAction.bind(null, params.id);
+  const galleryError = typeof searchParams.galleryError === 'string' ? searchParams.galleryError : undefined;
+  const isAdmin = hasRole(actor, ['admin']);
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -49,7 +73,140 @@ export default async function EditListingPage({ params }: { params: { id: string
         defaultValues={{ ...listing }}
       />
 
-      {hasRole(actor, ['admin']) && (
+      <section className="rounded-card border border-line bg-white p-5">
+        <h2 className="font-serif text-[20px] font-semibold">Horarios</h2>
+        <p className="mt-1 text-[15px] text-ink2">
+          Dejá los dos campos de un turno vacíos si el negocio no abre ese día. Un turno que cierra antes de la
+          hora en que abre cruza la medianoche (ej. 22:00 a 02:00).
+        </p>
+        <div className="mt-4">
+          <AdminForm
+            fields={hoursFields()}
+            action={saveHours}
+            submitLabel="Guardar horarios"
+            defaultValues={hoursDefaultValues(listing.hours)}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-card border border-line bg-white p-5">
+        <h2 className="font-serif text-[20px] font-semibold">Galería</h2>
+        {!mediaConfigured() ? (
+          <p className="mt-3 rounded-card border border-line bg-cream px-4 py-3 text-[14px] text-ink2">
+            Falta configurar el almacenamiento de imágenes.
+          </p>
+        ) : (
+          <>
+            {galleryError && (
+              <p role="alert" className="mt-2 text-[14px] font-medium text-terra">
+                {galleryError}
+              </p>
+            )}
+
+            {listing.gallery.length > 0 && (
+              <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {listing.gallery.map((img, i) => {
+                  const isCover = listing.coverImage === img.key;
+                  const move = moveGalleryImageAction.bind(null, params.id, img.id);
+                  const remove = removeGalleryImageAction.bind(null, params.id, img.id);
+                  const setCover = setCoverImageAction.bind(null, params.id, img.key);
+                  const updateAlt = updateGalleryAltAction.bind(null, params.id, img.id);
+                  return (
+                    <li key={img.id} className="space-y-2 rounded-card border border-line p-2">
+                      <div className="relative h-24 w-full overflow-hidden rounded-[10px]">
+                        <Image src={mediaUrl(img.key)} alt={img.alt ?? ''} fill sizes="200px" className="object-cover" />
+                        {isCover && (
+                          <span className="absolute left-1.5 top-1.5 rounded-full bg-terra px-2 py-0.5 text-[11px] font-bold text-white">
+                            Portada
+                          </span>
+                        )}
+                      </div>
+                      <form action={updateAlt} className="flex gap-1">
+                        <input
+                          type="text"
+                          name="alt"
+                          defaultValue={img.alt ?? ''}
+                          placeholder="Describí la foto"
+                          maxLength={200}
+                          aria-label={`Texto alternativo de la foto ${i + 1}`}
+                          className="min-w-0 flex-1 rounded-[8px] border border-line px-2 py-1 text-[12px]"
+                        />
+                        <button type="submit" className="shrink-0 text-[11px] font-bold text-blue">
+                          Guardar
+                        </button>
+                      </form>
+                      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                        <form action={move.bind(null, 'up')}>
+                          <button type="submit" className="font-bold text-blue">
+                            ↑ Mover
+                          </button>
+                        </form>
+                        <form action={move.bind(null, 'down')}>
+                          <button type="submit" className="font-bold text-blue">
+                            ↓ Mover
+                          </button>
+                        </form>
+                        {!isCover && (
+                          <form action={setCover}>
+                            <button type="submit" className="font-bold text-blue">
+                              Portada
+                            </button>
+                          </form>
+                        )}
+                        <form action={remove}>
+                          <button type="submit" className="font-bold text-terra">
+                            Quitar
+                          </button>
+                        </form>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <form action={upload} encType="multipart/form-data" className="mt-4 flex flex-wrap items-center gap-3">
+              <input
+                type="file"
+                name="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                required
+                aria-label="Subir foto"
+                className="text-[13px]"
+              />
+              <button
+                type="submit"
+                className="rounded-card border-[1.5px] border-blue px-4 py-2 text-sm font-bold text-blue disabled:opacity-50"
+                disabled={listing.gallery.length >= 12}
+              >
+                Subir foto
+              </button>
+              {listing.gallery.length >= 12 && (
+                <span className="text-[13px] text-ink2">Llegaste al máximo de 12 fotos.</span>
+              )}
+            </form>
+          </>
+        )}
+      </section>
+
+      {isAdmin && (
+        <section className="rounded-card border border-line bg-white p-5">
+          <h2 className="font-serif text-[20px] font-semibold">Verificación y premium</h2>
+          <p className="mt-1 text-[15px] text-ink2">
+            Solo visible para administradores. Estos campos no aparecen en el formulario de un editor.
+          </p>
+          <div className="mt-4">
+            <AdminForm
+              fields={flagsFields()}
+              action={saveFlags}
+              submitLabel="Guardar"
+              defaultValues={flagsDefaultValues(listing.verified, listing.premiumUntil)}
+            />
+          </div>
+        </section>
+      )}
+
+      {isAdmin && (
         <section className="rounded-card border border-terra bg-terra/5 p-5">
           <h2 className="font-serif text-[20px] font-semibold">Eliminar negocio</h2>
           <p className="mt-1 text-[15px] text-ink2">

@@ -47,14 +47,15 @@ export default async function ListingsPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const { q, page, categoria, ciudad } = parseListingListParams(searchParams);
+  const { q, page, categoria, ciudad, estado } = parseListingListParams(searchParams);
+  const nowSeconds = Math.floor(Date.now() / 1000);
 
   let result;
   let categories;
   let cities;
   try {
     [result, categories, cities] = await Promise.all([
-      listListings(await currentUser(), { q, page, categoria, ciudad }),
+      listListings(await currentUser(), { q, page, categoria, ciudad, estado, nowSeconds }),
       getCategories(),
       getCities(),
     ]);
@@ -69,6 +70,7 @@ export default async function ListingsPage({
       ...(q ? { q } : {}),
       ...(categoria ? { categoria } : {}),
       ...(ciudad ? { ciudad } : {}),
+      ...(estado ? { estado } : {}),
       page: String(p),
     })}`;
 
@@ -84,7 +86,17 @@ export default async function ListingsPage({
         </Link>
       </div>
 
+      {estado && (
+        <p className="text-[14px] text-ink2">
+          Filtro activo: <span className="font-bold">{estado}</span> ·{' '}
+          <Link href="/admin/negocios" className="text-blue hover:underline">
+            Quitar
+          </Link>
+        </p>
+      )}
+
       <form method="GET" className="flex flex-wrap gap-2">
+        {estado && <input type="hidden" name="estado" value={estado} />}
         <input
           type="search"
           name="q"
