@@ -341,8 +341,23 @@ Repo, docs and comments in English.
        top of `/admin/negocios/[id]`. No owner-facing surface — PR-6 (owner
        portal) is still deferred; staff read this themselves for now. No
        migration.*
-2. [ ] Manual premium sales flow — sell via WhatsApp, invoice via
+2. [x] Manual premium sales flow — sell via WhatsApp, invoice via
        Pagopar/Bancard/Tigo Money, set `premiumUntil` in the admin.
+       *Shipped: the sale and the invoice happen outside the app (WhatsApp,
+       Pagopar/Bancard/Tigo Money — none of that is this app's concern);
+       what shipped is applying a sold package fast and correctly.
+       `lib/db/listings-admin.ts`'s `extendListingPremium(actor, id, days,
+       nowSeconds)` (admin only) takes one of three sold durations
+       (`PREMIUM_PACKAGE_DAYS = [30, 90, 365]`, enforced in the query module,
+       not just the UI) and extends from the **current expiry** when still
+       premium, or from today when expired/never premium — a renewal bought
+       before the old package runs out must not shorten what was already
+       paid for. Three quick buttons ("+ 30 días" / "+ 90 días" / "+ 1 año")
+       on `/admin/negocios/[id]` replace computing and typing a date by
+       hand; the existing `verified`/`premiumUntil` form from PR-5 is still
+       there for anything the packages don't cover. A "Vender por WhatsApp"
+       link (when the listing has a WhatsApp number) opens the sales chat
+       with a canned opener. No migration.*
 3. [ ] "Destacado en portada" — home page featured slots as paid add-on
 4. [ ] QR code per premium listing (printable sticker → profile)
 5. [ ] First-party reviews (UI gate `NEXT_PUBLIC_REVIEWS_ENABLED` already exists)

@@ -10,6 +10,7 @@ import {
   addGalleryImage,
   createListing,
   deleteListing,
+  extendListingPremium,
   getListingForEdit,
   isListingSlugTaken,
   listListings,
@@ -163,6 +164,50 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
     });
   });
 
+  describe('extendListingPremium (manual premium sales flow)', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(extendListingPremium(ANONYMOUS, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects an editor AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(extendListingPremium(EDITOR, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects a package outside the sold set AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      // @ts-expect-error deliberately invalid — the guard must reject even a
+      // value that only bypasses TypeScript, not just the UI's button list.
+      await expect(extendListingPremium(ADMIN, 'x', 14, 1_700_000_000, db)).rejects.toThrow(
+        /paquete de premium/,
+      );
+      expect(touched).toEqual([]);
+    });
+
+    it('extends from the current expiry when still premium, not from today', async () => {
+      const now = 1_700_000_000;
+      const currentExpiry = now + 10 * 86400; // still 10 days of premium left
+      const { tx, updateCalls } = fakePremiumTx({ verified: false, premiumUntil: currentExpiry });
+      const db = { transaction: (cb: (tx: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await extendListingPremium(ADMIN, 'x', 30, now, db);
+      expect(updateCalls()).toEqual([currentExpiry + 30 * 86400]);
+    });
+
+    it('extends from today when the current premium already expired', async () => {
+      const now = 1_700_000_000;
+      const expiredAt = now - 5 * 86400;
+      const { tx, updateCalls } = fakePremiumTx({ verified: false, premiumUntil: expiredAt });
+      const db = { transaction: (cb: (tx: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await extendListingPremium(ADMIN, 'x', 30, now, db);
+      expect(updateCalls()).toEqual([now + 30 * 86400]);
+    });
+  });
+
   describe('gallery mutations reject a foreign imageId — same error as a non-existent one (ROADMAP rule 5)', () => {
     it('moveGalleryImage changes nothing for an imageId belonging to a different listing', async () => {
       const { tx, writesRecorded } = fakeGalleryTx([{ id: 5, url: 'listings/x/a.webp', alt: null, position: 0 }]);
@@ -246,4 +291,33 @@ function fakeGalleryTx(rows: { id: number; url: string; alt: string | null; posi
   };
 
   return { tx, writesRecorded: () => wrote };
+}
+
+/** A minimal fake transaction handle for `extendListingPremium`, recording the `premiumUntil` value each `update().set()` call is given. */
+function fakePremiumTx(existing: { verified: boolean; premiumUntil: number | null }) {
+  const updateCalls: (number | null)[] = [];
+
+  function chain(result: unknown) {
+    const obj: Record<string, unknown> = {
+      from: () => obj,
+      where: () => obj,
+      limit: () => obj,
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject),
+    };
+    return obj;
+  }
+
+  const tx = {
+    select: () => chain([existing]),
+    update: () => ({
+      set: (values: { premiumUntil: number | null }) => {
+        updateCalls.push(values.premiumUntil);
+        return { where: () => Promise.resolve() };
+      },
+    }),
+    insert: () => ({ values: () => Promise.resolve() }),
+  };
+
+  return { tx, updateCalls: () => updateCalls };
 }
