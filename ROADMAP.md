@@ -381,7 +381,22 @@ Repo, docs and comments in English.
        fixed 30/90-day packages (not arbitrary dates), mirroring PR-5's
        premium-package pattern — reconsider if a business wants a custom
        duration.*
-4. [ ] QR code per premium listing (printable sticker → profile)
+4. [x] QR code per premium listing (printable sticker → profile)
+       *Shipped: `qrcode` (pure JS, no native bindings — same reasoning as
+       `sharp`/`aws4fetch`) added as a `dependencies` entry, `@types/qrcode`
+       likewise (not `devDependencies` — this repo already puts `@types/*`
+       in `dependencies` specifically so `next build`'s own type-check
+       doesn't fail on Hostinger's `npm ci --omit=dev`; confirmed by
+       actually hitting that exact failure with `@types/qrcode` in
+       `devDependencies` during the from-scratch production-build
+       reproduction, then moving it). `lib/media/qr.ts`'s `listingQrSvg()`
+       renders an inline SVG server-side — no external QR service, no
+       client component. New route `/admin/negocios/[id]/qr`: a print-
+       friendly page (`print:hidden` on the admin nav and page chrome) with
+       the code, the business name and its public URL. Linked from the
+       listing edit page. Available for any listing, not gated on
+       Premium — a business considering Premium can be shown the sticker as
+       part of the pitch before buying. No migration.*
 5. [ ] First-party reviews (UI gate `NEXT_PUBLIC_REVIEWS_ENABLED` already exists)
 6. [ ] SEO content: barrio pages + "Los mejores [rubro] en [ciudad]" pages
 7. [ ] Paid "Verificado" visit as a service

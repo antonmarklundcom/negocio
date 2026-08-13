@@ -13,7 +13,7 @@ import { logoutAction } from '@/app/admin/actions';
 export function AdminNav({ user }: { user: SessionUser }) {
   const isAdmin = hasRole(user, ['admin']);
   return (
-    <header className="border-b border-line bg-white">
+    <header className="border-b border-line bg-white print:hidden">
       <div className="mx-auto flex max-w-content flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 md:px-8">
         <Link href="/admin" className="font-serif text-[19px] font-semibold">
           negocio<span className="text-terra">.admin</span>

@@ -74,7 +74,15 @@ export default async function EditListingPage(
         <Link href="/admin/negocios" className="text-[14px] font-bold text-blue hover:underline">
           ← Negocios
         </Link>
-        <h1 className="mt-2 font-serif text-[28px] font-semibold">{listing.name}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <h1 className="font-serif text-[28px] font-semibold">{listing.name}</h1>
+          <Link
+            href={`/admin/negocios/${params.id}/qr`}
+            className="rounded-card border-[1.5px] border-blue px-3 py-1.5 text-[13px] font-bold text-blue"
+          >
+            Código QR
+          </Link>
+        </div>
         <p className="mt-1 font-mono text-[14px] text-ink2">/lugar/{listing.slug}</p>
       </div>
 
