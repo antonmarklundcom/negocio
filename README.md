@@ -373,7 +373,9 @@ fallback (initial + category icon), never an empty grey box.
 
 Standard Next.js server (`next build` / `next start`). **Never** use
 `output: 'export'`. CI runs `npm ci`, `npm run typecheck`, `npm run test` and
-`npm run build` on every push and PR.
+`npm run build` on every push and PR, plus a `production-build` job (no
+devDependencies) and an `e2e` job (Playwright smoke tests) — see **Testing**
+below.
 
 1. hPanel → **Websites** → **Add Website** → **Node.js Apps**
 2. **Import Git Repository** → branch `main`
@@ -399,8 +401,9 @@ while CI stayed green.
 
 The arrangement that prevents it:
 
-- **`tsconfig.json`** — what `next build` checks. Excludes `tests/`,
-  `drizzle.config.ts` and `vitest.config.ts`: tooling, unreachable from the app.
+- **`tsconfig.json`** — what `next build` checks. Excludes `tests/`, `e2e/`,
+  `drizzle.config.ts`, `vitest.config.ts` and `playwright.config.ts`: tooling,
+  unreachable from the app.
 - **`tsconfig.typecheck.json`** — what `npm run typecheck` and CI check.
   Includes everything, so those files stay strictly typed.
 - **CI's `production-build` job** — installs with `npm ci --omit=dev` under
@@ -412,3 +415,41 @@ this. `server.js` boots Next programmatically rather than via `next start`, so
 nothing else sets it — and `lib/auth/session.ts` reads it to decide whether the
 session cookie carries the `secure` flag. Unsetting it would ship the admin
 session cookie over plain HTTP.
+
+---
+
+## Monitoring
+
+**Error tracking (Sentry).** `instrumentation.ts` initialises the server and
+edge SDKs (`sentry.server.config.ts` / `sentry.edge.config.ts`) when
+`SENTRY_DSN` is set; unset, `Sentry.init` runs with `enabled: false` — no
+network calls, no effect on boot. **Deliberately server/edge only, no browser
+SDK**: a client-side `Sentry.init` added roughly 67 kB to this app's shared JS
+bundle (87.8 kB → 155 kB), which is a bad trade for a mostly server-rendered
+directory site where the failures worth paging on are 500s and admin-action
+errors, not client render errors. Revisit if that stops being true.
+
+Create a free project at sentry.io, set `SENTRY_DSN` in the Hostinger env
+panel, redeploy. Source maps for readable stack traces are optional and need
+three more vars (`SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`); unset,
+`next.config.mjs`'s `withSentryConfig` just skips the upload.
+
+**Uptime (UptimeRobot).** `GET /api/health` returns `{ok: true}` and
+deliberately does **not** touch the database — it proves the Next.js server
+itself is up, which is what "is the site down" means for a visitor, since most
+pages keep serving through `lib/listings-repo.ts` even through a brief MySQL
+blip. Point a free UptimeRobot HTTP monitor at
+`https://negocio.com.py/api/health`.
+
+## Testing
+
+`npm test` (vitest) is pure — no MySQL, no browser, safe to run anywhere.
+
+`npm run test:e2e` (Playwright) runs the smoke suite in `e2e/` against a
+production build on the **built-in seed data** — no `DATABASE_URL` needed. It
+starts its own server (`npm run build && npm run start`) unless
+`PLAYWRIGHT_BASE_URL` is set. First run: `npx playwright install --with-deps
+chromium`. CI runs it as the `e2e` job on every push/PR, in parallel with
+`build` and `production-build`. This is a smoke suite, not a regression suite
+— the golden path a visitor takes (home → listing → search → category), plus
+`/admin` 404-ing with no database and an unknown route 404-ing.
