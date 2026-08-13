@@ -18,7 +18,17 @@ export interface AdminColumn<Row> {
 export interface AdminTableProps<Row extends { id: number | string }> {
   columns: AdminColumn<Row>[];
   rows: Row[];
-  editHref: (row: Row) => string;
+  /**
+   * Omitted by entities that have no edit page. A row whose only action is
+   * "approve" or "reject" must not render an "Editar" link that goes nowhere.
+   */
+  editHref?: (row: Row) => string;
+  /**
+   * Extra per-row controls (server-action `<form>`s), rendered in the same
+   * "Acciones" cell. With neither this nor `editHref`, the column is not
+   * rendered at all.
+   */
+  rowActions?: (row: Row) => React.ReactNode;
   /** Honest, context-specific copy — never "No results". */
   emptyLabel: string;
   page: number;
@@ -30,11 +40,14 @@ export function AdminTable<Row extends { id: number | string }>({
   columns,
   rows,
   editHref,
+  rowActions,
   emptyLabel,
   page,
   totalPages,
   buildPageHref,
 }: AdminTableProps<Row>) {
+  const hasActions = !!editHref || !!rowActions;
+
   if (rows.length === 0) {
     return (
       <p className="rounded-card border border-line bg-white px-4 py-8 text-center text-[15px] text-ink2">
@@ -54,9 +67,11 @@ export function AdminTable<Row extends { id: number | string }>({
                   {col.header}
                 </th>
               ))}
-              <th className="px-4 py-3 text-right text-[12px] font-bold uppercase tracking-wide text-ink2">
-                Acciones
-              </th>
+              {hasActions && (
+                <th className="px-4 py-3 text-right text-[12px] font-bold uppercase tracking-wide text-ink2">
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -70,11 +85,18 @@ export function AdminTable<Row extends { id: number | string }>({
                     {col.cell(row)}
                   </td>
                 ))}
-                <td className="px-4 py-3 text-right">
-                  <Link href={editHref(row)} className="text-[14px] font-bold text-blue hover:underline">
-                    Editar
-                  </Link>
-                </td>
+                {hasActions && (
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                      {rowActions?.(row)}
+                      {editHref && (
+                        <Link href={editHref(row)} className="text-[14px] font-bold text-blue hover:underline">
+                          Editar
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

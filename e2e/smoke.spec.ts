@@ -47,6 +47,16 @@ test('health check endpoint responds', async ({ request }) => {
   expect(body.ok).toBe(true);
 });
 
+test('the reviews endpoint 404s while the feature is gated off', async ({ request }) => {
+  // This CI run has neither NEXT_PUBLIC_REVIEWS_ENABLED nor DATABASE_URL, so
+  // the whole first-party reviews feature (ROADMAP Phase D item 5) must be
+  // inert — no public write path, not even a validation error.
+  const res = await request.post('/api/v1/reviews', {
+    data: { listingId: 'x', author: 'Bot', rating: 5, body: 'Excelente excelente' },
+  });
+  expect(res.status()).toBe(404);
+});
+
 test('an unknown route 404s', async ({ page }) => {
   const res = await page.goto('/esto-no-existe-en-ningun-lado');
   expect(res?.status()).toBe(404);

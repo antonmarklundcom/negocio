@@ -40,6 +40,14 @@ export function AdminNav({ user }: { user: SessionUser }) {
                 Ciudades
               </Link>
             </li>
+            {/* Reseñas is visible to editors too: moderating public-facing
+                text is the editor role's existing job, and a review carries no
+                contact details. `listReviews` is guarded ['admin','editor']. */}
+            <li>
+              <Link href="/admin/resenas" className="hover:text-blue">
+                Reseñas
+              </Link>
+            </li>
             {/* Hidden from editors is UX, not access control — `listLeads`'s own
                 guard is what actually stops them. */}
             {isAdmin && (

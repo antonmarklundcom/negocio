@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getListingBySlug } from '@/lib/listings-repo';
+import { dbConfigured } from '@/lib/db/client';
+import { listApprovedReviews } from '@/lib/db/reviews';
 import { isPremium } from '@/lib/listing';
 import { computeOpenState } from '@/lib/hours';
 import { formatPhone } from '@/lib/format';
@@ -18,8 +20,10 @@ import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { ListingMessageForm } from '@/components/ListingMessageForm';
 import { StickyWhatsAppBar } from '@/components/detail/StickyWhatsAppBar';
 import { LockedRow, LockedGallery, LockedCategory, UpgradeCta } from '@/components/detail/Locked';
+import { Reviews } from '@/components/detail/Reviews';
 import { Phone, Clock } from '@/components/icons';
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
+import type { Review } from '@/lib/types';
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const params = await props.params;
@@ -53,15 +57,23 @@ export default async function ListingPage(props: { params: Promise<{ slug: strin
     { label: listing.name },
   ];
 
+  // First-party reviews (ROADMAP Phase D item 5). Both conditions are real:
+  // the flag is the honesty gate the whole reviews UI has always been behind,
+  // and with no database there is nowhere for a submission to land — the seed
+  // dataset has no reviews at all. `reviewsOn` is passed down rather than
+  // re-read, so the section and the form can never disagree.
+  const reviewsOn = REVIEWS_ENABLED && dbConfigured();
+  const reviews = reviewsOn ? await listApprovedReviews(listing.id) : [];
+
   return (
     <div className="bg-cream">
       <JsonLd data={listingJsonLd(listing)} />
       <JsonLd data={breadcrumbJsonLd(crumbs)} />
 
       {premium ? (
-        <PremiumDetail listing={listing} open={open} crumbs={crumbs} />
+        <PremiumDetail listing={listing} open={open} crumbs={crumbs} reviews={reviewsOn ? reviews : null} />
       ) : (
-        <FreeDetail listing={listing} open={open} crumbs={crumbs} />
+        <FreeDetail listing={listing} open={open} crumbs={crumbs} reviews={reviewsOn ? reviews : null} />
       )}
     </div>
   );
@@ -71,6 +83,8 @@ type DetailProps = {
   listing: Awaited<ReturnType<typeof getListingBySlug>> & object;
   open: ReturnType<typeof computeOpenState>;
   crumbs: Crumb[];
+  /** Approved reviews, or `null` when the reviews feature is off (§6.6 honesty gate). */
+  reviews: Review[] | null;
 };
 
 function OpenState({ open }: { open: ReturnType<typeof computeOpenState> }) {
@@ -90,7 +104,7 @@ function Rating({ rating, reviewsCount }: { rating?: number; reviewsCount?: numb
 }
 
 // ---------------------------------------------------------------- PREMIUM ----
-function PremiumDetail({ listing: l, open, crumbs }: DetailProps) {
+function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
   const gallery = l.coverImage ? [l.coverImage, ...(l.gallery ?? [])] : l.gallery ?? [];
   const dedup = [...new Set(gallery)].map(mediaUrl);
 
@@ -159,6 +173,8 @@ function PremiumDetail({ listing: l, open, crumbs }: DetailProps) {
                   </div>
                 </section>
               )}
+
+              {reviews && <Reviews listingId={l.id} reviews={reviews} />}
             </div>
           </div>
 
@@ -241,7 +257,7 @@ function ContactCard({
 }
 
 // ------------------------------------------------------------------- FREE ----
-function FreeDetail({ listing: l, open, crumbs }: DetailProps) {
+function FreeDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
   return (
     <>
       {/* Warm fallback header, no cover */}
@@ -282,6 +298,8 @@ function FreeDetail({ listing: l, open, crumbs }: DetailProps) {
                 <HoursTable hours={l.hours} />
               </section>
             )}
+
+            {reviews && <Reviews listingId={l.id} reviews={reviews} />}
 
             <UpgradeCta />
           </div>

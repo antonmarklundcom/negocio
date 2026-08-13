@@ -6,6 +6,7 @@ import { getListings, getCategories, getCities } from '@/lib/listings-repo';
 import { recentActivity } from '@/lib/db/activity-log';
 import { countLeadsSince } from '@/lib/db/leads-admin';
 import { listingStaleness } from '@/lib/db/listings-admin';
+import { countPendingReviews } from '@/lib/db/reviews-admin';
 import { ACTION_LABELS } from '@/lib/admin/labels';
 
 export const dynamic = 'force-dynamic';
@@ -34,9 +35,14 @@ export default async function AdminHome() {
   // `hasRole` mirrors the guard inside `listingStaleness` itself; checking
   // here too just avoids calling it (and its default `getDb()` parameter)
   // for a session the layout guard should already have turned away.
-  const staleness = hasRole(user, ['admin', 'editor'])
+  const isStaff = hasRole(user, ['admin', 'editor']);
+  const staleness = isStaff
     ? await listingStaleness(user, nowSeconds)
     : { porVencer: 0, vencido: 0, sinActualizar: 0, sinContacto: 0, topPorVencer: [] };
+  // Same guard as `countPendingReviews` itself; checking here only avoids
+  // calling it (and its default `getDb()`) for a session the layout already
+  // turned away.
+  const pendingReviews = isStaff ? await countPendingReviews(user) : 0;
 
   return (
     <div className="space-y-8">
@@ -73,6 +79,12 @@ export default async function AdminHome() {
             </Link>{' '}
             — administrá la taxonomía curada del sitio.
           </li>
+          <li>
+            <Link href="/admin/resenas" className="font-bold text-blue hover:underline">
+              Reseñas
+            </Link>{' '}
+            — moderá lo que escribe el público antes de que se publique.
+          </li>
           {isAdmin && (
             <li>
               <Link href="/admin/leads" className="font-bold text-blue hover:underline">
@@ -99,6 +111,7 @@ export default async function AdminHome() {
           <StatLink label="Premium vencido (90 días)" value={staleness.vencido} href="/admin/negocios?estado=vencido" />
           <StatLink label="Sin actualizar (180 días)" value={staleness.sinActualizar} href="/admin/negocios?estado=sin-actualizar" />
           <StatLink label="Sin datos de contacto" value={staleness.sinContacto} href="/admin/negocios?estado=sin-contacto" />
+          <StatLink label="Reseñas por moderar" value={pendingReviews} href="/admin/resenas?estado=pending" />
         </div>
         {staleness.topPorVencer.length > 0 && (
           <ul className="mt-3 divide-y divide-line rounded-card border border-line bg-white">

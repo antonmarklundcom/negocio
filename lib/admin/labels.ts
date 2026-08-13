@@ -1,4 +1,4 @@
-import type { ActivityAction, BlockKind, LeadSource, UserStatus } from '@/lib/db/schema';
+import type { ActivityAction, BlockKind, LeadSource, ReviewStatus, UserStatus } from '@/lib/db/schema';
 
 /**
  * User-facing labels for enum values. Kept apart from the schema so the
@@ -22,6 +22,12 @@ export const BLOCK_KIND_LABELS: Record<BlockKind, string> = {
   shop: 'Tienda (productos)',
   service: 'Servicio (lista de servicios)',
   default: 'Genérico (sin bloque especial)',
+};
+
+export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
+  pending: 'Esperando moderación',
+  approved: 'Publicada',
+  rejected: 'Rechazada',
 };
 
 export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {

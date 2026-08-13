@@ -147,8 +147,12 @@ async function main(): Promise<void> {
           servicios: s.servicios ?? null,
           verified: s.verified,
           premiumUntil: s.premiumUntil ?? null,
-          rating: s.rating !== undefined ? String(s.rating) : null,
-          reviewsCount: s.reviewsCount ?? null,
+          // `rating` and `reviewsCount` are deliberately ABSENT. As of Phase D
+          // item 5 the `reviews` table owns those two columns: they are
+          // recomputed from a listing's approved reviews on every moderation
+          // decision. Writing them here — the seed carries no ratings, so it
+          // would write NULL — meant a re-run of this idempotent importer
+          // silently wiped a real, earned average.
           yearsActive: s.yearsActive ?? null,
           avgResponseMins: s.avgResponseMins ?? null,
         };
