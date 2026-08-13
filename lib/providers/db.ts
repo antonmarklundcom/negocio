@@ -78,8 +78,9 @@ export const dbProvider: ListingsProvider = {
 
   async getListings(params: ListingQuery): Promise<ListingResult> {
     const db = getDb();
-    const where = buildListingWhere(params, wallClockNow());
-    const orderBy = buildListingOrderBy(params, Math.floor(Date.now() / 1000));
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const where = buildListingWhere(params, wallClockNow(), nowSeconds);
+    const orderBy = buildListingOrderBy(params, nowSeconds);
     const { limit, offset } = pagination(params);
 
     const [rows, totals] = await Promise.all([

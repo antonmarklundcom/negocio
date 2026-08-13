@@ -93,32 +93,33 @@ describe('taxonomySlugsMatching', () => {
 
 describe('buildListingWhere', () => {
   const at = { day: 3, minutes: 690 }; // Wednesday 11:30
+  const NOW = 1_700_000_000;
 
   it('is undefined when nothing is filtered, so the query has no WHERE', () => {
-    expect(buildListingWhere({}, at)).toBeUndefined();
+    expect(buildListingWhere({}, at, NOW)).toBeUndefined();
   });
 
   it('binds the filters as parameters, never as inlined strings', () => {
-    const { sql, params } = render(buildListingWhere({ categoria: 'restaurantes', ciudad: 'asuncion' }, at));
+    const { sql, params } = render(buildListingWhere({ categoria: 'restaurantes', ciudad: 'asuncion' }, at, NOW));
     expect(sql).toContain('`categoria`');
     expect(sql).toContain('`ciudad`');
     expect(params).toEqual(['restaurantes', 'asuncion']);
   });
 
   it('compares zona case-insensitively', () => {
-    const { sql, params } = render(buildListingWhere({ zona: '  Villa Morra ' }, at));
+    const { sql, params } = render(buildListingWhere({ zona: '  Villa Morra ' }, at, NOW));
     expect(sql).toContain('lower(');
     expect(params).toEqual(['villa morra']);
   });
 
   it('searches the text columns with an escaped pattern and the matching taxonomy slugs', () => {
-    const { params } = render(buildListingWhere({ q: 'asuncion' }, at));
+    const { params } = render(buildListingWhere({ q: 'asuncion' }, at, NOW));
     expect(params.filter((p) => p === '%asuncion%')).toHaveLength(4);
     expect(params).toContain('asuncion'); // the city slug, added as an OR
   });
 
   it('passes the Asunción day and minute into the open-now check, plus yesterday', () => {
-    const { sql, params } = render(buildListingWhere({ abierto: true }, at));
+    const { sql, params } = render(buildListingWhere({ abierto: true }, at, NOW));
     expect(sql).toContain('exists');
     expect(sql).toContain('`listing_hours`');
     expect(params).toContain(3); // today
@@ -127,15 +128,22 @@ describe('buildListingWhere', () => {
   });
 
   it('never asks MySQL for the time', () => {
-    const { sql } = render(buildListingWhere({ abierto: true }, at));
+    const { sql } = render(buildListingWhere({ abierto: true }, at, NOW));
     expect(sql.toLowerCase()).not.toContain('now()');
     expect(sql.toLowerCase()).not.toContain('curdate');
     expect(sql.toLowerCase()).not.toContain('curtime');
   });
 
   it('ANDs the filters together', () => {
-    const { sql } = render(buildListingWhere({ categoria: 'restaurantes', ciudad: 'asuncion', q: 'pizza' }, at));
+    const { sql } = render(buildListingWhere({ categoria: 'restaurantes', ciudad: 'asuncion', q: 'pizza' }, at, NOW));
     expect(sql).toContain(' and ');
+  });
+
+  it('filters on an active featured slot, with the instant supplied by the app', () => {
+    const { sql, params } = render(buildListingWhere({ destacado: true }, at, NOW));
+    expect(sql).toContain('`featured_until`');
+    expect(params).toContain(NOW);
+    expect(sql.toLowerCase()).not.toContain('now()');
   });
 });
 

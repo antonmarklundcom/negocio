@@ -11,11 +11,14 @@ import {
   addGalleryImage,
   createListing,
   deleteListing,
+  extendListingFeatured,
   extendListingPremium,
+  type FeaturedPackageDays,
   isListingSlugTaken,
   moveGalleryImage,
   type PremiumPackageDays,
   removeGalleryImage,
+  removeListingFeatured,
   setCoverImage,
   setListingFlags,
   setListingHours,
@@ -142,6 +145,39 @@ export async function extendPremiumAction(id: string, days: PremiumPackageDays):
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  redirect(`/admin/negocios/${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// "destacado en portada" — home-page featured slots (ROADMAP Phase D item 3)
+// ---------------------------------------------------------------------------
+
+export async function extendFeaturedAction(id: string, days: FeaturedPackageDays): Promise<void> {
+  const actor = await currentUser();
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  try {
+    await extendListingFeatured(actor, id, days, nowSeconds);
+  } catch (err) {
+    redirect(`/admin/negocios/${id}?flagsError=${encodeURIComponent(messageFor(err))}`);
+  }
+
+  revalidatePath(`/admin/negocios/${id}`);
+  revalidatePath('/');
+  redirect(`/admin/negocios/${id}`);
+}
+
+export async function removeFeaturedAction(id: string): Promise<void> {
+  const actor = await currentUser();
+
+  try {
+    await removeListingFeatured(actor, id);
+  } catch (err) {
+    redirect(`/admin/negocios/${id}?flagsError=${encodeURIComponent(messageFor(err))}`);
+  }
+
+  revalidatePath(`/admin/negocios/${id}`);
+  revalidatePath('/');
   redirect(`/admin/negocios/${id}`);
 }
 

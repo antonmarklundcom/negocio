@@ -36,6 +36,14 @@ export const TIMEZONE = 'America/Asuncion';
 export const DEFAULT_PAGE_SIZE = 12;
 
 /**
+ * "Destacado en portada" (ROADMAP Phase D item 3) — how many paid home-page
+ * featured slots exist at once. Shared between the public home page (how
+ * many it fetches) and `lib/db/listings-admin.ts` (the cap it enforces when
+ * selling a new slot), so the two can never drift apart.
+ */
+export const MAX_FEATURED_SLOTS = 6;
+
+/**
  * Reserved top-level path segments. `/[categoria]` must never resolve to one of
  * these, so unknown category paths 404 cleanly (§4 route-collision rule).
  * Category slugs themselves are validated separately against the known set.

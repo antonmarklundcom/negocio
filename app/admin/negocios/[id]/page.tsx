@@ -6,18 +6,20 @@ import { AdminForm } from '@/components/admin/AdminForm';
 import { currentUser } from '@/lib/auth/session';
 import { hasRole } from '@/lib/auth/roles';
 import { getCategories, getCities } from '@/lib/listings-repo';
-import { getListingForEdit } from '@/lib/db/listings-admin';
+import { FEATURED_PACKAGE_DAYS, getListingForEdit, PREMIUM_PACKAGE_DAYS } from '@/lib/db/listings-admin';
+import { MAX_FEATURED_SLOTS } from '@/lib/config';
 import { getListingLeadReport } from '@/lib/db/leads-admin';
 import { asuncionMonthRange } from '@/lib/hours';
 import { mediaConfigured } from '@/lib/media/upload';
 import { mediaUrl } from '@/lib/media/url';
-import { PREMIUM_PACKAGE_DAYS } from '@/lib/db/listings-admin';
 import { waLink } from '@/lib/format';
 import { flagsDefaultValues, flagsFields, hoursDefaultValues, hoursFields, listingFields } from '../fields';
 import {
   deleteListingAction,
+  extendFeaturedAction,
   extendPremiumAction,
   moveGalleryImageAction,
+  removeFeaturedAction,
   removeGalleryImageAction,
   saveFlagsAction,
   saveHoursAction,
@@ -64,6 +66,7 @@ export default async function EditListingPage(
   const flagsError = typeof searchParams.flagsError === 'string' ? searchParams.flagsError : undefined;
   const isAdmin = hasRole(actor, ['admin']);
   const isCurrentlyPremium = !!listing.premiumUntil && listing.premiumUntil > Date.now() / 1000;
+  const isCurrentlyFeatured = !!listing.featuredUntil && listing.featuredUntil > Date.now() / 1000;
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -262,6 +265,38 @@ export default async function EditListingPage(
                 >
                   Vender por WhatsApp
                 </a>
+              )}
+            </div>
+          </div>
+
+          {/* "Destacado en portada" (ROADMAP Phase D item 3): a separate,
+              limited paid slot on the home page — not the same thing as
+              Premium, which only competes for the home page's general
+              destacados section. */}
+          <div className="mt-4 rounded-card border border-line bg-cream/60 p-4">
+            <p className="text-[13px] font-bold uppercase tracking-wide text-ink2">Destacado en portada</p>
+            <p className="mt-1 text-[14px] text-ink2">
+              {isCurrentlyFeatured
+                ? 'Tiene un lugar en la portada. Extender suma días desde el vencimiento actual.'
+                : `No está en la portada. Hay como máximo ${MAX_FEATURED_SLOTS} lugares a la vez.`}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {FEATURED_PACKAGE_DAYS.map((days) => (
+                <form key={days} action={extendFeaturedAction.bind(null, params.id, days)}>
+                  <button
+                    type="submit"
+                    className="rounded-card border-[1.5px] border-blue px-3.5 py-2 text-[13px] font-bold text-blue"
+                  >
+                    + {days} días
+                  </button>
+                </form>
+              ))}
+              {isCurrentlyFeatured && (
+                <form action={removeFeaturedAction.bind(null, params.id)}>
+                  <button type="submit" className="rounded-card px-3.5 py-2 text-[13px] font-bold text-terra">
+                    Quitar de portada
+                  </button>
+                </form>
               )}
             </div>
           </div>

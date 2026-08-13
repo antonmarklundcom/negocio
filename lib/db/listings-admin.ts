@@ -12,6 +12,7 @@ import { dayHoursToRows, rowsToDayHours } from './mappers';
 import type { DayHours } from '../types';
 import type { ListingFormInput, ListingFlagsInput } from '@/lib/admin/validation';
 import { MAX_GALLERY_IMAGES } from '@/lib/media/upload';
+import { MAX_FEATURED_SLOTS } from '@/lib/config';
 
 /**
  * All listing SQL. THIS MODULE IS THE AUTHORIZATION BOUNDARY: every exported
@@ -34,6 +35,7 @@ export interface AdminListingRow {
   ciudadLabel: string;
   verified: boolean;
   premiumUntil: number | null;
+  featuredUntil: number | null;
   updatedAt: Date;
 }
 
@@ -83,6 +85,7 @@ export interface AdminListingForm {
   destacadoPrice: string;
   verified: boolean;
   premiumUntil: number | null;
+  featuredUntil: number | null;
   coverImage: string | null;
   hours: DayHours[];
   gallery: GalleryImage[];
@@ -99,6 +102,7 @@ const LIST_COLUMNS = {
   ciudadLabel: cities.label,
   verified: listings.verified,
   premiumUntil: listings.premiumUntil,
+  featuredUntil: listings.featuredUntil,
   updatedAt: listings.updatedAt,
 } as const;
 
@@ -211,6 +215,7 @@ export async function getListingForEdit(
     gallery: galleryRows.map((g) => ({ id: g.id, key: g.url, alt: g.alt, position: g.position })),
     verified: row.verified,
     premiumUntil: row.premiumUntil,
+    featuredUntil: row.featuredUntil,
     updatedAt: row.updatedAt,
   };
 }
@@ -529,6 +534,104 @@ export async function extendListingPremium(
       action: 'update',
       before: { premiumUntil: before.premiumUntil },
       after: { premiumUntil, packageDays: days },
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// "destacado en portada" — home-page featured slots (ROADMAP Phase D item 3)
+// ---------------------------------------------------------------------------
+
+/**
+ * A fixed number of paid home-page slots (`MAX_FEATURED_SLOTS`, shared with
+ * the public home page via `lib/config.ts` so the two can't drift), distinct
+ * from Premium: Premium alone competes for the home page's general
+ * destacados section, which shrinks as more businesses go premium, so a
+ * featured slot is sold separately to guarantee a spot. The cap is enforced
+ * here, not just by how many buttons the UI happens to show.
+ */
+export { MAX_FEATURED_SLOTS };
+export const FEATURED_PACKAGE_DAYS = [30, 90] as const;
+export type FeaturedPackageDays = (typeof FEATURED_PACKAGE_DAYS)[number];
+
+/** Same extend-from-current-expiry-or-today shape as `extendListingPremium`. */
+export async function extendListingFeatured(
+  actor: SessionUser | null,
+  id: string,
+  days: FeaturedPackageDays,
+  nowSeconds: number,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin']);
+  if (!FEATURED_PACKAGE_DAYS.includes(days)) {
+    throw new AuthError('Ese paquete de portada no existe.', 'forbidden');
+  }
+
+  await database.transaction(async (tx) => {
+    const [before] = await tx
+      .select({ featuredUntil: listings.featuredUntil })
+      .from(listings)
+      .where(eq(listings.id, id))
+      .limit(1);
+    if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    const alreadyFeatured = !!before.featuredUntil && before.featuredUntil > nowSeconds;
+    if (!alreadyFeatured) {
+      // Renewing an already-featured listing never counts against the cap —
+      // only a NEW slot can fill it up.
+      const [counted] = await tx
+        .select({ total: sql<number>`count(*)` })
+        .from(listings)
+        .where(gt(listings.featuredUntil, nowSeconds));
+      if (Number(counted?.total ?? 0) >= MAX_FEATURED_SLOTS) {
+        throw new AuthError(
+          `Ya hay ${MAX_FEATURED_SLOTS} negocios destacados en portada, el máximo. Esperá a que venza uno.`,
+          'forbidden',
+        );
+      }
+    }
+
+    const base = alreadyFeatured ? before.featuredUntil! : nowSeconds;
+    const featuredUntil = base + days * 86400;
+
+    await tx.update(listings).set({ featuredUntil }).where(eq(listings.id, id));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing',
+      entityId: id,
+      action: 'update',
+      before: { featuredUntil: before.featuredUntil },
+      after: { featuredUntil, packageDays: days },
+    });
+  });
+}
+
+/** Removes a listing's featured slot immediately, freeing it up for another business. */
+export async function removeListingFeatured(
+  actor: SessionUser | null,
+  id: string,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin']);
+
+  await database.transaction(async (tx) => {
+    const [before] = await tx
+      .select({ featuredUntil: listings.featuredUntil })
+      .from(listings)
+      .where(eq(listings.id, id))
+      .limit(1);
+    if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    await tx.update(listings).set({ featuredUntil: null }).where(eq(listings.id, id));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing',
+      entityId: id,
+      action: 'update',
+      before: { featuredUntil: before.featuredUntil },
+      after: { featuredUntil: null },
     });
   });
 }

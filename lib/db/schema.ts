@@ -108,6 +108,14 @@ export const listings = mysqlTable(
     verified: boolean('verified').notNull().default(false),
     /** Unix seconds. Premium while it is in the future. */
     premiumUntil: bigint('premium_until', { mode: 'number' }),
+    /**
+     * Unix seconds. "Destacado en portada" (Phase D item 3) — a home-page
+     * featured slot, sold and tracked separately from `premiumUntil`: Premium
+     * alone competes for the home page's general destacados section, which
+     * shrinks as more businesses go premium; a featured slot guarantees a
+     * spot. Slot count is enforced in `lib/db/listings-admin.ts`, not here.
+     */
+    featuredUntil: bigint('featured_until', { mode: 'number' }),
 
     // Honesty-gated stats: NULL unless real data exists (§6.6).
     rating: decimal('rating', { precision: 2, scale: 1 }),
@@ -125,6 +133,7 @@ export const listings = mysqlTable(
     categoriaCiudadIdx: index('listings_categoria_ciudad_idx').on(t.categoria, t.ciudad),
     zonaIdx: index('listings_zona_idx').on(t.zona),
     premiumIdx: index('listings_premium_until_idx').on(t.premiumUntil),
+    featuredIdx: index('listings_featured_until_idx').on(t.featuredUntil),
   }),
 );
 

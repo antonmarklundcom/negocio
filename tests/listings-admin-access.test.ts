@@ -10,12 +10,15 @@ import {
   addGalleryImage,
   createListing,
   deleteListing,
+  extendListingFeatured,
   extendListingPremium,
   getListingForEdit,
   isListingSlugTaken,
   listListings,
+  MAX_FEATURED_SLOTS,
   moveGalleryImage,
   removeGalleryImage,
+  removeListingFeatured,
   setCoverImage,
   setListingFlags,
   setListingHours,
@@ -208,6 +211,60 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
     });
   });
 
+  describe('extendListingFeatured / removeListingFeatured ("destacado en portada")', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(extendListingFeatured(ANONYMOUS, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects an editor AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(extendListingFeatured(EDITOR, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects a package outside the sold set AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      // @ts-expect-error deliberately invalid, same as the premium package test.
+      await expect(extendListingFeatured(ADMIN, 'x', 14, 1_700_000_000, db)).rejects.toThrow(/paquete de portada/);
+      expect(touched).toEqual([]);
+    });
+
+    it('removeListingFeatured rejects an editor AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(removeListingFeatured(EDITOR, 'x', db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('extends a currently-featured listing from its own expiry, and a renewal does not check the cap', async () => {
+      const now = 1_700_000_000;
+      const currentExpiry = now + 5 * 86400;
+      const { tx, updateCalls } = fakeFeaturedTx({ featuredUntil: currentExpiry }, MAX_FEATURED_SLOTS);
+
+      await extendListingFeatured(ADMIN, 'x', 30, now, tx.asDb());
+      expect(updateCalls()).toEqual([currentExpiry + 30 * 86400]);
+    });
+
+    it('refuses a NEW slot once the cap is full, and writes nothing', async () => {
+      const now = 1_700_000_000;
+      const { tx, updateCalls } = fakeFeaturedTx({ featuredUntil: null }, MAX_FEATURED_SLOTS);
+
+      await expect(extendListingFeatured(ADMIN, 'x', 30, now, tx.asDb())).rejects.toThrow(
+        new RegExp(`${MAX_FEATURED_SLOTS} negocios destacados`),
+      );
+      expect(updateCalls()).toEqual([]);
+    });
+
+    it('sells a new slot when the cap has room', async () => {
+      const now = 1_700_000_000;
+      const { tx, updateCalls } = fakeFeaturedTx({ featuredUntil: null }, MAX_FEATURED_SLOTS - 1);
+
+      await extendListingFeatured(ADMIN, 'x', 30, now, tx.asDb());
+      expect(updateCalls()).toEqual([now + 30 * 86400]);
+    });
+  });
+
   describe('gallery mutations reject a foreign imageId — same error as a non-existent one (ROADMAP rule 5)', () => {
     it('moveGalleryImage changes nothing for an imageId belonging to a different listing', async () => {
       const { tx, writesRecorded } = fakeGalleryTx([{ id: 5, url: 'listings/x/a.webp', alt: null, position: 0 }]);
@@ -317,6 +374,45 @@ function fakePremiumTx(existing: { verified: boolean; premiumUntil: number | nul
       },
     }),
     insert: () => ({ values: () => Promise.resolve() }),
+  };
+
+  return { tx, updateCalls: () => updateCalls };
+}
+
+/**
+ * A fake transaction for `extendListingFeatured`: the first `select` returns
+ * the target row, and — only when it isn't already featured — the second
+ * returns the current count of featured listings (the cap check). `tx.asDb()`
+ * wraps it as a fake `Db` whose `transaction()` just invokes the callback.
+ */
+function fakeFeaturedTx(existing: { featuredUntil: number | null }, featuredCount: number) {
+  const updateCalls: (number | null)[] = [];
+  let selectCallCount = 0;
+
+  function chain(result: unknown) {
+    const obj: Record<string, unknown> = {
+      from: () => obj,
+      where: () => obj,
+      limit: () => obj,
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject),
+    };
+    return obj;
+  }
+
+  const tx = {
+    select: () => {
+      selectCallCount++;
+      return selectCallCount === 1 ? chain([existing]) : chain([{ total: featuredCount }]);
+    },
+    update: () => ({
+      set: (values: { featuredUntil: number | null }) => {
+        updateCalls.push(values.featuredUntil);
+        return { where: () => Promise.resolve() };
+      },
+    }),
+    insert: () => ({ values: () => Promise.resolve() }),
+    asDb: () => ({ transaction: (cb: (t: unknown) => unknown) => cb(tx) }) as unknown as Db,
   };
 
   return { tx, updateCalls: () => updateCalls };
