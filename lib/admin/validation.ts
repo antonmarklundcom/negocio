@@ -1,5 +1,14 @@
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from '@/lib/auth/password';
-import { BLOCK_KINDS, STAFF_ROLES, USER_STATUSES, type BlockKind, type UserRole, type UserStatus } from '@/lib/db/schema';
+import {
+  BLOCK_KINDS,
+  REVIEW_STATUSES,
+  STAFF_ROLES,
+  USER_STATUSES,
+  type BlockKind,
+  type ReviewStatus,
+  type UserRole,
+  type UserStatus,
+} from '@/lib/db/schema';
 import { parseLines, parsePipedLines, type LineError } from './blocks';
 import { toMinutes } from '@/lib/db/open-now';
 import type { DayHours } from '@/lib/types';
@@ -644,6 +653,21 @@ export function parseListingListParams(params: Record<string, string | string[] 
     ? (rawEstado as (typeof LISTING_ESTADOS)[number])
     : undefined;
   return { ...base, categoria: oneOf(params, 'categoria'), ciudad: oneOf(params, 'ciudad'), estado };
+}
+
+/**
+ * `listReviews` search params: `page` plus the moderation-status filter.
+ * Defaults to `pending` — the queue's whole purpose is what is waiting, so an
+ * unfiltered link would open on a wall of already-decided reviews.
+ */
+export function parseReviewListParams(params: Record<string, string | string[] | undefined>): {
+  page: number;
+  status: ReviewStatus;
+} {
+  const { page } = parseListParams(params);
+  const raw = oneOf(params, 'estado');
+  const status = (REVIEW_STATUSES as readonly string[]).includes(raw ?? '') ? (raw as ReviewStatus) : 'pending';
+  return { page, status };
 }
 
 /** `listLeads` search params: `q` + `page` plus the source filter. */

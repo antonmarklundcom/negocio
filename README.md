@@ -48,6 +48,7 @@ app/                       Routes (App Router)
   api/v1/listings          GET list (zod-validated)
   api/v1/listings/[slug]   GET one
   api/v1/leads             POST single lead orchestrator
+  api/v1/reviews           POST public review submission (lands as `pending`)
   sitemap.ts, robots.ts    Generated from the listings repo
 components/                UI (cards, pills, maps, forms, detail blocks)
   admin/                   AdminTable · AdminForm · AdminNav (the whole panel UI)
@@ -55,7 +56,10 @@ lib/                       Domain logic
   listings-repo.ts         THE single data-access surface (the seam)
   providers/               seed.ts · db.ts · query.ts (shared filtering)
   db/                      schema.ts · client.ts · mappers.ts · listing-query.ts ·
-                           leads.ts · users.ts · activity-log.ts
+                           leads.ts · reviews.ts · reviews-admin.ts · users.ts ·
+                           activity-log.ts
+  reviews.ts               Review submission contract + rating roll-up (pure)
+  public-write.ts          requirePublicWrite() — the public-form guard
   auth/                    session.ts · roles.ts · password.ts · login.ts
   admin/                   validation.ts (pure) · labels.ts
   types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts
@@ -108,8 +112,8 @@ wrong is loud; a page that quietly renders stale data is not.
 ## Database (MySQL + Drizzle)
 
 Schema: `lib/db/schema.ts`, derived from `lib/types.ts` — never from a CMS's
-field names. Eight tables: `listings`, `listing_hours`, `listing_gallery`,
-`categories`, `cities`, `leads`, `users`, `activity_log`.
+field names. Nine tables: `listings`, `listing_hours`, `listing_gallery`,
+`categories`, `cities`, `leads`, `reviews`, `users`, `activity_log`.
 
 Two shape decisions, fixed in the schema and expensive to change afterwards:
 
@@ -284,7 +288,7 @@ See `.env.example`. The **minimum-to-launch** subset (site runs on seed data):
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL (sitemaps, JSON-LD) |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Platform WhatsApp (header/contact), E.164 digits |
-| `NEXT_PUBLIC_REVIEWS_ENABLED` | `false` — ratings/reviews UI gate (honesty) |
+| `NEXT_PUBLIC_REVIEWS_ENABLED` | `false` — ratings/reviews UI gate (honesty); needs `DATABASE_URL` too, see **Reviews** |
 | `NEXT_PUBLIC_PROMO_BANNER` | `off` — launch promo banner toggle |
 
 `DATABASE_URL` (MySQL) selects the DB provider (see **Database** above) and is
@@ -350,7 +354,55 @@ optionally `LEADS_WEBHOOK_TOKEN`), then redeploy — one at a time.
 - `sitemap.xml` / `robots.txt` are generated from the repo with hourly ISR.
 - **No fabricated ratings or reviews.** The entire reviews UI is gated behind
   `NEXT_PUBLIC_REVIEWS_ENABLED` (default `false`) and only renders when real data
-  exists. Reviews are a future first-party (Phase-2) feature.
+  exists. See **Reviews** below for what the flag now switches on.
+
+---
+
+## Reviews (first-party)
+
+Visitors leave reviews on a listing page; staff moderate them at
+`/admin/resenas`. Nothing a stranger writes is public until a human approves it.
+
+Both switches are required, and `false`/unset is the safe state:
+
+- `NEXT_PUBLIC_REVIEWS_ENABLED=true` — the honesty gate the ratings UI has
+  always been behind.
+- `DATABASE_URL` — a submission has nowhere to land without one, so the
+  section and `POST /api/v1/reviews` stay off (the endpoint 404s) on the seed
+  dataset. Local dev and the Playwright smoke run therefore have no reviews.
+
+**The `reviews` table OWNS `listings.rating` and `listings.reviews_count.`**
+They are recomputed from the listing's *approved* reviews inside the same
+transaction as every approve/reject (`lib/db/reviews-admin.ts`), never typed
+in: no `fields.ts` exposes them, and `scripts/import-seed.ts` deliberately does
+not write them either — as an idempotent re-runnable importer it would have
+reset a real, earned average to NULL. With no approved reviews both columns go
+back to NULL, never `0`.
+
+Two write paths, two different guards:
+
+| Path | Module | Guard, as the first statement |
+| --- | --- | --- |
+| Public submission | `lib/db/reviews.ts` | `requirePublicWrite` — honeypot, then a per-IP rate limit (5/hour) |
+| Moderation | `lib/db/reviews-admin.ts` | `requireRole(['admin', 'editor'])` |
+
+`requirePublicWrite` (`lib/public-write.ts`) is the public-form equivalent of
+`requireRole` and exists for the same reason: a form has no session to check,
+but its query-module function is still directly reachable, so the spam
+defenses belong *in the query module*, not in the route. `/api/v1/reviews` only
+maps the thrown reasons onto status codes — and a honeypot hit is answered with
+the same success the visitor sees, exactly like `/api/v1/leads`.
+
+Moderation is `editor`-capable, unlike `/admin/leads` (`admin`-only). The line
+those two guards draw is "public-facing content" vs "a member of the public's
+contact details": a review row holds a display name, a rating and a body and
+**no way to contact the author**, and editing what visitors read on a listing
+page is already the editor role's job.
+
+Rejecting is a status change, never a delete — a rejected review is the
+evidence for why it was rejected. Every decision is written to `activity_log`
+in the same transaction, which is why the table has no `moderated_by` /
+`moderated_at` columns of its own.
 
 ---
 

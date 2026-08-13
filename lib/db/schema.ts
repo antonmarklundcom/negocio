@@ -227,6 +227,51 @@ export const leads = mysqlTable(
   }),
 );
 
+export const REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const;
+
+/**
+ * First-party reviews (ROADMAP Phase D item 5). Written by the public through
+ * `lib/db/reviews.ts` (honeypot + per-IP rate limit, never `requireRole`) and
+ * moderated through `lib/db/reviews-admin.ts`.
+ *
+ * A submission always lands as `pending`: nothing a stranger typed is public
+ * before a human has read it.
+ *
+ * Unlike `leads` this IS a foreign key with `onDelete: 'cascade'`. A lead is
+ * history and must outlive the listing it came from; a review is content
+ * *about* a listing and has no meaning without it — same reasoning as
+ * `listing_hours` and `listing_gallery`.
+ *
+ * No `moderated_by` / `moderated_at` columns: every approve and reject is
+ * written to `activity_log` inside the same transaction, which already records
+ * the actor and the time. A second, partial copy of that could only drift.
+ *
+ * The rating is a `tinyint` 1–5, validated in `lib/reviews.ts` (pure) and
+ * re-checked in the query module. Approved rows roll up into
+ * `listings.rating` / `listings.reviews_count`, which this table now OWNS —
+ * they are recomputed from the approved set inside the same transaction as
+ * every moderation decision, and nothing else writes them.
+ */
+export const reviews = mysqlTable(
+  'reviews',
+  {
+    id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+    listingId: varchar('listing_id', { length: 64 })
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    /** What the visitor typed. No email, no phone — see BUILD note in `lib/db/reviews.ts`. */
+    author: varchar('author', { length: 120 }).notNull(),
+    rating: tinyint('rating').notNull(),
+    body: text('body').notNull(),
+    status: mysqlEnum('status', REVIEW_STATUSES).notNull().default('pending'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    listingStatusIdx: index('reviews_listing_status_idx').on(t.listingId, t.status),
+    statusCreatedIdx: index('reviews_status_created_idx').on(t.status, t.createdAt),
+  }),
+);
+
 /**
  * Staff and (from PR-6) business-owner accounts.
  *
@@ -304,6 +349,8 @@ export type CategoryRow = typeof categories.$inferSelect;
 export type CityRow = typeof cities.$inferSelect;
 export type LeadRow = typeof leads.$inferSelect;
 export type LeadInsert = typeof leads.$inferInsert;
+export type ReviewRow = typeof reviews.$inferSelect;
+export type ReviewInsert = typeof reviews.$inferInsert;
 export type UserRow = typeof users.$inferSelect;
 export type UserInsert = typeof users.$inferInsert;
 export type ActivityLogRow = typeof activityLog.$inferSelect;
@@ -314,6 +361,7 @@ export type UserStatus = (typeof USER_STATUSES)[number];
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 export type BlockKind = (typeof BLOCK_KINDS)[number];
 export type LeadSource = (typeof LEAD_SOURCES)[number];
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 // Re-exported so the mapper's intent is readable next to the table it maps.
 export type { DayHours, Listing, Review };

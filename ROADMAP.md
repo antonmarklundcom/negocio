@@ -397,7 +397,59 @@ Repo, docs and comments in English.
        listing edit page. Available for any listing, not gated on
        Premium — a business considering Premium can be shown the sticker as
        part of the pitch before buying. No migration.*
-5. [ ] First-party reviews (UI gate `NEXT_PUBLIC_REVIEWS_ENABLED` already exists)
+5. [x] First-party reviews (UI gate `NEXT_PUBLIC_REVIEWS_ENABLED` already exists)
+       *Shipped, with a migration (`drizzle/0003_rare_barracuda.sql` — the new
+       `reviews` table; `npm run db:generate` was run, `db:migrate` was NOT.
+       Apply it by hand before deploying, same as every earlier migration, or
+       `/admin/resenas` and any listing page with reviews enabled 500 on a
+       table that does not exist). `reviews` (listing_id → `listings.id`,
+       ON DELETE CASCADE — unlike `leads`, a review has no meaning without the
+       listing it is about; author, rating 1–5, body, status
+       pending/approved/rejected, created_at). Public submission form on the
+       listing page behind `NEXT_PUBLIC_REVIEWS_ENABLED` **and**
+       `DATABASE_URL` — with no database a submission has nowhere to land, so
+       the section and `POST /api/v1/reviews` stay off (the endpoint 404s) and
+       local dev / the Playwright run are unaffected. Everything lands as
+       `pending`; the status is not a parameter any caller can pass.
+       Spam defense mirrors the lead forms — the shared `<Honeypot />` plus a
+       per-IP rate limit — but sits in a new `requirePublicWrite`
+       (`lib/public-write.ts`), called as the FIRST statement of
+       `createPendingReview` in the query module, not in the route: a public
+       form has no session to check, and rule 1 is about the query module, not
+       the handler. 5 submissions/IP/hour, deliberately far tighter than the
+       leads' 5/minute (nobody legitimately writes five reviews an hour). A
+       honeypot hit is answered with the same success a visitor sees and
+       dropped, exactly like `/api/v1/leads`. Moderation queue at
+       `/admin/resenas`, guarded `['admin', 'editor']` — **the split between
+       that and `/admin/leads` (admin-only) is "public-facing content" vs "a
+       member of the public's contact details": a review carries a display
+       name, a rating and a body and no way to reach the author, and editing
+       what visitors read on a listing page is already the editor's job. The
+       submission form deliberately captures no email or phone, which is what
+       keeps that true.** Rejecting is a status change, never a delete, and
+       every decision is logged to `activity_log` inside the same transaction
+       — which is why the table has no `moderated_by`/`moderated_at` columns.
+       **Design fork, decided here: the `reviews` table OWNS
+       `listings.rating` and `listings.reviews_count`** — recomputed from the
+       approved set on every moderation decision, in the same transaction,
+       from scratch rather than incremented. There was nothing to coexist
+       with: no `fields.ts` has ever exposed those two columns (rule 8), and
+       the only other writer was `scripts/import-seed.ts`, which has been
+       stopped from writing them — the seed carries no ratings, so a re-run of
+       that idempotent importer would have wiped a real, earned average. No
+       approved reviews puts both columns back to NULL, never `0`.
+       `AdminTable` gained an optional `rowActions` and an optional
+       `editHref`: a queue whose actions are "Aprobar"/"Rechazar" has no edit
+       page, and the alternative was a second bespoke table like
+       `/admin/leads`'s. Canary run: `requireRole` removed from all four
+       functions in `lib/db/reviews-admin.ts` and `requirePublicWrite` from
+       `createPendingReview`, 10 of the 17 access tests in
+       `tests/reviews-access.test.ts` went red (the other 7 assert the
+       positive "an editor/admin CAN reach this", which by design still
+       passes), guards restored; 312 → 348 tests. Open questions the PR asks
+       rather than guesses: purging rejected reviews, letting an author
+       withdraw or edit before moderation, and review-bombing from rotating
+       IPs.*
 6. [x] SEO content: barrio pages + "Los mejores [rubro] en [ciudad]" pages
        *Shipped: the "[rubro] en [ciudad]" pages already existed from Phase A
        (`/[categoria]/[ciudad]`, title/meta already read "Los mejores…" —
