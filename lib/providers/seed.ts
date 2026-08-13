@@ -1,6 +1,6 @@
 import type { ListingsProvider } from './types';
 import { SEED_LISTINGS } from './seed-data';
-import { applyQuery, combosWithListings } from './query';
+import { applyQuery, combosWithListings, combosWithZonaListings } from './query';
 import { CATEGORIES } from '../categories';
 import { CITIES } from '../cities';
 
@@ -33,5 +33,9 @@ export const seedProvider: ListingsProvider = {
 
   async getCategoryCityCombosWithListings() {
     return combosWithListings(SEED_LISTINGS);
+  },
+
+  async getCategoryCityZonaCombosWithListings() {
+    return combosWithZonaListings(SEED_LISTINGS);
   },
 };

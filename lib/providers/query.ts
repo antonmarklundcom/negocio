@@ -1,4 +1,4 @@
-import type { CategoryCityCombo, Listing, ListingQuery, ListingResult } from '../types';
+import type { CategoryCityCombo, CategoryCityZonaCombo, Listing, ListingQuery, ListingResult } from '../types';
 import { isFeatured, isPremium } from '../listing';
 import { computeOpenState } from '../hours';
 import { DEFAULT_PAGE_SIZE } from '../config';
@@ -71,5 +71,28 @@ export function combosWithListings(all: Listing[]): CategoryCityCombo[] {
   return [...counts.entries()].map(([key, count]) => {
     const [categoria, ciudad] = key.split('|');
     return { categoria: categoria!, ciudad: ciudad!, count };
+  });
+}
+
+/**
+ * Category × city × zona (barrio) combos that have listings (SEO barrio
+ * pages, ROADMAP Phase D item 6). `zona` is free text an editor typed
+ * (BUILD-SPEC-PR4 §1, no controlled vocabulary), so this is grouped on the
+ * exact trimmed value — the same "no artificial threshold" policy as
+ * `combosWithListings` above: any zona with at least one listing gets a page.
+ * A listing with no zona at all is excluded; there is nothing to name the
+ * page after.
+ */
+export function combosWithZonaListings(all: Listing[]): CategoryCityZonaCombo[] {
+  const counts = new Map<string, number>();
+  for (const l of all) {
+    const zona = l.zona?.trim();
+    if (!zona) continue;
+    const key = `${l.categoria}|${l.ciudad}|${zona}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([key, count]) => {
+    const [categoria, ciudad, zona] = key.split('|');
+    return { categoria: categoria!, ciudad: ciudad!, zona: zona!, count };
   });
 }
