@@ -1,4 +1,5 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 import type {
   Category,
   City,
@@ -41,18 +42,64 @@ export function getListingBySlug(slug: string): Promise<Listing | null> {
   return primary.getListingBySlug(slug);
 }
 
+/**
+ * The catalogue cache (ROADMAP W1-3).
+ *
+ * Categories, cities and the two "combos that actually have listings" lists are
+ * read by almost every public render — the header, the footer, every landing
+ * page, `/rubros`, `generateStaticParams` and the sitemap — and they change
+ * only when staff edits taxonomy or a listing. Uncached they were four extra
+ * MySQL round-trips per request against a pool capped at 8 connections
+ * (`lib/db/connection.ts`), which is what turns a traffic spike into a queue.
+ *
+ * Listing *queries* are deliberately NOT cached here: they are filtered,
+ * sorted and paginated by `searchParams`, so each visitor combination would be
+ * its own cache key and the hit rate would approach zero.
+ *
+ * Staleness is bounded two ways: an hour, and `revalidateTag(CATALOG_TAG)`
+ * from every admin action that can change the answer. Both matter — the tag
+ * keeps the admin honest (a category created a second ago must be selectable
+ * immediately), the hour is the backstop for anything that writes to the
+ * database without going through an action.
+ */
+export const CATALOG_TAG = 'catalog';
+
+const CATALOG_CACHE_SECONDS = 3600;
+
+const cachedCategories = unstable_cache(() => primary.getCategories(), ['catalog', 'categories'], {
+  revalidate: CATALOG_CACHE_SECONDS,
+  tags: [CATALOG_TAG],
+});
+
+const cachedCities = unstable_cache(() => primary.getCities(), ['catalog', 'cities'], {
+  revalidate: CATALOG_CACHE_SECONDS,
+  tags: [CATALOG_TAG],
+});
+
+const cachedCategoryCityCombos = unstable_cache(
+  () => primary.getCategoryCityCombosWithListings(),
+  ['catalog', 'category-city-combos'],
+  { revalidate: CATALOG_CACHE_SECONDS, tags: [CATALOG_TAG] },
+);
+
+const cachedCategoryCityZonaCombos = unstable_cache(
+  () => primary.getCategoryCityZonaCombosWithListings(),
+  ['catalog', 'category-city-zona-combos'],
+  { revalidate: CATALOG_CACHE_SECONDS, tags: [CATALOG_TAG] },
+);
+
 export function getCategories(): Promise<Category[]> {
-  return primary.getCategories();
+  return cachedCategories();
 }
 
 export function getCities(): Promise<City[]> {
-  return primary.getCities();
+  return cachedCities();
 }
 
 export function getCategoryCityCombosWithListings(): Promise<CategoryCityCombo[]> {
-  return primary.getCategoryCityCombosWithListings();
+  return cachedCategoryCityCombos();
 }
 
 export function getCategoryCityZonaCombosWithListings(): Promise<CategoryCityZonaCombo[]> {
-  return primary.getCategoryCityZonaCombosWithListings();
+  return cachedCategoryCityZonaCombos();
 }
