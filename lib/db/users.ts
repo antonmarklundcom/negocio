@@ -55,6 +55,41 @@ function auditView(row: Pick<AdminUserRow, 'email' | 'name' | 'role' | 'status'>
 // ---------------------------------------------------------------------------
 
 /**
+ * The columns `currentUser()` needs to decide whether a cookie is still valid
+ * (ROADMAP W1-2). Deliberately has no `requireRole`, for the same reason
+ * `findAccountForLogin` does not: this IS the authentication step, and a guard
+ * here would be circular.
+ *
+ * It returns no credential and no personal detail beyond the name — only what
+ * the decision needs — so it stays useless to anything but that decision.
+ */
+export interface SessionAccount {
+  id: number;
+  role: UserRole;
+  status: UserStatus;
+  mustChangePassword: boolean;
+  passwordChangedAt: Date | null;
+}
+
+export async function findSessionAccount(
+  id: number,
+  database: Db = getDb(),
+): Promise<SessionAccount | null> {
+  const [row] = await database
+    .select({
+      id: users.id,
+      role: users.role,
+      status: users.status,
+      mustChangePassword: users.mustChangePassword,
+      passwordChangedAt: users.passwordChangedAt,
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
  * Look up an account for authentication. Deliberately has no `requireRole`:
  * the caller is by definition unauthenticated. It is exported for
  * `app/(auth)/ingresar` and the password-change flow, returns the hash, and
@@ -127,7 +162,11 @@ export async function changeOwnPassword(
   await database.transaction(async (tx) => {
     await tx
       .update(users)
-      .set({ passwordHash: newHash, mustChangePassword: false })
+      // `passwordChangedAt` is what revokes every OTHER session this account
+      // has open (ROADMAP W1-2) — the stolen laptop still holding a valid
+      // cookie is the reason a person changes their password under duress.
+      // The tab doing the change re-issues its own cookie immediately after.
+      .set({ passwordHash: newHash, mustChangePassword: false, passwordChangedAt: new Date() })
       .where(eq(users.id, id));
     await logActivity(tx, {
       userId: id,
@@ -307,7 +346,13 @@ export async function resetUserPassword(
     const [before] = await tx.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
     if (!before) throw new AuthError('No encontramos ese usuario.', 'forbidden');
 
-    await tx.update(users).set({ passwordHash: hash, mustChangePassword: true }).where(eq(users.id, id));
+    // An admin resetting someone's password must sign that person out
+    // everywhere, not just hand them a new credential — "this account is
+    // compromised" is the usual reason for the reset.
+    await tx
+      .update(users)
+      .set({ passwordHash: hash, mustChangePassword: true, passwordChangedAt: new Date() })
+      .where(eq(users.id, id));
     await logActivity(tx, {
       userId: admin.id,
       entityType: 'user',

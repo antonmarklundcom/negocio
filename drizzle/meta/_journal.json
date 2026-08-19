@@ -29,6 +29,13 @@
       "when": 1786609883662,
       "tag": "0003_rare_barracuda",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787177263777,
+      "tag": "0004_smart_frank_castle",
+      "breakpoints": true
     }
   ]
 }

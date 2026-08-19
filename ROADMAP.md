@@ -529,7 +529,7 @@ Repo, docs and comments in English.
       a `listing_report` variant on the zod union in `lib/leads.ts`, and a
       report affordance on `lugar/[slug]` that goes through the same lead
       orchestrator, honeypot and rate limit as every other public write.
-- [ ] **W1-2 — Session correctness (S1 + S2).** `requireRole`/`currentUser`
+- [x] **W1-2 — Session correctness (S1 + S2). MIGRATION (`drizzle/0004_*`).** `requireRole`/`currentUser`
       must re-read `role` and `status` from the DB per request — today a
       suspended or demoted admin keeps access for the cookie's 8-hour TTL,
       while README/ROADMAP claim otherwise; fix the code **and** the docs.
@@ -537,6 +537,23 @@ Repo, docs and comments in English.
       `users.password_changed_at` checked against a cookie-issued-at claim —
       if a column is added this is a **MIGRATION** PR). Re-read must live where
       rule 1 lives: covering server actions, not just the layout.
+      *Shipped: `users.password_changed_at` (`drizzle/0004_*`), an `issuedAt`
+      claim on the cookie stamped by `startSession` and never by a caller, and
+      `currentUser()` rewritten to re-read the row on every request — wrapped
+      in React `cache()` so one admin render is one query. `role` and
+      `mustChangePassword` now come from the ROW, so a demotion applies inside
+      server actions too, which is where rule 1 lives. The unverified cookie
+      payload is now `sessionClaims()`, with exactly two legitimate callers.
+      The decision itself is pure (`lib/auth/session-check.ts`) and has 11
+      tests. Both password write paths — the self-service change and the
+      admin-issued reset — stamp `password_changed_at`, so a reset signs the
+      account out everywhere; the tab doing the change re-issues its own cookie
+      and survives. Docs fixed in README and in the Decisions block above, both
+      of which claimed this behaviour before the code did it.*
+      **Deliberate trade:** a database blip now signs staff out instead of
+      serving the admin from an unverified cookie. The public site never calls
+      `currentUser()`, so a blip cannot take the site down, and fail-closed is
+      the only defensible default for the thing that decides who may write.
 - [x] **W1-3 — Caching + perceived performance.** `lugar/[slug]` currently
       hits MySQL on every request while home/sitemap are ISR'd — add
       `export const revalidate` (and `generateStaticParams` if sensible);
