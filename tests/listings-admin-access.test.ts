@@ -10,6 +10,7 @@ import {
   addGalleryImage,
   createListing,
   deleteListing,
+  DeleteNotConfirmedError,
   extendListingFeatured,
   extendListingPremium,
   getListingForEdit,
@@ -130,19 +131,19 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
   describe('deleteListing', () => {
     it('throws for an anonymous caller AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(deleteListing(ANONYMOUS, 'x', db)).rejects.toSatisfy(isAuthError);
+      await expect(deleteListing(ANONYMOUS, 'x', 'x', db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
     it('rejects an editor AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(deleteListing(EDITOR, 'x', db)).rejects.toSatisfy(isAuthError);
+      await expect(deleteListing(EDITOR, 'x', 'x', db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
     it('is reachable by an admin', async () => {
       const { db, touched } = recordingDb();
-      await expect(deleteListing(ADMIN, 'x', db)).rejects.toThrow(/the database was reached/);
+      await expect(deleteListing(ADMIN, 'x', 'x', db)).rejects.toThrow(/the database was reached/);
       expect(touched.length).toBeGreaterThan(0);
     });
   });
@@ -304,6 +305,138 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
     });
   });
 });
+
+/**
+ * ROADMAP W1-4 — the two guards this PR added, tested for BEHAVIOUR rather
+ * than for "an error came back". Both attempt the write and then assert that
+ * nothing was written, which is exactly the failure mode the Phase B canary
+ * note warns about: a validation error alone would satisfy a weaker assertion.
+ */
+describe('lib/db/listings-admin — destructive-action safety (W1-4)', () => {
+  describe('deleteListing confirmation', () => {
+    const row = { id: 'x', slug: 'panaderia-la-espiga', name: 'Panadería La Espiga' };
+
+    it('refuses a mismatched confirmation AND deletes nothing', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([[row]]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(deleteListing(ADMIN, 'x', 'panaderia-la-espig', db)).rejects.toBeInstanceOf(
+        DeleteNotConfirmedError,
+      );
+      expect(writesRecorded()).toBe(false);
+    });
+
+    it('refuses an empty confirmation AND deletes nothing', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([[row]]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(deleteListing(ADMIN, 'x', '', db)).rejects.toBeInstanceOf(DeleteNotConfirmedError);
+      expect(writesRecorded()).toBe(false);
+    });
+
+    it('accepts the exact slug, ignoring surrounding whitespace', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([[row]]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(deleteListing(ADMIN, 'x', '  panaderia-la-espiga  ', db)).resolves.toBeUndefined();
+      expect(writesRecorded()).toBe(true);
+    });
+  });
+
+  describe('setCoverImage key validation', () => {
+    const listingRow = [{ coverImage: null }];
+    const ownGallery = [{ id: 1, url: 'listings/x/a.webp', alt: null, position: 0 }];
+
+    it('refuses a key that is not in this listing gallery AND writes nothing', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([listingRow, ownGallery]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      // A real key — belonging to a DIFFERENT business. This is the S6 case.
+      await expect(setCoverImage(ADMIN, 'x', 'listings/otro-negocio/a.webp', db)).rejects.toSatisfy(
+        isAuthError,
+      );
+      expect(writesRecorded()).toBe(false);
+    });
+
+    it('gives the same answer for a key that exists nowhere (rule 5)', async () => {
+      const missing = fakeSequencedTx([listingRow, ownGallery]);
+      const foreign = fakeSequencedTx([listingRow, ownGallery]);
+      const dbMissing = { transaction: (cb: (t: unknown) => unknown) => cb(missing.tx) } as unknown as Db;
+      const dbForeign = { transaction: (cb: (t: unknown) => unknown) => cb(foreign.tx) } as unknown as Db;
+
+      const a = await setCoverImage(ADMIN, 'x', 'listings/x/does-not-exist.webp', dbMissing).catch(
+        (e: Error) => e.message,
+      );
+      const b = await setCoverImage(ADMIN, 'x', 'listings/otro-negocio/a.webp', dbForeign).catch(
+        (e: Error) => e.message,
+      );
+      expect(a).toBe(b);
+    });
+
+    it('accepts a key from this listing own gallery', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([listingRow, ownGallery]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(setCoverImage(ADMIN, 'x', 'listings/x/a.webp', db)).resolves.toBeUndefined();
+      expect(writesRecorded()).toBe(true);
+    });
+
+    it('accepts null (clearing the cover) without consulting the gallery', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([listingRow]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(setCoverImage(ADMIN, 'x', null, db)).resolves.toBeUndefined();
+      expect(writesRecorded()).toBe(true);
+    });
+  });
+});
+
+/**
+ * A fake transaction whose successive `select()` calls resolve to successive
+ * entries of `results`. The gallery fake below answers every select with the
+ * same rows, which cannot express "first read the listing, then read its
+ * gallery" — the exact shape both guards above depend on.
+ *
+ * `insert` also swallows the `activity_log` write, so "wrote" here means the
+ * mutation itself happened.
+ */
+function fakeSequencedTx(results: unknown[]) {
+  const queue = [...results];
+  let wrote = false;
+
+  function chain(result: unknown) {
+    const obj: Record<string, unknown> = {
+      from: () => obj,
+      where: () => obj,
+      orderBy: () => obj,
+      limit: () => obj,
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject),
+    };
+    return obj;
+  }
+
+  const tx = {
+    select: () => chain(queue.length > 0 ? queue.shift() : []),
+    delete: () => {
+      wrote = true;
+      return { where: () => Promise.resolve() };
+    },
+    insert: () => ({
+      values: () => Promise.resolve(),
+    }),
+    update: () => ({
+      set: () => ({
+        where: () => {
+          wrote = true;
+          return Promise.resolve();
+        },
+      }),
+    }),
+  };
+
+  return { tx, writesRecorded: () => wrote };
+}
 
 /**
  * A minimal fake transaction handle for the gallery mutations: `select` always

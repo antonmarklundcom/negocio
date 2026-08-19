@@ -58,12 +58,13 @@ export default async function EditListingPage(
     getListingLeadReport(actor, listing.id, monthRange),
   ]);
   const update = updateListingAction.bind(null, params.id);
-  const remove = deleteListingAction.bind(null, params.id);
+  const deleteThisListing = deleteListingAction.bind(null, params.id);
   const saveHours = saveHoursAction.bind(null, params.id);
   const saveFlags = saveFlagsAction.bind(null, params.id);
   const upload = uploadGalleryImageAction.bind(null, params.id);
   const galleryError = typeof searchParams.galleryError === 'string' ? searchParams.galleryError : undefined;
   const flagsError = typeof searchParams.flagsError === 'string' ? searchParams.flagsError : undefined;
+  const deleteError = typeof searchParams.deleteError === 'string' ? searchParams.deleteError : undefined;
   const isAdmin = hasRole(actor, ['admin']);
   const isCurrentlyPremium = !!listing.premiumUntil && listing.premiumUntil > Date.now() / 1000;
   const isCurrentlyFeatured = !!listing.featuredUntil && listing.featuredUntil > Date.now() / 1000;
@@ -146,7 +147,7 @@ export default async function EditListingPage(
                 {listing.gallery.map((img, i) => {
                   const isCover = listing.coverImage === img.key;
                   const move = moveGalleryImageAction.bind(null, params.id, img.id);
-                  const remove = removeGalleryImageAction.bind(null, params.id, img.id);
+                  const removeImage = removeGalleryImageAction.bind(null, params.id, img.id);
                   const setCover = setCoverImageAction.bind(null, params.id, img.key);
                   const updateAlt = updateGalleryAltAction.bind(null, params.id, img.id);
                   return (
@@ -191,7 +192,7 @@ export default async function EditListingPage(
                             </button>
                           </form>
                         )}
-                        <form action={remove}>
+                        <form action={removeImage}>
                           <button type="submit" className="font-bold text-terra">
                             Quitar
                           </button>
@@ -326,8 +327,35 @@ export default async function EditListingPage(
           <p className="mt-1 text-[15px] text-ink2">
             Borra el negocio y todo lo que depende de él (horarios, galería). No se puede deshacer.
           </p>
-          <form action={remove} className="mt-4">
-            <button type="submit" className="rounded-card bg-terra px-4 py-2.5 text-sm font-bold text-white">
+          {/* The confirmation is a typed slug, not a checkbox and not a
+              `confirm()` dialog: it has to be something the person cannot do
+              by reflex, and it has to survive JavaScript being off. The server
+              re-checks it against the row (`deleteListing`), so this input is
+              the ergonomics, never the guard. */}
+          <form action={deleteThisListing} className="mt-4 max-w-sm">
+            <label htmlFor="confirm" className="block text-[13px] font-semibold text-ink2">
+              Escribí <code className="rounded bg-paper px-1 font-mono text-[12px]">{listing.slug}</code> para
+              confirmar
+            </label>
+            <input
+              id="confirm"
+              name="confirm"
+              type="text"
+              required
+              autoComplete="off"
+              spellCheck={false}
+              aria-describedby={deleteError ? 'delete-error' : undefined}
+              className="mt-1.5 w-full rounded-card border border-line px-3 py-2 text-sm"
+            />
+            {deleteError && (
+              <p id="delete-error" role="alert" className="mt-2 text-[13px] font-semibold text-terra">
+                {deleteError}
+              </p>
+            )}
+            <button
+              type="submit"
+              className="mt-3 rounded-card bg-terra px-4 py-2.5 text-sm font-bold text-white"
+            >
               Eliminar negocio
             </button>
           </form>

@@ -543,13 +543,29 @@ Repo, docs and comments in English.
       add an explicit `revalidate` to `/[categoria]` and `/[categoria]/[ciudad]`;
       add `loading.tsx` boundaries for the DB-backed public routes. Mind the
       8-connection pool (`lib/db/connection.ts`). No migration.
-- [ ] **W1-4 — Destructive-action safety.** Confirmation step on "Eliminar
+- [x] **W1-4 — Destructive-action safety.** Confirmation step on "Eliminar
       negocio"; `try/catch` on `deleteListingAction`
       (`app/admin/negocios/actions.ts`) like its siblings; rename the shadowed
       `remove` bindings in `app/admin/negocios/[id]/page.tsx`; validate the
       cover-image key against the listing's own gallery in `setCoverImage`
       (`lib/db/listings-admin.ts`) — S6, must land before any owner-facing
       write path ever ships. No migration.
+      *Shipped: `deleteListing` now takes a `confirmSlug` and refuses unless it
+      matches the row's own slug, compared **inside the transaction** — the
+      confirmation is in the query module, not the form, because a server
+      action is reachable over HTTP and a UI-only confirmation is decoration
+      (rule 2). The form asks staff to type the slug: not a checkbox, not a
+      `confirm()` dialog, and it survives JavaScript being off.
+      `deleteListingAction` gained the `try/catch` its siblings already had —
+      previously any throw (forbidden editor, row already gone) crashed to the
+      error boundary. `setCoverImage` validates the key against the listing's
+      **own** gallery rows, with row-not-found and key-not-yours returning the
+      identical message (rule 5). The shadowed `remove` bindings are now
+      `deleteThisListing` / `removeImage`.
+      Seven new behaviour tests (355 total). Canary run twice: (a) both new
+      guards deleted → the three write-attempt tests went red; (b) `requireRole`
+      deleted from all 17 guards in the module → 31 of 61 tests went red.
+      Guards restored.*
 - [ ] **W1-5 — Tooling hygiene.** ESLint: add `eslint.config.mjs`
       (`eslint-config-next`) + a CI lint job — today the dep and the `lint`
       script exist but nothing runs. Add a Dependabot config (security bumps).

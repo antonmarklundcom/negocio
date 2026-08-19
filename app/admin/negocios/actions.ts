@@ -11,6 +11,7 @@ import {
   addGalleryImage,
   createListing,
   deleteListing,
+  DeleteNotConfirmedError,
   extendListingFeatured,
   extendListingPremium,
   type FeaturedPackageDays,
@@ -35,6 +36,9 @@ import { uploadListingImage } from '@/lib/media/upload';
 
 function messageFor(err: unknown): string {
   if (isAuthError(err)) return err.message;
+  // A failed delete confirmation is the person's own typo, not a bug: say so
+  // instead of burying it under the generic "intentá de nuevo".
+  if (err instanceof DeleteNotConfirmedError) return err.message;
   console.error('[admin/negocios] action failed:', err);
   return 'No pudimos guardar los cambios. Intentá de nuevo.';
 }
@@ -83,9 +87,28 @@ export async function updateListingAction(id: string, _prev: AdminFormState, fd:
   redirect('/admin/negocios');
 }
 
-export async function deleteListingAction(id: string): Promise<void> {
+/**
+ * Unlike its siblings this used to have no `try/catch` at all: any thrown
+ * error — a forbidden editor, a row already gone, a failed confirmation —
+ * crashed to the error boundary and lost the page. It now behaves like every
+ * other action here and sends the reason back.
+ *
+ * `confirm` is the listing's slug, typed back by the person doing it. The
+ * comparison happens in the query module, not here: this layer is reachable
+ * over HTTP on its own, so a confirmation enforced only in the UI is
+ * decoration (Phase B rule 2).
+ */
+export async function deleteListingAction(id: string, fd: FormData): Promise<void> {
   const actor = await currentUser();
-  await deleteListing(actor, id);
+  const raw = fd.get('confirm');
+  const confirmSlug = typeof raw === 'string' ? raw : '';
+
+  try {
+    await deleteListing(actor, id, confirmSlug);
+  } catch (err) {
+    redirect(`/admin/negocios/${id}?deleteError=${encodeURIComponent(messageFor(err))}`);
+  }
+
   revalidatePath('/admin/negocios');
   redirect('/admin/negocios');
 }
