@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { getListingBySlug, getListings } from '@/lib/listings-repo';
 import { dbConfigured } from '@/lib/db/client';
 import { listApprovedReviews } from '@/lib/db/reviews';
@@ -292,7 +291,7 @@ function ContactCard({
 }
 
 // ------------------------------------------------------------------- FREE ----
-function FreeDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
+function FreeDetail({ listing: l, crumbs, reviews }: DetailProps) {
   return (
     <>
       {/* Warm fallback header, no cover */}

@@ -1,14 +1,37 @@
 name: CI
 
+# Actions minutes bill per account and every job rounds UP to a whole minute,
+# so the shape of this file is a budget decision, not a style one
+# (ROADMAP W1-5, agreed 2026-08-19):
+#
+#  - `pull_request` only. The previous `push: [main]` trigger re-ran the whole
+#    suite on the merge commit for changes that had just passed on the PR —
+#    double billing for a second opinion nobody read.
+#  - ONE job, not four. Four jobs that take 90s each bill 4 minutes; one job
+#    that takes 5 bills 5, and this one does strictly more than the four did.
+#  - `concurrency` + `cancel-in-progress`: an agent pushing three commits in a
+#    row used to leave three full runs racing. Now only the newest survives.
+#  - `paths-ignore`: a ROADMAP or README edit cannot break a TypeScript build.
+#  - `timeout-minutes`, because the GitHub default is 360 — one hung job would
+#    be a fifth of the monthly allowance.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'design/**'
+      - '.vscode/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  check:
+    name: Typecheck, lint, test, build, e2e
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -17,61 +40,51 @@ jobs:
           node-version: 22.x
           cache: npm
 
-      # Full install: devDependencies are what type-check and test the repo.
+      # Full install: devDependencies are what type-check, lint and test the repo.
       - run: npm ci
 
       - name: Type check
         run: npm run typecheck
 
-      # Every test is pure — no MySQL, no DATABASE_URL. Keep it that way.
+      # ROADMAP W1-5 / D9. The dep and the script existed long before anything
+      # ran them: Next 16 decoupled linting from `next build`, and there was no
+      # config file for the CLI to find.
+      - name: Lint
+        run: npm run lint
+
+      # Every test here is pure — no MySQL, no DATABASE_URL. Keep it that way;
+      # the MySQL-backed admin suite is a separate, manually triggered workflow.
       - name: Test
         run: npm run test
 
       - name: Build
         run: npm run build
 
-  # The job above CANNOT catch a production-only build failure: it installs
-  # devDependencies, and Hostinger does not. Hostinger sets NODE_ENV=production
-  # as an app env var, so its `npm install` omits them — which is exactly how a
-  # `drizzle-kit` import in drizzle.config.ts broke the deploy while CI stayed
-  # green. This job reproduces that install so it cannot happen again.
-  production-build:
-    name: Production build (no devDependencies, as on Hostinger)
-    runs-on: ubuntu-latest
-    env:
-      NODE_ENV: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
-          cache: npm
-
-      - run: npm ci --omit=dev
-
-      - name: Build
-        run: npm run build
-
-  # Basic e2e smoke tests (ROADMAP Phase C) — the golden path a visitor takes,
-  # against a production build on the built-in seed data. No DATABASE_URL, so
-  # /admin correctly 404s (nothing to sign in against without a database) and
-  # the rest of the site renders exactly as it does for a fresh local clone.
-  e2e:
-    name: Playwright smoke tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
-          cache: npm
-
-      - run: npm ci
-
-      - name: Install Playwright browsers
+      # `--with-deps` shells out to apt. When GitHub's Azure package mirrors
+      # are unreachable that hangs rather than failing, and without a step
+      # timeout it burns the whole job budget before the job timeout notices —
+      # it did exactly that on this PR, 17 minutes of stalled `apt-get update`.
+      - name: Install Playwright browser
+        timeout-minutes: 6
         run: npx playwright install --with-deps chromium
 
-      - name: Run smoke tests
+      # The golden path a visitor takes, against the production build on the
+      # built-in seed data. No DATABASE_URL, so /admin correctly 404s and the
+      # rest of the site renders exactly as it does for a fresh local clone.
+      - name: Playwright smoke tests
         run: npm run test:e2e
+
+      # The steps above CANNOT catch a production-only build failure: they
+      # install devDependencies and Hostinger does not. Hostinger sets
+      # NODE_ENV=production as an app env var, so its `npm install` omits them
+      # — which is exactly how a `drizzle-kit` import in drizzle.config.ts
+      # broke the deploy while CI stayed green. This reproduces that install.
+      - name: Production install (no devDependencies, as on Hostinger)
+        run: npm ci --omit=dev
+        env:
+          NODE_ENV: production
+
+      - name: Production build
+        run: npm run build
+        env:
+          NODE_ENV: production
