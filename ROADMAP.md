@@ -627,11 +627,41 @@ Repo, docs and comments in English.
       `concurrency`/`cancel-in-progress` (an agent pushing three commits used
       to leave three runs racing), `paths-ignore` for docs, and
       `timeout-minutes` against GitHub's 360-minute default.
-- [ ] **W1-6 — Admin e2e in CI.** New CI job with a MySQL service container:
+- [x] **W1-6 — Admin e2e in CI.** New CI job with a MySQL service container:
       run migrations + `bootstrap-admin`, then Playwright covering login →
       listing CRUD round-trip → review moderation. This is the bug-insurance
-      for every later autonomous build; keep the existing DB-free `e2e` job
-      as-is. No migration.
+      for every later autonomous build; keep the existing DB-free `e2e`
+      coverage as-is. No migration.
+      *Shipped: `e2e/admin.spec.ts` (6 tests, serial),
+      `playwright.admin.config.ts`, `npm run test:e2e:admin`,
+      `.github/workflows/admin-e2e.yml`. Covers the forced password change
+      (including that `/admin` cannot be used to skip it), `/admin` 404-ing for
+      an anonymous context, listing create → visible publicly → edit → visible
+      publicly, a review submitted through the real public endpoint staying
+      invisible until approved in the queue, and W1-4's typed-slug delete (the
+      wrong confirmation deletes nothing and returns a message; the right one
+      removes the listing and the public page 404s). Every assertion is a real
+      write against real MySQL. Verified locally against MariaDB 10.11: 6/6.*
+      **CI trigger is `workflow_dispatch` only** (Lean CI, agreed 2026-08-19):
+      a service container + migrations + seed import + production build + a
+      browser costs more minutes than everything else in this repo combined,
+      and almost no PR touches the admin. Run it from the Actions tab before
+      merging admin/auth/db work.
+      **It paid for itself before merging:** its first run against a real
+      database found that W1-3's `revalidatePath('/lugar/[slug]', 'page')`
+      invalidated nothing, so staff edits never reached the public listing
+      page. Fixed in the W1-3 follow-up above.
+      **Watch the wait matchers.** `waitForURL('**/admin/negocios**')` also
+      matches `/admin/negocios/nuevo` and `/admin/negocios/<id>` — the pages
+      the forms are submitted *from* — so it resolved instantly and every
+      assertion after it raced the server action. That cost an afternoon and
+      briefly produced a wrong diagnosis; the spec now uses an anchored regex
+      and says so.
+      **Also found, not fixed here:** `getCategories()`/`getCities()` return
+      only taxonomy that *has listings*, so a newly created city can never be
+      selected on the new-listing form **and** is rejected by the create
+      validation — a new city is unusable until a listing already references
+      it, which is impossible. Filed for W2-6.
 
 ### Wave 2 — Structure & revenue *(W2-1 first; W2-2 before W2-3; rest parallel)*
 
@@ -673,10 +703,24 @@ Repo, docs and comments in English.
       (cron-job.org / UptimeRobot), since Hostinger's Node app has no cron.
       **This mail infra is also the PR-6 blocker-killer** (password reset by
       email needs exactly this transport). No migration.
-- [ ] **W2-5 — Reporting polish.** CSV export on `/admin/leads` (admin-only,
+- [x] **W2-5 — Reporting polish.** CSV export on `/admin/leads` (admin-only,
       same guard as the list). Month-over-month lead trend (extend
       `asuncionMonthRange` usage to N previous months) on
       `/admin/negocios/[id]` — the renewal-conversation number. No migration.
+      *Shipped: `lib/admin/csv.ts` (pure), `listLeadsForExport` (admin-only,
+      capped at 5000 rows), `GET /admin/leads/export` carrying the screen's
+      current filter; `asuncionMonthRanges(n)` in `lib/hours.ts` and
+      `getListingLeadTrend` feeding a six-month bar list on the listing page.
+      24 new tests (384 total); canary run on `lib/db/leads-admin.ts` → 8 of 15
+      access tests went red, guards restored.*
+      **Two things the spec did not ask for, both non-negotiable in hindsight:**
+      the CSV neutralises **formula injection** (`=`, `+`, `-`, `@` prefixes are
+      executed by Excel and Sheets on open, and these rows are written by
+      members of the public, so it is a live attack path on whoever opens the
+      export), and it emits a UTF-8 BOM so Excel on Windows does not render
+      every `ó` as mojibake. The trend is bucketed **in JavaScript** from one
+      query rather than grouped in SQL, because grouping by month in SQL means
+      date arithmetic in MySQL's timezone and this app computes time itself.
 - [x] **W2-6 — Data quality + admin ergonomics.** Duplicate warning on listing
       create (same name + city ⇒ warn, not block). Minimal bulk action:
       re-categorise selected listings (unblocks category deletion). Per-entity

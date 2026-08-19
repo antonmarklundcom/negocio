@@ -8,8 +8,8 @@ import { hasRole } from '@/lib/auth/roles';
 import { listAllCategoryOptions, listAllCityOptions } from '@/lib/db/taxonomy-admin';
 import { FEATURED_PACKAGE_DAYS, getListingForEdit, PREMIUM_PACKAGE_DAYS } from '@/lib/db/listings-admin';
 import { MAX_FEATURED_SLOTS } from '@/lib/config';
-import { getListingLeadReport } from '@/lib/db/leads-admin';
-import { asuncionMonthRange } from '@/lib/hours';
+import { getListingLeadReport, getListingLeadTrend } from '@/lib/db/leads-admin';
+import { asuncionMonthRange, asuncionMonthRanges } from '@/lib/hours';
 import { mediaConfigured } from '@/lib/media/upload';
 import { mediaUrl } from '@/lib/media/url';
 import { waLink } from '@/lib/format';
@@ -61,10 +61,15 @@ export default async function EditListingPage(
   if (!listing) notFound();
 
   const monthRange = asuncionMonthRange();
-  const [categories, cities, leadReport] = await Promise.all([
+  // Six months is the renewal-conversation window: enough to show a trend,
+  // short enough that a business that only just joined does not read as
+  // declining (ROADMAP W2-5).
+  const trendRanges = asuncionMonthRanges(6);
+  const [categories, cities, leadReport, leadTrend] = await Promise.all([
     listAllCategoryOptions(actor),
     listAllCityOptions(actor),
     getListingLeadReport(actor, listing.id, monthRange),
+    getListingLeadTrend(actor, listing.id, trendRanges),
   ]);
   const update = updateListingAction.bind(null, params.id);
   const deleteThisListing = deleteListingAction.bind(null, params.id);
@@ -109,6 +114,35 @@ export default async function EditListingPage(
             'Todavía no llegó ningún lead este mes.'
           )}
         </p>
+
+        {/* The renewal number (ROADMAP W2-5). Bars are scaled to the busiest
+            month in the window, so a quiet six months does not render as six
+            identical full bars. The count is always written out — a bar alone
+            is not a number you can quote to a business owner. */}
+        {leadTrend.some((m) => m.total > 0) && (
+          <div className="mt-5">
+            <h3 className="text-[12px] font-bold uppercase tracking-wide text-ink3">Últimos 6 meses</h3>
+            <ul className="mt-2 space-y-1.5">
+              {leadTrend.map((month) => {
+                const peak = Math.max(...leadTrend.map((m) => m.total), 1);
+                return (
+                  <li key={month.monthLabel} className="flex items-center gap-3 text-[13px]">
+                    <span className="w-28 shrink-0 capitalize text-ink2">{month.monthLabel}</span>
+                    <span className="h-2 flex-1 overflow-hidden rounded-full bg-line2">
+                      <span
+                        className="block h-full rounded-full bg-blue"
+                        style={{ width: `${Math.round((month.total / peak) * 100)}%` }}
+                      />
+                    </span>
+                    <span className="w-24 shrink-0 text-right font-bold text-ink">
+                      {month.total} {month.total === 1 ? 'lead' : 'leads'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </section>
 
       <AdminForm

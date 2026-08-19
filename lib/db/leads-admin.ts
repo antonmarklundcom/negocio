@@ -136,3 +136,93 @@ export async function getListingLeadReport(
   const messages = bySource['listing_message'] ?? 0;
   return { whatsappClicks, messages, total: whatsappClicks + messages };
 }
+
+/**
+ * The same numbers as `getListingLeadReport`, for several months at once — the
+ * renewal-conversation figure (ROADMAP W2-5). "47 taps last month, 12 the
+ * month before" is what turns a renewal into a conversation about results.
+ *
+ * ONE query, bucketed in JavaScript. Grouping by month in SQL would mean date
+ * arithmetic in MySQL's timezone, and this app computes time itself precisely
+ * so that never happens (README → Time is computed in the app). The ranges
+ * come from `asuncionMonthRanges`, so these buckets and the monthly figure on
+ * the same page can never disagree.
+ *
+ * `['admin', 'editor']` for the same reason as `getListingLeadReport`: this is
+ * a per-business count, not the public's contact details.
+ */
+export interface ListingLeadTrendPoint extends ListingLeadReport {
+  monthLabel: string;
+}
+
+export async function getListingLeadTrend(
+  actor: SessionUser | null,
+  listingId: string,
+  ranges: { start: Date; end: Date; monthLabel: string }[],
+  database: Db = getDb(),
+): Promise<ListingLeadTrendPoint[]> {
+  requireRole(actor, ['admin', 'editor']);
+
+  if (ranges.length === 0) return [];
+
+  const from = ranges[0]!.start;
+  const to = ranges[ranges.length - 1]!.end;
+
+  const rows = await database
+    .select({ source: leads.source, createdAt: leads.createdAt })
+    .from(leads)
+    .where(
+      and(
+        eq(leads.listingId, listingId),
+        sql`${leads.createdAt} >= ${from}`,
+        sql`${leads.createdAt} < ${to}`,
+      ),
+    );
+
+  return ranges.map((range) => {
+    let whatsappClicks = 0;
+    let messages = 0;
+    for (const row of rows) {
+      const at = row.createdAt.getTime();
+      if (at < range.start.getTime() || at >= range.end.getTime()) continue;
+      if (row.source === 'listing_whatsapp') whatsappClicks++;
+      else if (row.source === 'listing_message') messages++;
+    }
+    return { monthLabel: range.monthLabel, whatsappClicks, messages, total: whatsappClicks + messages };
+  });
+}
+
+/**
+ * Every lead matching the current filter, for the CSV export (ROADMAP W2-5).
+ *
+ * Admin-only, exactly like `listLeads` — a CSV of the public's names, phone
+ * numbers and messages is if anything more sensitive than the paginated screen
+ * it comes from, and an export that quietly relaxed the guard would be the
+ * whole point of the guard defeated.
+ *
+ * Hard-capped rather than paginated: an export is a single click and a
+ * runaway one would pull the entire table into one Node process's heap.
+ */
+export const LEADS_EXPORT_LIMIT = 5000;
+
+export async function listLeadsForExport(
+  actor: SessionUser | null,
+  params: { source?: string; q?: string } = {},
+  database: Db = getDb(),
+): Promise<LeadRow[]> {
+  requireRole(actor, ['admin']);
+
+  const result = await listLeads(actor, { ...params, page: 1 }, database);
+  if (result.total <= LEADS_PAGE_SIZE) return result.rows;
+
+  const pages = Math.min(
+    Math.ceil(result.total / LEADS_PAGE_SIZE),
+    Math.ceil(LEADS_EXPORT_LIMIT / LEADS_PAGE_SIZE),
+  );
+  const rows = [...result.rows];
+  for (let page = 2; page <= pages; page++) {
+    const next = await listLeads(actor, { ...params, page }, database);
+    rows.push(...next.rows);
+  }
+  return rows.slice(0, LEADS_EXPORT_LIMIT);
+}
