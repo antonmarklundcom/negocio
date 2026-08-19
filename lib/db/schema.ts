@@ -209,6 +209,18 @@ export const LEAD_SOURCES = [
   'listing_whatsapp',
   'sumate',
   'contacto',
+  /**
+   * "Reportar información incorrecta" on a listing page (ROADMAP W1-1b).
+   *
+   * A lead source, not a table of its own: a report is a member of the public
+   * telling us something, which is what this table already models — same
+   * honeypot, same rate limit, same webhook fan-out, same admin screen. A
+   * `reports` table would have duplicated all of it to gain a column.
+   *
+   * Adding a value to a MySQL ENUM is an ALTER, which is why this is a
+   * migration PR and why it was split out of W1-1.
+   */
+  'listing_report',
 ] as const;
 
 /**

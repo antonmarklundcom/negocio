@@ -50,6 +50,13 @@
       "when": 1787178533421,
       "tag": "0006_foamy_warbound",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787179051879,
+      "tag": "0007_deep_nightshade",
+      "breakpoints": true
     }
   ]
 }

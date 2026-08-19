@@ -45,6 +45,23 @@ export const leadSchema = z.discriminatedUnion('source', [
     email: z.string().email().max(160),
     message: z.string().min(1).max(2000),
   }),
+  /**
+   * "Reportar información incorrecta" (ROADMAP W1-1b). Deliberately shaped
+   * like `listing_message` and NOT like a support ticket: it goes through the
+   * same orchestrator, lands in the same table, fans out to the same sinks and
+   * appears on the same admin screen.
+   *
+   * `contact` is optional. Somebody telling us a phone number is wrong is
+   * doing us a favour; demanding their email first is how the report does not
+   * get sent.
+   */
+  z.object({
+    source: z.literal('listing_report'),
+    listingId: z.string().min(1),
+    slug: z.string().min(1),
+    message: z.string().min(1).max(2000),
+    contact: z.string().max(160).optional(),
+  }),
 ]);
 
 export type Lead = z.infer<typeof leadSchema>;
@@ -82,6 +99,14 @@ function toFlatPayload(lead: Lead): Record<string, string> {
       };
     case 'contacto':
       return { ...base, name: lead.name, email: lead.email, message: lead.message };
+    case 'listing_report':
+      return {
+        ...base,
+        listing_id: lead.listingId,
+        listing_slug: lead.slug,
+        message: lead.message,
+        contact: lead.contact ?? '',
+      };
   }
 }
 
@@ -111,6 +136,14 @@ function toLeadRow(lead: Lead): NewLead {
       };
     case 'contacto':
       return { ...base, name: lead.name, email: lead.email, message: lead.message };
+    case 'listing_report':
+      return {
+        ...base,
+        listingId: lead.listingId,
+        listingSlug: lead.slug,
+        message: lead.message,
+        contact: lead.contact ?? null,
+      };
   }
 }
 

@@ -21,6 +21,7 @@ import { StickyWhatsAppBar } from '@/components/detail/StickyWhatsAppBar';
 import { LockedRow, LockedGallery, LockedCategory, UpgradeCta } from '@/components/detail/Locked';
 import { Reviews } from '@/components/detail/Reviews';
 import { ShareButton } from '@/components/detail/ShareButton';
+import { ReportForm } from '@/components/detail/ReportForm';
 import { Phone, Clock } from '@/components/icons';
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import type { Review } from '@/lib/types';
@@ -209,6 +210,8 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
               )}
 
               {reviews && <Reviews listingId={l.id} reviews={reviews} />}
+
+              <ReportForm listingId={l.id} slug={l.slug} />
             </div>
           </div>
 
@@ -337,6 +340,8 @@ function FreeDetail({ listing: l, crumbs, reviews }: DetailProps) {
             )}
 
             {reviews && <Reviews listingId={l.id} reviews={reviews} />}
+
+            <ReportForm listingId={l.id} slug={l.slug} />
 
             <UpgradeCta />
           </div>

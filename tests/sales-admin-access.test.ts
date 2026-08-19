@@ -77,7 +77,7 @@ describe('lib/db/sales-admin — the authorization boundary', () => {
   it('there is no createSale — a sale is written with the package it pays for', async () => {
     // Not a formality. A standalone "record a sale" function is exactly how the
     // books and the packages start disagreeing, so the module must not grow one.
-    const module = await import('@/lib/db/sales-admin');
-    expect(Object.keys(module).filter((k) => /create|insert|record/i.test(k))).toEqual([]);
+    const salesModule = await import('@/lib/db/sales-admin');
+    expect(Object.keys(salesModule).filter((k) => /create|insert|record/i.test(k))).toEqual([]);
   });
 });

@@ -142,3 +142,51 @@ describe('handleLead', () => {
     expect(updateLeadDeliveryMock).not.toHaveBeenCalled();
   });
 });
+
+describe('listing_report (ROADMAP W1-1b)', () => {
+  // The module is imported per-test elsewhere in this file so each case can set
+  // its own env; the schema needs none of that.
+  async function schema() {
+    return (await import('../lib/leads')).leadSchema;
+  }
+
+  it('accepts a report with just a message', async () => {
+    const leadSchema = await schema();
+    const parsed = leadSchema.safeParse({
+      source: 'listing_report',
+      listingId: 'r1',
+      slug: 'nande-cocina',
+      message: 'El teléfono ya no existe.',
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('accepts an optional contact', async () => {
+    const leadSchema = await schema();
+    const parsed = leadSchema.safeParse({
+      source: 'listing_report',
+      listingId: 'r1',
+      slug: 'nande-cocina',
+      message: 'Cerró en marzo.',
+      contact: 'vecino@example.com',
+    });
+    expect(parsed.success && parsed.data.source === 'listing_report' && parsed.data.contact).toBe(
+      'vecino@example.com',
+    );
+  });
+
+  it('refuses a report with no listing and no message', async () => {
+    const leadSchema = await schema();
+    // Somebody telling us a phone number is wrong is doing us a favour, so the
+    // contact is optional — but a report about nothing is not a report.
+    expect(leadSchema.safeParse({ source: 'listing_report', listingId: 'r1', slug: 's' }).success).toBe(
+      false,
+    );
+    expect(
+      leadSchema.safeParse({ source: 'listing_report', slug: 's', message: 'algo' }).success,
+    ).toBe(false);
+    expect(
+      leadSchema.safeParse({ source: 'listing_report', listingId: 'r1', slug: 's', message: '' }).success,
+    ).toBe(false);
+  });
+});
