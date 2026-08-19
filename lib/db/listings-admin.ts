@@ -387,16 +387,36 @@ export async function updateListing(
   });
 }
 
+/** Thrown when the delete confirmation does not match the listing's slug. */
+export class DeleteNotConfirmedError extends Error {
+  constructor() {
+    super('Escribí la URL del negocio exactamente como aparece para confirmar.');
+    this.name = 'DeleteNotConfirmedError';
+  }
+}
+
 /**
  * Admin-only: this cascades to `listing_hours` and `listing_gallery`
  * (`onDelete: 'cascade'`), which is unrecoverable.
+ *
+ * `confirmSlug` must be the listing's own slug, typed back by the person doing
+ * it (ROADMAP W1-4). The check lives HERE, not in the form, for the same
+ * reason `requireRole` does: a server action is directly reachable over HTTP,
+ * so a confirmation implemented only in the UI is decoration. It is compared
+ * against the row inside the transaction, so it cannot race an edit either.
  */
-export async function deleteListing(actor: SessionUser | null, id: string, database: Db = getDb()): Promise<void> {
+export async function deleteListing(
+  actor: SessionUser | null,
+  id: string,
+  confirmSlug: string,
+  database: Db = getDb(),
+): Promise<void> {
   const user = requireRole(actor, ['admin']);
 
   await database.transaction(async (tx) => {
     const [before] = await tx.select().from(listings).where(eq(listings.id, id)).limit(1);
     if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+    if (confirmSlug.trim() !== before.slug) throw new DeleteNotConfirmedError();
 
     await tx.delete(listings).where(eq(listings.id, id));
 
@@ -781,6 +801,18 @@ export async function removeGalleryImage(
   });
 }
 
+/**
+ * The cover key is an OBJECT REFERENCE, not a value (Phase B rule 4): it comes
+ * from the request, and without this check any signed-in editor could point
+ * one business's cover at another business's photo — or at an arbitrary
+ * storage key that renders as a broken image on a public page. So the key must
+ * be one of THIS listing's own gallery rows.
+ *
+ * `null` (clear the cover) is the one value that needs no gallery row.
+ *
+ * Row-not-found and key-not-yours deliberately return the same message
+ * (rule 5): a different answer would say whether a given storage key exists.
+ */
 export async function setCoverImage(
   actor: SessionUser | null,
   listingId: string,
@@ -792,6 +824,13 @@ export async function setCoverImage(
   await database.transaction(async (tx) => {
     const [before] = await tx.select({ coverImage: listings.coverImage }).from(listings).where(eq(listings.id, listingId)).limit(1);
     if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    if (key !== null) {
+      const own = await galleryRowsFor(tx, listingId);
+      if (!own.some((r) => r.url === key)) {
+        throw new AuthError('No encontramos esa foto.', 'forbidden');
+      }
+    }
 
     await tx.update(listings).set({ coverImage: key }).where(eq(listings.id, listingId));
 
