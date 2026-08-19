@@ -60,7 +60,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      # `--with-deps` shells out to apt. When GitHub's Azure package mirrors
+      # are unreachable that hangs rather than failing, and without a step
+      # timeout it burns the whole job budget before the job timeout notices —
+      # it did exactly that on this PR, 17 minutes of stalled `apt-get update`.
       - name: Install Playwright browser
+        timeout-minutes: 6
         run: npx playwright install --with-deps chromium
 
       # The golden path a visitor takes, against the production build on the
