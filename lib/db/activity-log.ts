@@ -1,5 +1,5 @@
 import 'server-only';
-import { desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from './client';
 import type { Db } from './connection';
 import { requireRole } from '@/lib/auth/roles';
@@ -95,4 +95,90 @@ export async function recentActivity(
     .orderBy(desc(activityLog.id))
     .limit(limit);
   return rows;
+}
+
+export const ACTIVITY_PAGE_SIZE = 50;
+
+export interface ActivityLogListResult {
+  rows: ActivityLogListRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * The readable audit trail (ROADMAP W2-6). Every mutation in this app has
+ * written to `activity_log` since PR-3, faithfully and inside the same
+ * transaction as the write — and until now the only way to read any of it was
+ * the ten most recent rows on the dashboard. A log nobody can search is a log
+ * nobody consults.
+ *
+ * Filterable by entity type, by a specific entity, by actor and by action;
+ * paginated. Admin-only for the same reason `recentActivity` is: the log names
+ * who did what.
+ *
+ * Filters are applied as equality on indexed-ish columns rather than as a text
+ * search: "what happened to THIS listing" and "what did THIS person do" are
+ * the two questions an audit trail is actually asked.
+ */
+export interface ActivityLogQuery {
+  entityType?: string;
+  entityId?: string;
+  userId?: number;
+  action?: ActivityAction;
+  page?: number;
+}
+
+export async function listActivity(
+  actor: SessionUser | null,
+  params: ActivityLogQuery = {},
+  database: Db = getDb(),
+): Promise<ActivityLogListResult> {
+  requireRole(actor, ['admin']);
+
+  const page = Math.max(1, Math.floor(params.page ?? 1));
+
+  const conditions = [];
+  if (params.entityType) conditions.push(eq(activityLog.entityType, params.entityType));
+  if (params.entityId) conditions.push(eq(activityLog.entityId, params.entityId));
+  if (params.userId !== undefined) conditions.push(eq(activityLog.userId, params.userId));
+  if (params.action) conditions.push(eq(activityLog.action, params.action));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const rows = await database
+    .select({
+      id: activityLog.id,
+      actorName: users.name,
+      entityType: activityLog.entityType,
+      entityId: activityLog.entityId,
+      action: activityLog.action,
+      createdAt: activityLog.createdAt,
+    })
+    .from(activityLog)
+    .leftJoin(users, eq(users.id, activityLog.userId))
+    .where(where)
+    .orderBy(desc(activityLog.id))
+    .limit(ACTIVITY_PAGE_SIZE)
+    .offset((page - 1) * ACTIVITY_PAGE_SIZE);
+
+  const [counted] = await database
+    .select({ total: sql<number>`count(*)` })
+    .from(activityLog)
+    .where(where);
+
+  return { rows, total: Number(counted?.total ?? 0), page, pageSize: ACTIVITY_PAGE_SIZE };
+}
+
+/** The distinct entity types present in the log, for the filter's select. */
+export async function activityEntityTypes(
+  actor: SessionUser | null,
+  database: Db = getDb(),
+): Promise<string[]> {
+  requireRole(actor, ['admin']);
+
+  const rows = await database
+    .selectDistinct({ entityType: activityLog.entityType })
+    .from(activityLog)
+    .orderBy(asc(activityLog.entityType));
+  return rows.map((r) => r.entityType);
 }

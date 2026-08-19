@@ -29,6 +29,13 @@ export interface AdminTableProps<Row extends { id: number | string }> {
    * rendered at all.
    */
   rowActions?: (row: Row) => React.ReactNode;
+  /**
+   * Renders a leading checkbox column named `selected` (ROADMAP W2-6). The
+   * caller is responsible for wrapping the table in the `<form>` that submits
+   * them — this component stays a plain server component with no state, and
+   * the selection lives entirely in the DOM.
+   */
+  selectable?: boolean;
   /** Honest, context-specific copy — never "No results". */
   emptyLabel: string;
   page: number;
@@ -41,6 +48,7 @@ export function AdminTable<Row extends { id: number | string }>({
   rows,
   editHref,
   rowActions,
+  selectable = false,
   emptyLabel,
   page,
   totalPages,
@@ -62,6 +70,7 @@ export function AdminTable<Row extends { id: number | string }>({
         <table className="w-full min-w-[640px] border-collapse text-left text-[14px]">
           <thead>
             <tr className="border-b border-line bg-cream/60">
+              {selectable && <th className="w-10 px-4 py-3" aria-label="Seleccionar" />}
               {columns.map((col) => (
                 <th key={col.header} className="px-4 py-3 text-[12px] font-bold uppercase tracking-wide text-ink2">
                   {col.header}
@@ -77,6 +86,17 @@ export function AdminTable<Row extends { id: number | string }>({
           <tbody>
             {rows.map((row) => (
               <tr key={String(row.id)} className="border-b border-line last:border-b-0">
+                {selectable && (
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      name="selected"
+                      value={String(row.id)}
+                      aria-label={`Seleccionar ${String(row.id)}`}
+                      className="h-4 w-4 accent-blue"
+                    />
+                  </td>
+                )}
                 {columns.map((col) => (
                   <td
                     key={col.header}

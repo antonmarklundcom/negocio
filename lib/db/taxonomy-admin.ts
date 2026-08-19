@@ -385,3 +385,51 @@ export async function countListingsByCity(actor: SessionUser | null, database: D
     .groupBy(listings.ciudad);
   return Object.fromEntries(rows.map((r) => [r.ciudad, Number(r.total)]));
 }
+
+/**
+ * Every category / every city, unpaginated, for the admin's own SELECT options
+ * and for the create-form validation (ROADMAP W2-6).
+ *
+ * THE ADMIN MUST NOT READ `getCategories()` / `getCities()` FROM
+ * `lib/listings-repo.ts`. Those are the PUBLIC reads, and they deliberately
+ * return only taxonomy that already has at least one listing — a rubro with
+ * nothing in it must not appear in the site's navigation. Used by the admin
+ * that filter is a trap with no way out: a category or city created in
+ * `/admin/rubros` or `/admin/ciudades` was absent from the new-listing form's
+ * select AND rejected by the create validation, so it could never be assigned
+ * to anything, so it never gained a listing, so it never became selectable.
+ *
+ * Found by the W1-6 admin e2e suite. Guarded like everything else in this
+ * module; `editor` is allowed because an editor creates listings and therefore
+ * needs the options.
+ */
+export interface TaxonomyOption {
+  value: string;
+  label: string;
+}
+
+export async function listAllCategoryOptions(
+  actor: SessionUser | null,
+  database: Db = getDb(),
+): Promise<TaxonomyOption[]> {
+  requireRole(actor, ['admin', 'editor']);
+
+  const rows = await database
+    .select({ value: categories.slug, label: categories.label })
+    .from(categories)
+    .orderBy(asc(categories.sortOrder), asc(categories.label));
+  return rows;
+}
+
+export async function listAllCityOptions(
+  actor: SessionUser | null,
+  database: Db = getDb(),
+): Promise<TaxonomyOption[]> {
+  requireRole(actor, ['admin', 'editor']);
+
+  const rows = await database
+    .select({ value: cities.slug, label: cities.label })
+    .from(cities)
+    .orderBy(asc(cities.sortOrder), asc(cities.label));
+  return rows;
+}
