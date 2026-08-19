@@ -65,6 +65,8 @@ lib/                       Domain logic
   admin/                   validation.ts (pure) · labels.ts
   types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts
   leads.ts                 Lead orchestrator (zod + fan-out)
+  mail.ts                  Env-gated SMTP transport (unset → feature off)
+  admin/digest.ts          Expiry-digest wording (pure)
   jsonld.tsx               schema.org builders
 drizzle/                   Generated SQL migrations (applied from a local machine)
 scripts/import-seed.ts     Idempotent seed → MySQL import (tsx)
@@ -469,6 +471,53 @@ this. `server.js` boots Next programmatically rather than via `next start`, so
 nothing else sets it — and `lib/auth/session.ts` reads it to decide whether the
 session cookie carries the `secure` flag. Unsetting it would ship the admin
 session cookie over plain HTTP.
+
+---
+
+## Mail and the expiry digest
+
+`lib/mail.ts` is an env-gated SMTP transport (nodemailer), the same pattern as
+Sentry and R2: with `SMTP_*` unset nothing is constructed, and the app boots
+and serves normally. All five variables are required together — a
+half-configured transport does not fail loudly, it hangs on connect.
+`mailConfigured()` is what everything checks.
+
+**This module is the PR-6 blocker-killer.** "Password reset by email" is the
+gate on ever announcing the owner portal to a real business, and it needs
+exactly this transport and nothing else.
+
+There is deliberately **no queue and no retry loop**. The only sender today is
+a weekly staff digest triggered by an external cron: if it fails, the cron
+retries next week and nobody is blocked. Durable delivery is the hard part and
+gets built when there is a message a human is waiting on.
+
+### The digest
+
+`POST /api/internal/expiry-digest` mails staff every business whose Premium or
+"destacado en portada" slot ends within 14 days (ROADMAP D6). Hostinger's Node
+app has no cron, so an external scheduler (cron-job.org, UptimeRobot) calls it
+once a week.
+
+That makes `EXPIRY_DIGEST_TOKEN` the only thing between the public internet and
+a mail send:
+
+- compared with `timingSafeEqual`, not `===`, so the token's prefix cannot be
+  recovered by timing;
+- **unset means the endpoint 404s** — "forgot to set it" must never mean "open
+  to everyone";
+- 404, never 401, for the same reason `/admin` does;
+- `POST`, not `GET`: a crawler, a link preview or a browser prefetch issues
+  GETs, and every one of them would send mail.
+
+It reads and mails and writes nothing, so running it twice sends two identical
+emails and changes no state — the right failure mode for something a
+third-party scheduler retries on a timeout. With nothing expiring it sends
+nothing at all; a weekly "nothing to do" is how a digest becomes a folder
+nobody opens.
+
+The wording and the urgency live in `lib/admin/digest.ts`, which is **pure** —
+listings in, subject and text out — so it is tested without SMTP, a database or
+a clock, exactly like `lib/admin/validation.ts`.
 
 ---
 
