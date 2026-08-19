@@ -563,6 +563,14 @@ Repo, docs and comments in English.
       `<Suspense>` placed after the `notFound()` check instead. Verified by
       curling the built server: unknown rubro, unknown listing and unknown
       top-level path all answer 404 again.
+      **Follow-up fix (same wave, PR after W1-6 found it):** the
+      `revalidatePath('/lugar/[slug]', 'page')` shipped here invalidated
+      **nothing** — the dynamic-route form matches the app-directory page path
+      and this route lives in the `(public)` route group, so a listing renamed
+      in the admin kept its old name publicly for the full hour. Replaced with
+      `revalidatePath('/', 'layout')`, which takes effect on the very next
+      request. The new admin e2e suite (W1-6) is what caught it, which is
+      exactly what it was built for.
       **Note:** the `revalidate` added to `/[categoria]` and
       `/[categoria]/[ciudad]` does *not* make those routes ISR — they read
       `searchParams`, so the shell stays dynamic and the value only governs the
