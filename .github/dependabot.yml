@@ -1,0 +1,25 @@
+# Security and dependency updates (ROADMAP W1-5 / D9).
+#
+# Monthly and grouped on purpose. Every Dependabot PR triggers a CI run, and
+# fifteen individual bump PRs a week is how an Actions allowance disappears
+# without a single human deciding anything. GitHub's *security* alerts are
+# separate from this file and are not rate-limited by it — a real CVE still
+# opens its own PR immediately.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      # One PR for everything routine. A major bump lands on its own, because
+      # Next/React majors are never a rubber stamp on this stack.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 1

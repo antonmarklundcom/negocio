@@ -1,7 +1,24 @@
 /**
- * Minimal in-memory fixed-window rate limiter. Good enough for a single Node
- * instance (Hostinger runs one process); swap for Redis/Upstash if we ever scale
- * horizontally. Keyed by client IP.
+ * Minimal in-memory fixed-window rate limiter, keyed by client IP.
+ *
+ * SINGLE-PROCESS BY DESIGN, AND THAT IS A REAL LIMIT (ROADMAP D9). The state
+ * is a `Map` in this Node process's heap. Three consequences, all of them
+ * accepted deliberately rather than overlooked:
+ *
+ *  1. **A restart resets every bucket.** A redeploy hands every blocked IP a
+ *     fresh budget. Hostinger redeploys on push, so this happens in practice.
+ *  2. **N processes means N × the limit.** Today Hostinger runs one Node
+ *     process per app, so the configured limit is the real limit. The day this
+ *     app runs behind more than one process — a second instance, a PM2
+ *     cluster, any horizontal scaling — every limit here silently multiplies.
+ *     Nothing will fail loudly; spam volume will simply go up.
+ *  3. **Memory is bounded only by the sweep below**, which runs at most once a
+ *     minute and only when someone calls in.
+ *
+ * The replacement, when it is needed, is a shared store (Redis/Upstash) behind
+ * the same two functions — no caller changes. Do not reach for that before the
+ * process count actually changes: a network round-trip on every public form
+ * submission is a worse trade than this while there is exactly one process.
  */
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
