@@ -21,12 +21,13 @@ import {
   removeGalleryImage,
   removeListingFeatured,
   setCoverImage,
-  setListingFlags,
+  setListingPremiumUntil,
+  setListingVerified,
   setListingHours,
   updateGalleryAlt,
   updateListing,
 } from '@/lib/db/listings-admin';
-import type { ListingFlagsInput, ListingFormInput } from '@/lib/admin/validation';
+import type { ListingFormInput } from '@/lib/admin/validation';
 
 /**
  * Access tests, invoked DIRECTLY against the query module — same shape as
@@ -88,7 +89,6 @@ const INPUT: ListingFormInput = {
   destacadoItem: null,
 };
 
-const FLAGS_INPUT: ListingFlagsInput = { verified: true, premiumUntil: null };
 
 /** Every editor-reachable export — arguments valid enough that ONLY the guard can reject them. */
 const EDITOR_REACHABLE: { name: string; call: (actor: SessionUser | null, db: Db) => Promise<unknown> }[] = [
@@ -148,22 +148,44 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
     });
   });
 
-  describe('setListingFlags', () => {
+  describe('setListingVerified (ROADMAP W2-2 — split from premiumUntil)', () => {
     it('throws for an anonymous caller AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(setListingFlags(ANONYMOUS, 'x', FLAGS_INPUT, db)).rejects.toSatisfy(isAuthError);
+      await expect(setListingVerified(ANONYMOUS, 'x', true, db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
     it('rejects an editor AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(setListingFlags(EDITOR, 'x', FLAGS_INPUT, db)).rejects.toSatisfy(isAuthError);
+      await expect(setListingVerified(EDITOR, 'x', true, db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
     it('is reachable by an admin', async () => {
       const { db, touched } = recordingDb();
-      await expect(setListingFlags(ADMIN, 'x', FLAGS_INPUT, db)).rejects.toThrow(/the database was reached/);
+      await expect(setListingVerified(ADMIN, 'x', true, db)).rejects.toThrow(/the database was reached/);
+      expect(touched.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('setListingPremiumUntil (ROADMAP W2-2 — split from verified)', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(setListingPremiumUntil(ANONYMOUS, 'x', null, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects an editor AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(setListingPremiumUntil(EDITOR, 'x', null, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('is reachable by an admin', async () => {
+      const { db, touched } = recordingDb();
+      await expect(setListingPremiumUntil(ADMIN, 'x', null, db)).rejects.toThrow(
+        /the database was reached/,
+      );
       expect(touched.length).toBeGreaterThan(0);
     });
   });
