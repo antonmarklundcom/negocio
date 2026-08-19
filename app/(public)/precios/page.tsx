@@ -85,7 +85,6 @@ export default function PreciosPage() {
       </div>
 
       <p className="mt-8 text-center text-xs text-ink3">
-        {/* TODO: confirm final pricing with the business before launch. */}
         Los precios son referenciales y pueden ajustarse. Consultanos por planes anuales.
       </p>
     </div>

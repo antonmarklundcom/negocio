@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getCategories(),
   ]);
 
-  const staticRoutes: MetadataRoute.Sitemap = ['', '/buscar', '/precios', '/sumar-negocio', '/contacto', '/nosotros'].map(
+  const staticRoutes: MetadataRoute.Sitemap = ['', '/buscar', '/rubros', '/precios', '/sumar-negocio', '/contacto', '/nosotros'].map(
     (path) => ({ url: `${SITE_URL}${path}`, changeFrequency: 'weekly', priority: path === '' ? 1 : 0.6 }),
   );
 
