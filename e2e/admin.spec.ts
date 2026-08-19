@@ -220,8 +220,12 @@ test('selling a package records the sale in the same breath', async ({ page }) =
 
   await page.locator('#premium-amount').fill('65.000');
   await page.locator('#premium-method').selectOption('efectivo');
+  // NOT waitForURL: the action redirects back to the page it was submitted
+  // from, so any URL matcher is satisfied before the transaction commits and
+  // /admin/ventas gets fetched too early. The premium date appearing in the
+  // form is the real completion signal.
   await page.getByRole('button', { name: '+ 30 días' }).first().click();
-  await page.waitForURL(`**/admin/negocios/${listingId}**`);
+  await expect(page.locator('input[name="premiumUntil"]')).not.toHaveValue('');
 
   await page.goto('/admin/ventas');
   const row = page.getByRole('row').filter({ hasText: RENAMED });
