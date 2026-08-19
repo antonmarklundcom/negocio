@@ -13,6 +13,13 @@ lead orchestrator, maps, SEO, Hostinger entry (`server.js`).
 cancelled. The backend becomes our own MySQL database plus a first-party admin
 inside this Next.js app. See "Phase B — Native backend" below.
 
+**2026-08-19 — full repo analysis + agreed forward plan.** Phases B and C are
+complete; Phase D items 1–6 are shipped. A three-agent code review (public UX,
+roles/security, tech/build) produced a set of findings and decisions, all
+confirmed by the user. The forward plan now lives in **"Phase E — Agreed build
+waves"** below: read the Decisions log first, then build the waves in order.
+Phase D items 7–8 are folded into Wave 3.
+
 ---
 
 ## Phase A — Launch *(in progress)*
@@ -466,8 +473,172 @@ Repo, docs and comments in English.
        real page. Added to `sitemap.xml` and as "Por barrio" internal links
        on the rubro×ciudad page (both SEO wins: more indexed URLs, more
        internal link equity). No migration — `zona` already existed.*
-7. [ ] Paid "Verificado" visit as a service
-8. [ ] Claim-this-listing flow (WhatsApp OTP) — pairs with PR-6
+7. [ ] Paid "Verificado" visit as a service *(moved to Wave 3 / gated items — the
+       `verified` split it needs ships in W2-2)*
+8. [ ] Claim-this-listing flow (WhatsApp OTP) — pairs with PR-6 *(moved to Wave 3 /
+       gated items — shares OTP infra with review verification)*
+
+---
+
+## Phase E — Agreed build waves (2026-08-19)
+
+> Source: full repo analysis (public UX, roles/security, tech/build) reviewed
+> with the user; every decision below was explicitly confirmed. Build sessions:
+> read the **Decisions log**, then take the waves **in order**. Everything in
+> Phase B's "Rules that do not bend" and "Decisions copied verbatim" still
+> applies to every PR here. Any PR marked **MIGRATION** follows the standing
+> rule: `npm run db:generate` in the PR, migration applied **by hand from a
+> local machine before merging**, never by a deploy hook.
+
+### Decisions log — confirmed by the user, do not re-litigate
+
+| # | Decision | Outcome |
+|---|---|---|
+| D1 | English version | **Yes, but last (Wave 3).** `next-intl`, URL prefix `/en` (Spanish stays default at `/`), Spanish slugs kept (`/en/restaurantes/asuncion`), `hreflang`/`alternates.languages` everywhere, locale-aware sitemap. **Guaraní skipped for now** — cheap to add after extraction is done. Cookie-only locale switching rejected (invisible to crawlers). |
+| D2 | Listing status | **Yes — first PR of Wave 2.** `draft / published / archived`. Hard delete replaced by archive. |
+| D3 | Ownership model (future PR-6) | **`listing_users` join table**, not a single `owner_id` column — supports owner + employees per business and one person owning several businesses. Nothing built now; recorded so the PR-6 session doesn't choose wrong. "Employee" is a row in this table, **not** a new staff role. |
+| D4 | New staff roles | **Deferred.** Do the two preparations only: the S1 session fix (W1-2) and the `verified`/premium split (W2-2). `sales` becomes ~1 build when a salesperson is hired; `moderator` likewise if review volume demands it. |
+| D5 | Revenue record | **Yes — in-app table** (amount in ₲, method, package, date, seller) written when staff applies a package. |
+| D6 | Expiry notifications | **Staff digest first** (weekly "expiring soon" to staff). Automatic messages to businesses: later, not now. |
+| D7 | Fake-review defense | **Keep moderation-only for launch; add WhatsApp OTP verification later** together with the claim-listing flow (shared OTP infra, hashed numbers, "Verificado por WhatsApp" badge). |
+| D8 | Google reviews/ratings | **Skipped for launch.** If ever revisited: aggregate rating + link only via official Places API (`place_id` stored, nothing else cached), never review text, never in JSON-LD (Google's structured-data rules only allow first-party reviews there). |
+| D9 | Small defaults | All accepted: localStorage favorites (W3), ESLint + CI lint job, admin e2e with real MySQL in CI, in-memory rate limiter kept but documented as single-process, migrations stay hand-applied with every migration PR clearly marked. |
+| D10 | Pricing | **Keep ₲65.000/mes** on `/precios`; remove the "not final" TODO. |
+
+### Wave 1 — Fixes & hardening *(Sonnet batch; PRs independent unless noted)*
+
+- [ ] **W1-1 — Public quick wins.** Fix `components/BottomNav.tsx` "Categorías"
+      tab linking to `/precios` (point it at a real categories destination).
+      Wire the existing-but-unused `Share` icon (`components/icons.tsx`) into
+      `lugar/[slug]` (`navigator.share` with copy-link fallback). Add a
+      "Reportar información incorrecta" affordance on listing pages reusing the
+      lead orchestrator (new zod `source`, lands in `leads` + webhook fan-out
+      like every other lead; honeypot + rate limit as usual). Remove the
+      pricing TODO on `/precios` (D10). No migration.
+- [ ] **W1-2 — Session correctness (S1 + S2).** `requireRole`/`currentUser`
+      must re-read `role` and `status` from the DB per request — today a
+      suspended or demoted admin keeps access for the cookie's 8-hour TTL,
+      while README/ROADMAP claim otherwise; fix the code **and** the docs.
+      Invalidate outstanding sessions on password change (e.g.
+      `users.password_changed_at` checked against a cookie-issued-at claim —
+      if a column is added this is a **MIGRATION** PR). Re-read must live where
+      rule 1 lives: covering server actions, not just the layout.
+- [ ] **W1-3 — Caching + perceived performance.** `lugar/[slug]` currently
+      hits MySQL on every request while home/sitemap are ISR'd — add
+      `export const revalidate` (and `generateStaticParams` if sensible);
+      add an explicit `revalidate` to `/[categoria]` and `/[categoria]/[ciudad]`;
+      add `loading.tsx` boundaries for the DB-backed public routes. Mind the
+      8-connection pool (`lib/db/connection.ts`). No migration.
+- [ ] **W1-4 — Destructive-action safety.** Confirmation step on "Eliminar
+      negocio"; `try/catch` on `deleteListingAction`
+      (`app/admin/negocios/actions.ts`) like its siblings; rename the shadowed
+      `remove` bindings in `app/admin/negocios/[id]/page.tsx`; validate the
+      cover-image key against the listing's own gallery in `setCoverImage`
+      (`lib/db/listings-admin.ts`) — S6, must land before any owner-facing
+      write path ever ships. No migration.
+- [ ] **W1-5 — Tooling hygiene.** ESLint: add `eslint.config.mjs`
+      (`eslint-config-next`) + a CI lint job — today the dep and the `lint`
+      script exist but nothing runs. Add a Dependabot config (security bumps).
+      Prune `chats/` and `project/` (fold anything still useful into `design/`
+      with a README note). Document the single-process assumption in
+      `lib/rate-limit.ts` + README (D9). No migration.
+- [ ] **W1-6 — Admin e2e in CI.** New CI job with a MySQL service container:
+      run migrations + `bootstrap-admin`, then Playwright covering login →
+      listing CRUD round-trip → review moderation. This is the bug-insurance
+      for every later autonomous build; keep the existing DB-free `e2e` job
+      as-is. No migration.
+
+### Wave 2 — Structure & revenue *(W2-1 first; W2-2 before W2-3; rest parallel)*
+
+- [ ] **W2-1 — Listing status. MIGRATION. (Opus)** `listings.status`
+      enum `draft | published | archived` (default `published` for existing
+      rows). Public providers (`db.ts` **and** `seed.ts`), sitemap and SEO
+      combos serve only `published`. Admin: status field + filter, "Archivar"
+      replaces hard delete in the UI (hard `deleteListing` stays admin-only
+      for true mistakes). New listings can be saved as `draft`. Follow the
+      PR-4 slice pattern; access tests + canary run as always.
+- [ ] **W2-2 — Split `verified` out of `setListingFlags`.** Own admin-only
+      query-module function + own form section, so `verified` (a human
+      assertion) and `premiumUntil` (a sale) stop sharing a write path.
+      Prepares both the paid-Verificado product and any future `sales` role.
+      No migration.
+- [ ] **W2-3 — Revenue record. MIGRATION.** `sales` table (listing_id, package
+      kind premium/featured, days, amount ₲, method Pagopar/Bancard/Tigo/efectivo/otro,
+      sold_by from session, created_at). Written **in the same transaction** as
+      `extendListingPremium`/`extendListingFeatured` (amount/method become
+      required inputs on those forms). `/admin/ventas`: list + month/year
+      totals, CSV export. Activity-logged like every mutation.
+- [ ] **W2-4 — Mail + expiry digest.** Env-gated SMTP (nodemailer,
+      `SMTP_*` unset → feature off, app boots fine — same pattern as Sentry/R2).
+      Weekly "expiring in ≤14 days" digest (premium + featured) to staff:
+      token-guarded `/api/internal/expiry-digest` hit by an external cron
+      (cron-job.org / UptimeRobot), since Hostinger's Node app has no cron.
+      **This mail infra is also the PR-6 blocker-killer** (password reset by
+      email needs exactly this transport). No migration.
+- [ ] **W2-5 — Reporting polish.** CSV export on `/admin/leads` (admin-only,
+      same guard as the list). Month-over-month lead trend (extend
+      `asuncionMonthRange` usage to N previous months) on
+      `/admin/negocios/[id]` — the renewal-conversation number. No migration.
+- [ ] **W2-6 — Data quality + admin ergonomics.** Duplicate warning on listing
+      create (same name + city ⇒ warn, not block). Minimal bulk action:
+      re-categorise selected listings (unblocks category deletion). Per-entity
+      activity-log view (filterable, paginated) — the audit trail is written
+      faithfully and currently unreadable beyond 10 dashboard rows. No migration.
+
+### Wave 3 — Growth *(after Waves 1–2; i18n scaffold on Opus, rest Sonnet)*
+
+- [ ] **W3-1 — Discovery UX.** "Negocios similares" on `lugar/[slug]` (same
+      rubro + ciudad/zona — conversion + internal-linking SEO, absent today).
+      "Cerca de mí" geolocation sort on `/buscar` (lat/lng already modeled
+      end-to-end). Search fixes: visible free-text `q` input in `FilterBar`,
+      rating sort, pagination windowing. No migration.
+- [ ] **W3-2 — Favorites (localStorage).** Save/unsave on cards + detail, a
+      `/favoritos` page reading localStorage. No accounts, no DB, no migration.
+- [ ] **W3-3 — i18n scaffold. (Opus)** `next-intl`, `/en` route prefix
+      (default `/` stays es-PY), locale-aware `generateMetadata` with
+      `alternates.languages` + hreflang, locale-aware sitemap, language
+      switcher in header/footer. Category/city **labels** become locale-keyed
+      lookups; **slugs stay Spanish and canonical**. Ships with only nav/chrome
+      translated — the site remains fully Spanish-complete at every step.
+- [ ] **W3-4 — i18n extraction (batch).** Sonnet grind in slices, each PR
+      shippable: (a) home + category/city/barrio landing templates,
+      (b) listing detail + cards/pills, (c) buscar + forms + reviews,
+      (d) static pages (precios, nosotros, contacto, sumar-negocio).
+      ~103 files carry inline Spanish incl. composed sentences — expect ICU
+      plurals. Guaraní: not now (D1); nearly free after this.
+
+### Gated items (build when their gate is met — decisions already made)
+
+- [ ] **Owner portal (PR-6)** — gate: **≥20 paying businesses** AND password
+      reset by email live (mail transport ships in W2-4; the reset flow itself
+      is part of this item). Uses the **`listing_users` join table** (D3 —
+      MIGRATION), `scopeToOwner()` that throws on mismatch, a separate narrow
+      `fields.ts` (owner never reaches `verified`/`premiumUntil`/`featuredUntil`/
+      `slug`/taxonomy), owner edits land in a moderation queue (needs W2-1's
+      `status`). Employees of a business = extra join-table rows, not a role.
+- [ ] **Claim-this-listing + review verification (WhatsApp OTP)** — one shared
+      OTP module (numbers stored **hashed**; a raw phone in `reviews` would
+      break the editor-may-moderate privacy line). Claim pairs with PR-6;
+      review badge "Verificado por WhatsApp" + one-review-per-number-per-listing
+      is D7's upgrade path.
+- [ ] **Paid "Verificado" visit** (Phase D item 7) — after W2-2's split;
+      sale recorded via W2-3's `sales` table.
+- [ ] **`sales` / `moderator` staff roles** — only when hiring demands (D4).
+      Cost when triggered: enum ALTER (MIGRATION) + `SATISFIES`/labels +
+      per-guard decisions across the query modules + layout widening + tests.
+
+### USER tasks (nothing unblocks these but you)
+
+- [ ] Phase A remainder: Hostinger deploy config, domain + SSL, post-deploy
+      smoke test, Search Console, Plausible.
+- [ ] Apply any not-yet-applied migrations (`drizzle/0002_*`, `0003_*`) from a
+      local machine **before** deploying code that needs them.
+- [ ] **Create the Cloudflare R2 bucket + set the five `R2_*`/media env vars** —
+      the entire photo-upload path has never run against a real bucket
+      (flagged UNTESTED in PR-5) and photos are a premium selling point. Then
+      have a build session run the upload → redeploy → photo-survives test.
+- [ ] Set `NEXT_PUBLIC_REVIEWS_ENABLED=true` in production when ready to open
+      reviews (DB is already required and present).
 
 ---
 
@@ -475,12 +646,14 @@ Repo, docs and comments in English.
 
 | Work | Builds | Model |
 |---|---|---|
-| Phase A remainder (deploy, smoke tests) | 0–1 | user-blocked |
-| PR-1 schema + DB provider | 1 | Opus |
-| PR-2 cutover + delete WP | 1 | Sonnet |
-| PR-3 auth foundation | 1 | Opus |
-| PR-4 admin shell + core CRUD | 1–2 | Sonnet, Opus review |
-| PR-5 awkward fields | 1–2 | Sonnet, Opus review |
-| Phase C | 1–2 | Sonnet |
-| Phase D items 1–4, 6 | ~5 | Sonnet |
-| PR-6 owner dashboard (when justified) | 2–3 | Opus |
+| Wave 1 (W1-1 … W1-6) | 1–2 chats, 6 PRs | Sonnet |
+| Wave 2 (W2-1 … W2-6) | 1–2 chats, 6 PRs | Opus for W2-1 (+ review), Sonnet rest |
+| Wave 3 (W3-1 … W3-4) | 2–3 chats, ~7 PRs | Opus for W3-3, Sonnet rest |
+| Gated: PR-6 owner portal + claim/OTP | 2–3 | Opus |
+| Gated: paid Verificado, staff roles | 1 each | Sonnet |
+
+Batching guidance for autonomous runs: Wave 1 PRs are independent — open them
+as a batch and merge when green. In Wave 2, W2-1 merges first and W2-2 before
+W2-3; W2-4/5/6 are independent. Migration-marked PRs (W2-1, W2-3, possibly
+W1-2) must wait for the hand-applied migration before merge — sequence the
+batch so non-migration PRs aren't blocked behind them.
