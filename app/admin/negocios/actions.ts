@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { revalidatePublic } from '@/lib/admin/revalidate';
 import type { AdminFormState } from '@/components/admin/AdminForm';
-import { currentUser } from '@/lib/auth/session';
+import { currentUser, type SessionUser } from '@/lib/auth/session';
 import { isAuthError } from '@/lib/auth/roles';
 import {
   parseHoursInput,
@@ -12,11 +12,12 @@ import {
   parsePremiumUntilInput,
   parseListingVerifiedInput,
 } from '@/lib/admin/validation';
-import { getCategories, getCities } from '@/lib/listings-repo';
+import { listAllCategoryOptions, listAllCityOptions } from '@/lib/db/taxonomy-admin';
 import {
   addGalleryImage,
   createListing,
   deleteListing,
+  findDuplicateListings,
   DeleteNotConfirmedError,
   extendListingFeatured,
   extendListingPremium,
@@ -29,7 +30,9 @@ import {
   setCoverImage,
   setListingPremiumUntil,
   setListingVerified,
+  recategoriseListings,
   setListingHours,
+  UnknownCategoryError,
   updateGalleryAlt,
   updateListing,
 } from '@/lib/db/listings-admin';
@@ -43,6 +46,7 @@ import { uploadListingImage } from '@/lib/media/upload';
 
 function messageFor(err: unknown): string {
   if (isAuthError(err)) return err.message;
+  if (err instanceof UnknownCategoryError) return err.message;
   // A failed delete confirmation is the person's own typo, not a bug: say so
   // instead of burying it under the generic "intentá de nuevo".
   if (err instanceof DeleteNotConfirmedError) return err.message;
@@ -50,24 +54,56 @@ function messageFor(err: unknown): string {
   return 'No pudimos guardar los cambios. Intentá de nuevo.';
 }
 
-async function validCategorySlugs(): Promise<string[]> {
-  return (await getCategories()).map((c) => c.slug);
+/**
+ * The ADMIN's taxonomy, not the public site's (ROADMAP W2-6). `getCategories()`
+ * / `getCities()` from `lib/listings-repo.ts` return only taxonomy that already
+ * has listings, so validating against them rejected every category or city
+ * that had just been created — permanently, since it could never gain a
+ * listing either. These functions carry `requireRole` themselves.
+ */
+async function validCategorySlugs(actor: SessionUser | null): Promise<string[]> {
+  return (await listAllCategoryOptions(actor)).map((c) => c.value);
 }
 
-async function validCitySlugs(): Promise<string[]> {
-  return (await getCities()).map((c) => c.slug);
+async function validCitySlugs(actor: SessionUser | null): Promise<string[]> {
+  return (await listAllCityOptions(actor)).map((c) => c.value);
 }
 
 export async function createListingAction(_prev: AdminFormState, fd: FormData): Promise<AdminFormState> {
   const actor = await currentUser();
 
-  const parsed = parseListingInput(fd, 'create', await validCategorySlugs(), await validCitySlugs());
+  const parsed = parseListingInput(fd, 'create', await validCategorySlugs(actor), await validCitySlugs(actor));
   if (!parsed.ok) return { errors: parsed.errors };
 
   try {
     if (await isListingSlugTaken(actor, parsed.data.slug!, null)) {
       return { errors: { slug: 'Ya existe un negocio con esa URL.' } };
     }
+
+    // Duplicate check (ROADMAP W2-6): a WARNING, never a block. Two real
+    // businesses genuinely share a name in one city — franchises, two
+    // "Farmacia San Roque" on different corners — so refusing the write would
+    // make the admin unable to record reality. But typing a business in twice
+    // is the commonest data-quality failure on a directory, and once both rows
+    // exist neither is obviously the wrong one.
+    //
+    // `confirmDuplicate` is the hidden field the warning screen submits back.
+    // It is a UX acknowledgement, not a permission: nothing here depends on it
+    // being honest, because the worst a forged one does is skip a warning the
+    // person would have clicked through anyway.
+    if (fd.get('confirmDuplicate') !== '1') {
+      const duplicates = await findDuplicateListings(actor, parsed.data.name, parsed.data.ciudad);
+      if (duplicates.length > 0) {
+        return {
+          formError:
+            `Ya hay ${duplicates.length === 1 ? 'un negocio' : `${duplicates.length} negocios`} con ese ` +
+            `nombre en esa ciudad: ${duplicates.map((d) => `/lugar/${d.slug}`).join(', ')}. ` +
+            'Si de verdad es otro negocio, guardá de nuevo para confirmar.',
+          hidden: { confirmDuplicate: '1' },
+        };
+      }
+    }
+
     await createListing(actor, parsed.data);
   } catch (err) {
     return { formError: messageFor(err) };
@@ -81,7 +117,7 @@ export async function createListingAction(_prev: AdminFormState, fd: FormData): 
 export async function updateListingAction(id: string, _prev: AdminFormState, fd: FormData): Promise<AdminFormState> {
   const actor = await currentUser();
 
-  const parsed = parseListingInput(fd, 'update', await validCategorySlugs(), await validCitySlugs());
+  const parsed = parseListingInput(fd, 'update', await validCategorySlugs(actor), await validCitySlugs(actor));
   if (!parsed.ok) return { errors: parsed.errors };
 
   try {
@@ -326,4 +362,36 @@ export async function setCoverImageAction(id: string, key: string): Promise<void
   revalidatePath(`/admin/negocios/${id}`);
   revalidatePublic();
   redirect(`/admin/negocios/${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// bulk re-categorise (ROADMAP W2-6) — the thing that unblocks deleting a rubro
+// ---------------------------------------------------------------------------
+
+export async function recategoriseAction(fd: FormData): Promise<void> {
+  const actor = await currentUser();
+  const ids = fd.getAll('selected').filter((v): v is string => typeof v === 'string');
+  const target = fd.get('bulkCategoria');
+  const categoria = typeof target === 'string' ? target : '';
+
+  const back = (message: string) =>
+    redirect(`/admin/negocios?${new URLSearchParams({ bulk: message })}`);
+
+  if (ids.length === 0) back('Elegí al menos un negocio.');
+  if (!categoria) back('Elegí el rubro de destino.');
+
+  let moved = 0;
+  try {
+    moved = await recategoriseListings(actor, ids, categoria);
+  } catch (err) {
+    back(messageFor(err));
+  }
+
+  revalidatePath('/admin/negocios');
+  revalidatePublic();
+  back(
+    moved === 0
+      ? 'No hubo cambios: esos negocios ya estaban en ese rubro.'
+      : `${moved} ${moved === 1 ? 'negocio movido' : 'negocios movidos'}.`,
+  );
 }

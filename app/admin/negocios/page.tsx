@@ -4,8 +4,9 @@ import { notFound } from 'next/navigation';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { currentUser } from '@/lib/auth/session';
 import { parseListingListParams } from '@/lib/admin/validation';
+import { recategoriseAction } from './actions';
 import { listListings, LISTINGS_PAGE_SIZE, type AdminListingRow } from '@/lib/db/listings-admin';
-import { getCategories, getCities } from '@/lib/listings-repo';
+import { listAllCategoryOptions, listAllCityOptions } from '@/lib/db/taxonomy-admin';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: 'Negocios' };
@@ -53,15 +54,17 @@ export default async function ListingsPage(
   const searchParams = await props.searchParams;
   const { q, page, categoria, ciudad, estado } = parseListingListParams(searchParams);
   const nowSeconds = Math.floor(Date.now() / 1000);
+  const bulkNotice = typeof searchParams.bulk === 'string' ? searchParams.bulk : undefined;
 
+  const actor = await currentUser();
   let result;
   let categories;
   let cities;
   try {
     [result, categories, cities] = await Promise.all([
-      listListings(await currentUser(), { q, page, categoria, ciudad, estado, nowSeconds }),
-      getCategories(),
-      getCities(),
+      listListings(actor, { q, page, categoria, ciudad, estado, nowSeconds }),
+      listAllCategoryOptions(actor),
+      listAllCityOptions(actor),
     ]);
   } catch {
     notFound();
@@ -99,6 +102,12 @@ export default async function ListingsPage(
         </p>
       )}
 
+      {bulkNotice && (
+        <p role="status" className="rounded-card border border-line bg-white px-4 py-3 text-[14px] text-ink">
+          {bulkNotice}
+        </p>
+      )}
+
       <form method="GET" className="flex flex-wrap gap-2">
         {estado && <input type="hidden" name="estado" value={estado} />}
         <input
@@ -116,7 +125,7 @@ export default async function ListingsPage(
         >
           <option value="">Todos los rubros</option>
           {categories.map((c) => (
-            <option key={c.slug} value={c.slug}>
+            <option key={c.value} value={c.value}>
               {c.label}
             </option>
           ))}
@@ -128,7 +137,7 @@ export default async function ListingsPage(
         >
           <option value="">Todas las ciudades</option>
           {cities.map((c) => (
-            <option key={c.slug} value={c.slug}>
+            <option key={c.value} value={c.value}>
               {c.label}
             </option>
           ))}
@@ -138,15 +147,48 @@ export default async function ListingsPage(
         </button>
       </form>
 
-      <AdminTable
-        columns={COLUMNS}
-        rows={result.rows}
-        editHref={(row) => `/admin/negocios/${row.id}`}
-        emptyLabel={q ? `No encontramos negocios para "${q}".` : 'Todavía no hay negocios cargados.'}
-        page={result.page}
-        totalPages={totalPages}
-        buildPageHref={buildPageHref}
-      />
+      {/* The table lives inside the bulk form so the checkboxes submit with it.
+          Selection is DOM-only — no client component, no state to hydrate. It
+          covers the current page, which is the honest scope: a "select all
+          2000 matches" that silently reaches beyond what you can see is how a
+          bulk action becomes an accident (ROADMAP W2-6). */}
+      <form action={recategoriseAction} className="space-y-4">
+        <AdminTable
+          columns={COLUMNS}
+          rows={result.rows}
+          editHref={(row) => `/admin/negocios/${row.id}`}
+          selectable
+          emptyLabel={q ? `No encontramos negocios para "${q}".` : 'Todavía no hay negocios cargados.'}
+          page={result.page}
+          totalPages={totalPages}
+          buildPageHref={buildPageHref}
+        />
+
+        {result.rows.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-card border border-line bg-white px-4 py-3">
+            <span className="text-[14px] font-semibold text-ink2">Con lo seleccionado:</span>
+            <select
+              name="bulkCategoria"
+              defaultValue=""
+              aria-label="Mover al rubro"
+              className="rounded-card border border-line bg-white px-3 py-2 text-[15px] outline-none focus:border-blue"
+            >
+              <option value="">— Mover al rubro —</option>
+              {categories.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-card border-[1.5px] border-blue px-4 py-2 text-sm font-bold text-blue"
+            >
+              Mover
+            </button>
+          </div>
+        )}
+      </form>
     </div>
   );
 }

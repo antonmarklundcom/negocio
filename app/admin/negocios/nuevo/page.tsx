@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { AdminForm } from '@/components/admin/AdminForm';
 import { currentUser } from '@/lib/auth/session';
 import { requireRole } from '@/lib/auth/roles';
-import { getCategories, getCities } from '@/lib/listings-repo';
+import { listAllCategoryOptions, listAllCityOptions } from '@/lib/db/taxonomy-admin';
 import { listingFields } from '../fields';
 import { createListingAction } from '../actions';
 
@@ -12,13 +12,17 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: 'Nuevo negocio' };
 
 export default async function NewListingPage() {
+  const actor = await currentUser();
   try {
-    requireRole(await currentUser(), ['admin', 'editor']);
+    requireRole(actor, ['admin', 'editor']);
   } catch {
     notFound();
   }
 
-  const [categories, cities] = await Promise.all([getCategories(), getCities()]);
+  const [categories, cities] = await Promise.all([
+    listAllCategoryOptions(actor),
+    listAllCityOptions(actor),
+  ]);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -32,8 +36,8 @@ export default async function NewListingPage() {
       <AdminForm
         fields={listingFields(
           'create',
-          categories.map((c) => ({ value: c.slug, label: c.label })),
-          cities.map((c) => ({ value: c.slug, label: c.label })),
+          categories,
+          cities,
         )}
         action={createListingAction}
         submitLabel="Crear negocio"

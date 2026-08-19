@@ -36,3 +36,23 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   sumate: 'Sumate (alta de negocio)',
   contacto: 'Contacto',
 };
+
+/**
+ * Entity types as written to `activity_log` (ROADMAP W2-6). Not derived from a
+ * schema enum — `entity_type` is a plain varchar, deliberately, so a new slice
+ * can log without a migration. Anything unlabelled falls back to its raw value
+ * rather than disappearing from the filter.
+ */
+export const ENTITY_TYPE_LABELS: Record<string, string> = {
+  listing: 'Negocio',
+  listing_hours: 'Horarios',
+  listing_gallery: 'Galería',
+  category: 'Rubro',
+  city: 'Ciudad',
+  user: 'Usuario',
+  review: 'Reseña',
+};
+
+export function entityTypeLabel(type: string): string {
+  return ENTITY_TYPE_LABELS[type] ?? type;
+}

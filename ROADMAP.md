@@ -738,11 +738,41 @@ Repo, docs and comments in English.
       every `ó` as mojibake. The trend is bucketed **in JavaScript** from one
       query rather than grouped in SQL, because grouping by month in SQL means
       date arithmetic in MySQL's timezone and this app computes time itself.
-- [ ] **W2-6 — Data quality + admin ergonomics.** Duplicate warning on listing
+- [x] **W2-6 — Data quality + admin ergonomics.** Duplicate warning on listing
       create (same name + city ⇒ warn, not block). Minimal bulk action:
       re-categorise selected listings (unblocks category deletion). Per-entity
       activity-log view (filterable, paginated) — the audit trail is written
       faithfully and currently unreadable beyond 10 dashboard rows. No migration.
+      *Shipped, plus the taxonomy fix W1-6 turned up:*
+      - ***The admin no longer reads the public taxonomy.***
+        `listAllCategoryOptions` / `listAllCityOptions` in
+        `lib/db/taxonomy-admin.ts` replace `getCategories()`/`getCities()` in
+        every admin select AND in the create-form validation. The public reads
+        deliberately return only taxonomy that already has listings; used by
+        the admin that filter was a trap with no exit — a category or city
+        created in the panel was absent from the select and rejected by
+        validation, so it could never gain a listing, so it never became
+        selectable. Verified end to end against MySQL: a new city now appears
+        in the Ciudad select on the next request (9 → 10 options).
+      - **Duplicate warning:** `findDuplicateListings` (same name + same city,
+        case-insensitive, excluding the row being edited). The first save
+        returns the matches with their URLs; saving again goes through. A
+        warning, never a block — franchises and two "Farmacia San Roque" on
+        different corners are real. `AdminFormState` gained `hidden` to carry
+        the acknowledgement, documented as UX state and never permission state.
+      - **Bulk re-categorise:** `recategoriseListings`, one transaction, one
+        `activity_log` row per listing moved (not one per "bulk action"), the
+        target rubro checked against the table rather than against the form's
+        options, rows already in the target skipped. Selection is DOM-only
+        checkboxes scoped to the visible page — a "select all 2000 matches"
+        that reaches beyond what you can see is how a bulk action becomes an
+        accident.
+      - **`/admin/actividad`:** filter by entity type, entity id and action,
+        paginated, admin-only. The log has been written faithfully since PR-3
+        and until now only its ten most recent rows were readable anywhere.
+      27 new tests (382 total). Canary across all three touched query modules
+      → 61 of 120 tests went red, guards restored. The W1-6 admin e2e suite
+      passes 6/6 against this branch.
 
 ### Wave 3 — Growth *(after Waves 1–2; i18n scaffold on Opus, rest Sonnet)*
 

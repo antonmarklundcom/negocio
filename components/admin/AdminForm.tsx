@@ -42,6 +42,17 @@ export interface AdminFormState {
   errors?: Record<string, string>;
   formError?: string;
   notice?: string;
+  /**
+   * Hidden inputs to re-render with the form, so an action can hand state back
+   * to the NEXT submission of the same form. Used by the duplicate-listing
+   * warning (ROADMAP W2-6): the first save returns "there is already a
+   * business with this name in this city", the second one carries
+   * `confirmDuplicate=1` and goes through.
+   *
+   * This is UX state, never permission state — treat anything that arrives in
+   * it as a claim from the browser, because that is what it is.
+   */
+  hidden?: Record<string, string>;
 }
 
 export type AdminFormAction = (prev: AdminFormState, fd: FormData) => Promise<AdminFormState>;
@@ -76,6 +87,11 @@ export function AdminForm({ fields, action, submitLabel, defaultValues = {}, chi
           {state.notice}
         </p>
       )}
+
+      {state.hidden &&
+        Object.entries(state.hidden).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} readOnly />
+        ))}
 
       {fields.map((field) => (
         <Field key={field.name} field={field} error={state.errors?.[field.name]} defaultValues={defaultValues} />
