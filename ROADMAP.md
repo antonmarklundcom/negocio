@@ -703,17 +703,25 @@ Repo, docs and comments in English.
       (cron-job.org / UptimeRobot), since Hostinger's Node app has no cron.
       **This mail infra is also the PR-6 blocker-killer** (password reset by
       email needs exactly this transport). No migration.
-- [ ] **W2-5 — Reporting polish.** CSV export on `/admin/leads` (admin-only,
+- [x] **W2-5 — Reporting polish.** CSV export on `/admin/leads` (admin-only,
       same guard as the list). Month-over-month lead trend (extend
       `asuncionMonthRange` usage to N previous months) on
       `/admin/negocios/[id]` — the renewal-conversation number. No migration.
-- [ ] **W2-6 — Data quality + admin ergonomics.** **Fix first (found in
-      W1-6):** the admin's Rubro/Ciudad selects and the create-form validation
-      both read `getCategories()`/`getCities()`, which return only taxonomy
-      that already has listings — so a category or city created in the admin
-      can never be assigned to anything. The admin needs its own unfiltered
-      taxonomy read; the public providers keep the filter.
-      Duplicate warning on listing
+      *Shipped: `lib/admin/csv.ts` (pure), `listLeadsForExport` (admin-only,
+      capped at 5000 rows), `GET /admin/leads/export` carrying the screen's
+      current filter; `asuncionMonthRanges(n)` in `lib/hours.ts` and
+      `getListingLeadTrend` feeding a six-month bar list on the listing page.
+      24 new tests (384 total); canary run on `lib/db/leads-admin.ts` → 8 of 15
+      access tests went red, guards restored.*
+      **Two things the spec did not ask for, both non-negotiable in hindsight:**
+      the CSV neutralises **formula injection** (`=`, `+`, `-`, `@` prefixes are
+      executed by Excel and Sheets on open, and these rows are written by
+      members of the public, so it is a live attack path on whoever opens the
+      export), and it emits a UTF-8 BOM so Excel on Windows does not render
+      every `ó` as mojibake. The trend is bucketed **in JavaScript** from one
+      query rather than grouped in SQL, because grouping by month in SQL means
+      date arithmetic in MySQL's timezone and this app computes time itself.
+- [ ] **W2-6 — Data quality + admin ergonomics.** Duplicate warning on listing
       create (same name + city ⇒ warn, not block). Minimal bulk action:
       re-categorise selected listings (unblocks category deletion). Per-entity
       activity-log view (filterable, paginated) — the audit trail is written

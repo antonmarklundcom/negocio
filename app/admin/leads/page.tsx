@@ -42,7 +42,19 @@ export default async function LeadsPage(
 
   return (
     <div className="space-y-6">
-      <h1 className="font-serif text-[28px] font-semibold">Leads</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-serif text-[28px] font-semibold">Leads</h1>
+        {/* Carries the current filter, so what you export is what you are
+            looking at. The route re-checks the admin guard itself — this link
+            is navigation, not access control (Phase B rule 2). */}
+        <Link
+          href={`/admin/leads/export?${new URLSearchParams({ ...(q ? { q } : {}), ...(source ? { source } : {}) })}`}
+          prefetch={false}
+          className="rounded-card border-[1.5px] border-blue px-4 py-2.5 text-sm font-bold text-blue"
+        >
+          Descargar CSV
+        </Link>
+      </div>
 
       <form method="GET" className="flex flex-wrap gap-2">
         <input

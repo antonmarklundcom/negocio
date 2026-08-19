@@ -60,6 +60,32 @@ export function asuncionMonthRange(now: Date = new Date()): { start: Date; end: 
   return { start, end, monthLabel };
 }
 
+/**
+ * The last `count` months in America/Asunción, oldest first, each as the same
+ * `[start, end)` pair `asuncionMonthRange` produces (ROADMAP W2-5).
+ *
+ * Pure and clock-injectable, like everything else in this file: the renewal
+ * conversation ("you got 47 WhatsApp taps last month, 12 the month before")
+ * is only credible if the boundaries are the same ones the monthly number
+ * already uses, and only testable if `now` is a parameter.
+ */
+export function asuncionMonthRanges(
+  count: number,
+  now: Date = new Date(),
+): { start: Date; end: Date; monthLabel: string }[] {
+  const ranges: { start: Date; end: Date; monthLabel: string }[] = [];
+  let cursor = now;
+  for (let i = 0; i < count; i++) {
+    const range = asuncionMonthRange(cursor);
+    ranges.push(range);
+    // One second before this month starts is somewhere inside the previous
+    // month, in every timezone and across every year boundary. Subtracting a
+    // fixed 30 days would skip February.
+    cursor = new Date(range.start.getTime() - 1000);
+  }
+  return ranges.reverse();
+}
+
 function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(':');
   return parseInt(h ?? '0', 10) * 60 + parseInt(m ?? '0', 10);
