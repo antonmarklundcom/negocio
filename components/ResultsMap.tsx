@@ -43,8 +43,11 @@ export function ResultsMap({
     }
     if (pts.length > 1) map.fitBounds(bounds, { padding: 48, maxZoom: 14 });
 
+    // Copy the ref into the effect's own scope: by the time cleanup runs,
+    // `markers.current` may already point at the next render's Map.
+    const created = markers.current;
     return () => {
-      markers.current.clear();
+      created.clear();
       map.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

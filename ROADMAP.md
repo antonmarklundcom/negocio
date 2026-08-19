@@ -563,6 +563,14 @@ Repo, docs and comments in English.
       `<Suspense>` placed after the `notFound()` check instead. Verified by
       curling the built server: unknown rubro, unknown listing and unknown
       top-level path all answer 404 again.
+      **Follow-up fix (same wave, PR after W1-6 found it):** the
+      `revalidatePath('/lugar/[slug]', 'page')` shipped here invalidated
+      **nothing** — the dynamic-route form matches the app-directory page path
+      and this route lives in the `(public)` route group, so a listing renamed
+      in the admin kept its old name publicly for the full hour. Replaced with
+      `revalidatePath('/', 'layout')`, which takes effect on the very next
+      request. The new admin e2e suite (W1-6) is what caught it, which is
+      exactly what it was built for.
       **Note:** the `revalidate` added to `/[categoria]` and
       `/[categoria]/[ciudad]` does *not* make those routes ISR — they read
       `searchParams`, so the shell stays dynamic and the value only governs the
@@ -590,12 +598,35 @@ Repo, docs and comments in English.
       guards deleted → the three write-attempt tests went red; (b) `requireRole`
       deleted from all 17 guards in the module → 31 of 61 tests went red.
       Guards restored.*
-- [ ] **W1-5 — Tooling hygiene.** ESLint: add `eslint.config.mjs`
-      (`eslint-config-next`) + a CI lint job — today the dep and the `lint`
+- [x] **W1-5 — Tooling hygiene.** ESLint: add `eslint.config.mjs`
+      (`eslint-config-next`) + lint in CI — today the dep and the `lint`
       script exist but nothing runs. Add a Dependabot config (security bumps).
       Prune `chats/` and `project/` (fold anything still useful into `design/`
       with a README note). Document the single-process assumption in
       `lib/rate-limit.ts` + README (D9). No migration.
+      *Shipped: `eslint.config.mjs` (native flat config — `eslint-config-next`
+      v16 no longer needs a `FlatCompat` bridge), `npm run lint` repointed from
+      the removed `next lint` to `eslint .`, and the **nine real errors** the
+      first run found all fixed rather than silenced: unused `Link` import and
+      unused `open` prop on `lugar/[slug]`, an unused type import in
+      `lib/admin/validation.ts`, and a `react-hooks/exhaustive-deps` ref-in-
+      cleanup bug in `ResultsMap`. Two rule overrides are scoped and commented
+      rather than global (`require()` in `server.js`; `react-hooks/purity` on
+      `app/admin/**/page.tsx`, which are `force-dynamic` server components).
+      `.github/dependabot.yml`: monthly, grouped, capped — security alerts are
+      not throttled by it. `chats/chat1.md` became `design/BRIEF.md`;
+      `project/` (Claude Design canvas exports plus a byte-identical
+      `support.js`) removed; `design/README.md` says what each file is and how
+      to recover what was pruned. Rate limiter: the three consequences of
+      single-process state written up in `lib/rate-limit.ts` and README.*
+      **CI shape changed (approved 2026-08-19, "Lean CI"):** four jobs on both
+      `push: [main]` and `pull_request` became **one** job on `pull_request` +
+      `workflow_dispatch`, now also running lint. Minutes bill per account and
+      every job rounds up to a whole minute, so four 90-second jobs cost four
+      minutes while one five-minute job doing strictly more costs five. Added
+      `concurrency`/`cancel-in-progress` (an agent pushing three commits used
+      to leave three runs racing), `paths-ignore` for docs, and
+      `timeout-minutes` against GitHub's 360-minute default.
 - [ ] **W1-6 — Admin e2e in CI.** New CI job with a MySQL service container:
       run migrations + `bootstrap-admin`, then Playwright covering login →
       listing CRUD round-trip → review moderation. This is the bug-insurance

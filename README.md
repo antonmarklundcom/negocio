@@ -60,6 +60,7 @@ lib/                       Domain logic
                            activity-log.ts
   reviews.ts               Review submission contract + rating roll-up (pure)
   public-write.ts          requirePublicWrite() — the public-form guard
+  rate-limit.ts            In-memory per-IP limiter — SINGLE PROCESS (see below)
   auth/                    session.ts · roles.ts · password.ts · login.ts
   admin/                   validation.ts (pure) · labels.ts
   types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts
@@ -69,7 +70,8 @@ drizzle/                   Generated SQL migrations (applied from a local machin
 scripts/import-seed.ts     Idempotent seed → MySQL import (tsx)
 scripts/bootstrap-admin.ts Creates the first administrator, once (tsx)
 tests/                     vitest — pure, no database
-design/reference.html      Approved visual reference (the design source)
+design/                    Approved visual reference + the brief behind it
+                           (see design/README.md)
 legacy/                    The previous static prototype (kept for reference)
 public/seed/               First-party SVG placeholder photos (never hotlinked)
 ```
@@ -497,11 +499,46 @@ blip. Point a free UptimeRobot HTTP monitor at
 
 `npm test` (vitest) is pure — no MySQL, no browser, safe to run anywhere.
 
+`npm run lint` (ESLint, flat config in `eslint.config.mjs`) is also pure. The
+dependency and the script existed long before anything ran them — Next 16
+decoupled linting from `next build` and there was no config file for the CLI to
+find. Two overrides are deliberate and documented in the config: `require()` is
+allowed in `server.js` (the Passenger entry point is CommonJS), and
+`react-hooks/purity` is off for `app/admin/**/page.tsx` (those are server
+components with `force-dynamic`; reading the clock is how "is premium still
+active right now" is answered).
+
 `npm run test:e2e` (Playwright) runs the smoke suite in `e2e/` against a
 production build on the **built-in seed data** — no `DATABASE_URL` needed. It
 starts its own server (`npm run build && npm run start`) unless
 `PLAYWRIGHT_BASE_URL` is set. First run: `npx playwright install --with-deps
-chromium`. CI runs it as the `e2e` job on every push/PR, in parallel with
-`build` and `production-build`. This is a smoke suite, not a regression suite
-— the golden path a visitor takes (home → listing → search → category), plus
-`/admin` 404-ing with no database and an unknown route 404-ing.
+chromium`. This is a smoke suite, not a regression suite — the golden path a
+visitor takes (home → listing → search → category), plus `/admin` 404-ing with
+no database and an unknown route 404-ing.
+
+### CI is one job, on pull requests only
+
+`.github/workflows/ci.yml` runs typecheck → lint → test → build → e2e →
+production install/build as a **single** job, triggered by `pull_request` and
+`workflow_dispatch`. That shape is a budget decision, not a style one: Actions
+minutes bill per account and **every job rounds up to a whole minute**, so four
+90-second jobs cost four minutes and one five-minute job costs five while doing
+strictly more. The trigger is PR-only (a `push: [main]` trigger re-ran the same
+suite on the merge commit), `concurrency` cancels superseded runs when several
+commits land in a row, `paths-ignore` skips doc-only changes, and
+`timeout-minutes` overrides GitHub's 360-minute default.
+
+`.github/dependabot.yml` is monthly and grouped for the same reason. GitHub's
+security alerts are separate from that file and are *not* throttled by it — a
+real CVE still opens its own PR immediately.
+
+### The rate limiter is single-process
+
+`lib/rate-limit.ts` keeps its buckets in a `Map` in the Node process's heap.
+That is correct today because Hostinger runs exactly one process per app, and
+it is written up here because the failure mode is silent: a restart resets
+every bucket, and running behind *N* processes multiplies every configured
+limit by *N* without anything erroring. The replacement, when the process count
+actually changes, is a shared store (Redis/Upstash) behind the same two
+functions — no caller changes. Not before then: a network round-trip on every
+public form submission is the worse trade while there is one process.
