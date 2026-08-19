@@ -537,12 +537,36 @@ Repo, docs and comments in English.
       `users.password_changed_at` checked against a cookie-issued-at claim —
       if a column is added this is a **MIGRATION** PR). Re-read must live where
       rule 1 lives: covering server actions, not just the layout.
-- [ ] **W1-3 — Caching + perceived performance.** `lugar/[slug]` currently
+- [x] **W1-3 — Caching + perceived performance.** `lugar/[slug]` currently
       hits MySQL on every request while home/sitemap are ISR'd — add
       `export const revalidate` (and `generateStaticParams` if sensible);
       add an explicit `revalidate` to `/[categoria]` and `/[categoria]/[ciudad]`;
-      add `loading.tsx` boundaries for the DB-backed public routes. Mind the
+      add loading boundaries for the DB-backed public routes. Mind the
       8-connection pool (`lib/db/connection.ts`). No migration.
+      *Shipped: `/lugar/[slug]` is ISR (`revalidate = 3600` +
+      `generateStaticParams` over the listings that exist at build time,
+      defensive so an unreachable database at build degrades to on-demand
+      rendering instead of failing the deploy). A tagged **catalogue cache** in
+      `lib/listings-repo.ts` (`unstable_cache`, tag `catalog`) covers
+      categories, cities and the two live-combo lists — four MySQL round-trips
+      that were being repeated on essentially every render. `revalidatePublic()`
+      (`lib/admin/revalidate.ts`) drops the tag, the `/lugar/[slug]` segment and
+      `/` from every mutating admin action, so staff still get
+      read-your-own-writes. In-page `<Suspense>` + `components/Skeletons.tsx`
+      around `ResultsSection` on the three landing routes; a route-level
+      `loading.tsx` only on `/buscar`.*
+      **Deviation (measured, not theoretical):** `loading.tsx` on the four
+      routes that call `notFound()` made every 404 answer **HTTP 200** with the
+      not-found UI swapped in client-side — a route-level loading boundary
+      flushes the response before the page function runs. On a directory site
+      that is a soft-404 SEO bug, so those routes stream via an in-page
+      `<Suspense>` placed after the `notFound()` check instead. Verified by
+      curling the built server: unknown rubro, unknown listing and unknown
+      top-level path all answer 404 again.
+      **Note:** the `revalidate` added to `/[categoria]` and
+      `/[categoria]/[ciudad]` does *not* make those routes ISR — they read
+      `searchParams`, so the shell stays dynamic and the value only governs the
+      cached reads underneath. The comment in each file says so.
 - [ ] **W1-4 — Destructive-action safety.** Confirmation step on "Eliminar
       negocio"; `try/catch` on `deleteListingAction`
       (`app/admin/negocios/actions.ts`) like its siblings; rename the shadowed

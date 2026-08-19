@@ -11,11 +11,22 @@ import { isKnownCity, cityLabel } from '@/lib/cities';
 import { RESERVED_SLUGS, SITE_URL } from '@/lib/config';
 import { toListingQuery, type RawParams } from '@/lib/search-params';
 import { slugify } from '@/lib/format';
+import { Suspense } from 'react';
 import { ResultsSection } from '@/components/ResultsSection';
+import { ResultsSkeleton } from '@/components/Skeletons';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 
 /** Pre-build only category×city combos that actually have listings (§6.3). */
+/**
+ * ROADMAP W1-3 asked for an explicit `revalidate` here. Be clear about what it
+ * does: this route reads `searchParams` (filters, sort, page), so the page
+ * shell stays dynamic and this value governs the cached data reads underneath
+ * it — the catalogue cache in `lib/listings-repo.ts`. It does not turn the
+ * route into ISR, and pretending otherwise would be the misleading part.
+ */
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   const combos = await getCategoryCityCombosWithListings();
   return combos.map((c) => ({ categoria: c.categoria, ciudad: c.ciudad }));
@@ -111,13 +122,25 @@ export default async function CategoryCityPage(
         )}
       </header>
 
-      <ResultsSection
-        query={query}
-        basePath={`/${params.categoria}/${params.ciudad}`}
-        baseParams={baseParams}
-        showRubro={false}
-        showZona={false}
-      />
+      {/* The heavy part of the page: four more listing queries, one of them a
+          500-row scan for the zona options. Streaming it behind a skeleton lets
+          the h1, the breadcrumb and the city links paint immediately.
+
+          Deliberately an in-page <Suspense>, NOT a `loading.tsx`: a route-level
+          loading boundary flushes the response before the page function runs, so
+          the `notFound()` above would be served as HTTP 200 with the 404 swapped
+          in client-side. Measured, not assumed — `loading.tsx` here turned every
+          unknown rubro into a soft 404, which on a directory site is an SEO bug,
+          not a cosmetic one. */}
+      <Suspense fallback={<ResultsSkeleton />}>
+        <ResultsSection
+          query={query}
+          basePath={`/${params.categoria}/${params.ciudad}`}
+          baseParams={baseParams}
+          showRubro={false}
+          showZona={false}
+        />
+      </Suspense>
     </div>
   );
 }

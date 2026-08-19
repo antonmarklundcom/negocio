@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { revalidatePublic } from '@/lib/admin/revalidate';
 import type { AdminFormState } from '@/components/admin/AdminForm';
 import { currentUser } from '@/lib/auth/session';
 import { isAuthError } from '@/lib/auth/roles';
@@ -30,6 +31,7 @@ export async function createCityAction(_prev: AdminFormState, fd: FormData): Pro
   }
 
   revalidatePath('/admin/ciudades');
+  revalidatePublic();
   redirect('/admin/ciudades');
 }
 
@@ -47,6 +49,7 @@ export async function updateCityAction(slug: string, _prev: AdminFormState, fd: 
 
   revalidatePath('/admin/ciudades');
   revalidatePath(`/admin/ciudades/${slug}`);
+  revalidatePublic();
   redirect('/admin/ciudades');
 }
 
@@ -58,5 +61,6 @@ export async function deleteCityAction(slug: string): Promise<void> {
     redirect(`/admin/ciudades/${slug}?deleteError=${encodeURIComponent(messageFor(err))}`);
   }
   revalidatePath('/admin/ciudades');
+  revalidatePublic();
   redirect('/admin/ciudades');
 }
