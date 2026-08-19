@@ -21,6 +21,7 @@ import { ListingMessageForm } from '@/components/ListingMessageForm';
 import { StickyWhatsAppBar } from '@/components/detail/StickyWhatsAppBar';
 import { LockedRow, LockedGallery, LockedCategory, UpgradeCta } from '@/components/detail/Locked';
 import { Reviews } from '@/components/detail/Reviews';
+import { ShareButton } from '@/components/detail/ShareButton';
 import { Phone, Clock } from '@/components/icons';
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import type { Review } from '@/lib/types';
@@ -113,7 +114,10 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
       {dedup.length > 0 && <Gallery images={dedup} name={l.name} />}
 
       <div className="mx-auto max-w-content px-4 py-5 md:px-8 md:py-6">
-        <Breadcrumb items={crumbs} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Breadcrumb items={crumbs} />
+          <ShareButton name={l.name} />
+        </div>
 
         <div className="mt-4 grid gap-7 md:grid-cols-[1fr_360px]">
           {/* Left column */}
@@ -283,7 +287,10 @@ function FreeDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
       </div>
 
       <div className="mx-auto max-w-content px-4 py-6 md:px-8">
-        <Breadcrumb items={crumbs} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Breadcrumb items={crumbs} />
+          <ShareButton name={l.name} />
+        </div>
 
         <div className="mt-4 grid gap-7 md:grid-cols-[1fr_360px]">
           <div className="space-y-4">

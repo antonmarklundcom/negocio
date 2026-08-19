@@ -51,6 +51,7 @@ export const MAX_FEATURED_SLOTS = 6;
 export const RESERVED_SLUGS = new Set([
   LISTING_PREFIX,
   'buscar',
+  'rubros',
   'precios',
   'sumar-negocio',
   'contacto',

@@ -7,7 +7,7 @@ import { Home, Search, Grid, Plus } from './icons';
 const TABS = [
   { href: '/', label: 'Inicio', icon: Home },
   { href: '/buscar', label: 'Buscar', icon: Search },
-  { href: '/precios', label: 'Categorías', icon: Grid },
+  { href: '/rubros', label: 'Categorías', icon: Grid },
   { href: '/sumar-negocio', label: 'Sumate', icon: Plus },
 ] as const;
 

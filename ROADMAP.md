@@ -507,14 +507,28 @@ Repo, docs and comments in English.
 
 ### Wave 1 — Fixes & hardening *(Sonnet batch; PRs independent unless noted)*
 
-- [ ] **W1-1 — Public quick wins.** Fix `components/BottomNav.tsx` "Categorías"
+- [x] **W1-1 — Public quick wins.** Fix `components/BottomNav.tsx` "Categorías"
       tab linking to `/precios` (point it at a real categories destination).
       Wire the existing-but-unused `Share` icon (`components/icons.tsx`) into
-      `lugar/[slug]` (`navigator.share` with copy-link fallback). Add a
-      "Reportar información incorrecta" affordance on listing pages reusing the
-      lead orchestrator (new zod `source`, lands in `leads` + webhook fan-out
-      like every other lead; honeypot + rate limit as usual). Remove the
+      `lugar/[slug]` (`navigator.share` with copy-link fallback). Remove the
       pricing TODO on `/precios` (D10). No migration.
+      *Shipped: new `/rubros` category index (every live `categoria/ciudad`
+      combo linked from one crawlable hub — the mobile tab now points there,
+      `rubros` added to `RESERVED_SLUGS` and to the sitemap),
+      `components/detail/ShareButton.tsx` (`navigator.share`, clipboard
+      fallback, an explicit "no se pudo copiar" state; a cancelled share sheet
+      is not treated as a failure) wired into both the premium and free detail
+      layouts, pricing TODO removed.*
+      **Deviation:** the "Reportar información incorrecta" affordance is
+      **not** in this PR. `leads.source` is a MySQL `ENUM`, so a new lead
+      source is an `ALTER TABLE` — see **W1-1b** below, which carries it as a
+      migration PR. Bundling it here would have made a "no migration" PR
+      unmergeable until the database was touched by hand.
+- [ ] **W1-1b — "Reportar información incorrecta". MIGRATION.** Split out of
+      W1-1 (see above). New `listing_report` value in the `leads.source` enum,
+      a `listing_report` variant on the zod union in `lib/leads.ts`, and a
+      report affordance on `lugar/[slug]` that goes through the same lead
+      orchestrator, honeypot and rate limit as every other public write.
 - [ ] **W1-2 — Session correctness (S1 + S2).** `requireRole`/`currentUser`
       must re-read `role` and `status` from the DB per request — today a
       suspended or demoted admin keeps access for the cookie's 8-hour TTL,
