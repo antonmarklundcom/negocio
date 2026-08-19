@@ -159,14 +159,28 @@ export function hoursDefaultValues(hours: DayHours[]): Record<string, string> {
 // physically unable to set these.
 // ---------------------------------------------------------------------------
 
-export function flagsFields(): FieldDef[] {
+/**
+ * Two field lists, two forms (ROADMAP W2-2). `verified` is a human assertion,
+ * `premiumUntil` is a sale — see the comment above `setListingVerified` in
+ * `lib/db/listings-admin.ts` for why they no longer share a write path.
+ */
+export function verifiedFields(): FieldDef[] {
   return [
     {
       type: 'checkbox',
       name: 'verified',
       label: 'Verificado',
-      hint: 'Marcá esto solo después de confirmar el negocio en persona o por teléfono.',
+      hint: 'Marcá esto solo después de confirmar el negocio en persona o por teléfono. No se vende.',
     },
+  ];
+}
+
+export function verifiedDefaultValues(verified: boolean): Record<string, unknown> {
+  return { verified };
+}
+
+export function premiumFields(): FieldDef[] {
+  return [
     {
       type: 'text',
       name: 'premiumUntil',
@@ -177,6 +191,6 @@ export function flagsFields(): FieldDef[] {
   ];
 }
 
-export function flagsDefaultValues(verified: boolean, premiumUntil: number | null): Record<string, unknown> {
-  return { verified, premiumUntil: premiumUntil !== null ? formatPremiumUntilDate(premiumUntil) : '' };
+export function premiumDefaultValues(premiumUntil: number | null): Record<string, unknown> {
+  return { premiumUntil: premiumUntil !== null ? formatPremiumUntilDate(premiumUntil) : '' };
 }

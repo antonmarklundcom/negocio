@@ -4,7 +4,8 @@ import {
   parseCategoryInput,
   parseCityInput,
   parseHoursInput,
-  parseListingFlagsInput,
+  parseListingVerifiedInput,
+  parsePremiumUntilInput,
   parseListingInput,
   parseListParams,
   parseLoginInput,
@@ -499,25 +500,53 @@ describe('premiumUntil', () => {
   });
 });
 
-describe('parseListingFlagsInput', () => {
-  it('empty premiumUntil and unchecked verified parse to null/false', () => {
-    const result = parseListingFlagsInput(form({}));
-    expect(result).toEqual({ ok: true, data: { verified: false, premiumUntil: null } });
+describe('parseListingVerifiedInput (ROADMAP W2-2)', () => {
+  it('an unchecked box parses to false', () => {
+    expect(parseListingVerifiedInput(form({}))).toEqual({ ok: true, data: { verified: false } });
   });
 
-  it('accepts a checked verified box and a valid date', () => {
-    const result = parseListingFlagsInput(form({ verified: 'on', premiumUntil: '2026-12-31' }));
+  it('a checked box parses to true', () => {
+    expect(parseListingVerifiedInput(form({ verified: 'on' }))).toEqual({
+      ok: true,
+      data: { verified: true },
+    });
+  });
+
+  it('ignores premiumUntil entirely', () => {
+    // The whole point of the split: this parser feeds a function that cannot
+    // write `premiumUntil`, so a stray field must not travel with it.
+    const result = parseListingVerifiedInput(form({ verified: 'on', premiumUntil: '2026-12-31' }));
+    expect(result).toEqual({ ok: true, data: { verified: true } });
+  });
+});
+
+describe('parsePremiumUntilInput (ROADMAP W2-2)', () => {
+  it('an empty date parses to null', () => {
+    expect(parsePremiumUntilInput(form({}))).toEqual({ ok: true, data: { premiumUntil: null } });
+  });
+
+  it('accepts a valid date', () => {
+    const result = parsePremiumUntilInput(form({ premiumUntil: '2026-12-31' }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.data.verified).toBe(true);
     expect(result.data.premiumUntil).not.toBeNull();
   });
 
-  it('rejects a malformed premiumUntil', () => {
-    const result = parseListingFlagsInput(form({ premiumUntil: 'not-a-date' }));
+  it('rejects a malformed date', () => {
+    const result = parsePremiumUntilInput(form({ premiumUntil: 'not-a-date' }));
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors['premiumUntil']).toBeTruthy();
+  });
+
+  it('ignores verified entirely', () => {
+    // The bug the split removes: an unchecked checkbox submits NOTHING, so a
+    // combined parser turned "saved the premium date" into "un-verified the
+    // business" on any form that did not render the checkbox.
+    const result = parsePremiumUntilInput(form({ premiumUntil: '2026-12-31' }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Object.keys(result.data)).toEqual(['premiumUntil']);
   });
 });
 

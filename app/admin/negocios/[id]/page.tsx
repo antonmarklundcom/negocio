@@ -13,7 +13,15 @@ import { asuncionMonthRange } from '@/lib/hours';
 import { mediaConfigured } from '@/lib/media/upload';
 import { mediaUrl } from '@/lib/media/url';
 import { waLink } from '@/lib/format';
-import { flagsDefaultValues, flagsFields, hoursDefaultValues, hoursFields, listingFields } from '../fields';
+import {
+  hoursDefaultValues,
+  hoursFields,
+  listingFields,
+  premiumDefaultValues,
+  premiumFields,
+  verifiedDefaultValues,
+  verifiedFields,
+} from '../fields';
 import {
   deleteListingAction,
   extendFeaturedAction,
@@ -21,7 +29,8 @@ import {
   moveGalleryImageAction,
   removeFeaturedAction,
   removeGalleryImageAction,
-  saveFlagsAction,
+  savePremiumUntilAction,
+  saveVerifiedAction,
   saveHoursAction,
   setCoverImageAction,
   updateGalleryAltAction,
@@ -60,7 +69,8 @@ export default async function EditListingPage(
   const update = updateListingAction.bind(null, params.id);
   const deleteThisListing = deleteListingAction.bind(null, params.id);
   const saveHours = saveHoursAction.bind(null, params.id);
-  const saveFlags = saveFlagsAction.bind(null, params.id);
+  const saveVerified = saveVerifiedAction.bind(null, params.id);
+  const savePremiumUntil = savePremiumUntilAction.bind(null, params.id);
   const upload = uploadGalleryImageAction.bind(null, params.id);
   const galleryError = typeof searchParams.galleryError === 'string' ? searchParams.galleryError : undefined;
   const flagsError = typeof searchParams.flagsError === 'string' ? searchParams.flagsError : undefined;
@@ -310,13 +320,40 @@ export default async function EditListingPage(
             </div>
           </div>
 
-          <div className="mt-4">
-            <AdminForm
-              fields={flagsFields()}
-              action={saveFlags}
-              submitLabel="Guardar"
-              defaultValues={flagsDefaultValues(listing.verified, listing.premiumUntil)}
-            />
+          {/* Two forms, deliberately (ROADMAP W2-2). "Verificado" is a human
+              assertion — somebody rang the business — and it is never sold.
+              "Premium hasta" is a sale. Sharing one form meant saving either
+              silently rewrote the other, and an unchecked checkbox that is not
+              rendered submits nothing at all, so any variant of that form
+              without the checkbox would have un-verified the business on save. */}
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="rounded-card border border-line bg-cream p-4">
+              <h3 className="text-[14px] font-bold">Verificación</h3>
+              <p className="mt-1 text-[13px] text-ink2">Una comprobación humana. No se vende.</p>
+              <div className="mt-3">
+                <AdminForm
+                  fields={verifiedFields()}
+                  action={saveVerified}
+                  submitLabel="Guardar verificación"
+                  defaultValues={verifiedDefaultValues(listing.verified)}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-card border border-line bg-cream p-4">
+              <h3 className="text-[14px] font-bold">Premium</h3>
+              <p className="mt-1 text-[13px] text-ink2">
+                Ajuste manual de la fecha. Para una venta usá los paquetes de arriba.
+              </p>
+              <div className="mt-3">
+                <AdminForm
+                  fields={premiumFields()}
+                  action={savePremiumUntil}
+                  submitLabel="Guardar premium"
+                  defaultValues={premiumDefaultValues(listing.premiumUntil)}
+                />
+              </div>
+            </div>
           </div>
         </section>
       )}
