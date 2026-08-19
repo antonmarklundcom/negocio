@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { revalidatePublic } from '@/lib/admin/revalidate';
 import type { AdminFormState } from '@/components/admin/AdminForm';
 import { currentUser } from '@/lib/auth/session';
 import { isAuthError } from '@/lib/auth/roles';
@@ -31,6 +32,7 @@ export async function createCategoryAction(_prev: AdminFormState, fd: FormData):
   }
 
   revalidatePath('/admin/rubros');
+  revalidatePublic();
   redirect('/admin/rubros');
 }
 
@@ -52,6 +54,7 @@ export async function updateCategoryAction(
 
   revalidatePath('/admin/rubros');
   revalidatePath(`/admin/rubros/${slug}`);
+  revalidatePublic();
   redirect('/admin/rubros');
 }
 
@@ -66,5 +69,6 @@ export async function deleteCategoryAction(slug: string): Promise<void> {
     redirect(`/admin/rubros/${slug}?deleteError=${encodeURIComponent(messageFor(err))}`);
   }
   revalidatePath('/admin/rubros');
+  revalidatePublic();
   redirect('/admin/rubros');
 }

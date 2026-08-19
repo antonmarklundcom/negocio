@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { revalidatePublic } from '@/lib/admin/revalidate';
 import type { AdminFormState } from '@/components/admin/AdminForm';
 import { currentUser } from '@/lib/auth/session';
 import { isAuthError } from '@/lib/auth/roles';
@@ -63,6 +64,7 @@ export async function createListingAction(_prev: AdminFormState, fd: FormData): 
   }
 
   revalidatePath('/admin/negocios');
+  revalidatePublic();
   redirect('/admin/negocios');
 }
 
@@ -80,6 +82,7 @@ export async function updateListingAction(id: string, _prev: AdminFormState, fd:
 
   revalidatePath('/admin/negocios');
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   redirect('/admin/negocios');
 }
 
@@ -87,6 +90,7 @@ export async function deleteListingAction(id: string): Promise<void> {
   const actor = await currentUser();
   await deleteListing(actor, id);
   revalidatePath('/admin/negocios');
+  revalidatePublic();
   redirect('/admin/negocios');
 }
 
@@ -107,6 +111,7 @@ export async function saveHoursAction(id: string, _prev: AdminFormState, fd: For
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   return { notice: 'Horarios guardados.' };
 }
 
@@ -127,6 +132,7 @@ export async function saveFlagsAction(id: string, _prev: AdminFormState, fd: For
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   return { notice: 'Guardado.' };
 }
 
@@ -145,6 +151,7 @@ export async function extendPremiumAction(id: string, days: PremiumPackageDays):
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }
 
@@ -163,7 +170,7 @@ export async function extendFeaturedAction(id: string, days: FeaturedPackageDays
   }
 
   revalidatePath(`/admin/negocios/${id}`);
-  revalidatePath('/');
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }
 
@@ -177,7 +184,7 @@ export async function removeFeaturedAction(id: string): Promise<void> {
   }
 
   revalidatePath(`/admin/negocios/${id}`);
-  revalidatePath('/');
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }
 
@@ -208,6 +215,7 @@ export async function uploadGalleryImageAction(id: string, fd: FormData): Promis
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }
 
@@ -223,6 +231,7 @@ export async function updateGalleryAltAction(id: string, imageId: number, fd: Fo
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }
 
@@ -236,6 +245,7 @@ export async function moveGalleryImageAction(id: string, imageId: number, dir: '
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }
 
@@ -249,6 +259,7 @@ export async function removeGalleryImageAction(id: string, imageId: number): Pro
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }
 
@@ -262,5 +273,6 @@ export async function setCoverImageAction(id: string, key: string): Promise<void
   }
 
   revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
   redirect(`/admin/negocios/${id}`);
 }

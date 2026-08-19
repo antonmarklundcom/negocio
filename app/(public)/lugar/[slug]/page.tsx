@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getListingBySlug } from '@/lib/listings-repo';
+import { getListingBySlug, getListings } from '@/lib/listings-repo';
 import { dbConfigured } from '@/lib/db/client';
 import { listApprovedReviews } from '@/lib/db/reviews';
 import { isPremium } from '@/lib/listing';
@@ -24,6 +24,37 @@ import { Reviews } from '@/components/detail/Reviews';
 import { Phone, Clock } from '@/components/icons';
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import type { Review } from '@/lib/types';
+
+/**
+ * ISR (ROADMAP W1-3). This page used to be fully dynamic: every visit to every
+ * listing was a MySQL round-trip (listing + hours + gallery) against a pool
+ * capped at 8 connections, while the home page and the sitemap were already
+ * ISR'd. It reads no `searchParams`, so nothing forced it to be.
+ *
+ * An hour is the staleness ceiling, not the mechanism: every admin write path
+ * calls `revalidatePath('/lugar/[slug]', 'page')`, so a staff edit is visible
+ * on the next request.
+ */
+export const revalidate = 3600;
+
+/**
+ * Prerender the listings that exist at build time; anything created later is
+ * rendered on demand and then cached (`dynamicParams` defaults to true).
+ *
+ * Deliberately defensive: a build machine that cannot reach MySQL must fall
+ * back to rendering everything on demand, not fail the deploy. The public
+ * pages already degrade this way — the provider itself throws rather than
+ * serving stale seed data, and that error belongs at request time.
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  try {
+    const { items } = await getListings({ pageSize: 500, page: 1 });
+    return items.map((l) => ({ slug: l.slug }));
+  } catch (err) {
+    console.error('[lugar] generateStaticParams could not read listings; rendering on demand:', err);
+    return [];
+  }
+}
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const params = await props.params;
