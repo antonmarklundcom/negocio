@@ -64,6 +64,13 @@ export function AdminNav({ user }: { user: SessionUser }) {
                 </Link>
               </li>
             )}
+            {isAdmin && (
+              <li>
+                <Link href="/admin/actividad" className="hover:text-blue">
+                  Actividad
+                </Link>
+              </li>
+            )}
             <li>
               <Link href="/" className="hover:text-blue">
                 Ver el sitio
