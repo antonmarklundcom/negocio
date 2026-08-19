@@ -611,11 +611,24 @@ Repo, docs and comments in English.
       replaces hard delete in the UI (hard `deleteListing` stays admin-only
       for true mistakes). New listings can be saved as `draft`. Follow the
       PR-4 slice pattern; access tests + canary run as always.
-- [ ] **W2-2 — Split `verified` out of `setListingFlags`.** Own admin-only
+- [x] **W2-2 — Split `verified` out of `setListingFlags`.** Own admin-only
       query-module function + own form section, so `verified` (a human
       assertion) and `premiumUntil` (a sale) stop sharing a write path.
       Prepares both the paid-Verificado product and any future `sales` role.
       No migration.
+      *Shipped: `setListingFlags` is gone, replaced by `setListingVerified` and
+      `setListingPremiumUntil` — each admin-only, each with its own
+      `activity_log` entry, so the audit trail can finally tell a verification
+      from an upsell. `parseListingFlagsInput` likewise became
+      `parseListingVerifiedInput` / `parsePremiumUntilInput`, and the edit page
+      renders two labelled forms instead of one.
+      **A real bug fell out of the split:** an unchecked HTML checkbox submits
+      **nothing**, so the combined form/parser meant any submission that did not
+      render the `verified` checkbox silently set `verified: false`. Saving a
+      premium date could un-verify the business. Covered by a test in each
+      parser's suite. 14 new tests (362 total); canary run: `requireRole`
+      deleted from every guard in `lib/db/listings-admin.ts` → 33 of 64 tests
+      went red, guard restored.*
 - [ ] **W2-3 — Revenue record. MIGRATION.** `sales` table (listing_id, package
       kind premium/featured, days, amount ₲, method Pagopar/Bancard/Tigo/efectivo/otro,
       sold_by from session, created_at). Written **in the same transaction** as

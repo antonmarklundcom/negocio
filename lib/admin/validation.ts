@@ -518,24 +518,31 @@ export function formatPremiumUntilDate(seconds: number): string {
   return new Date(localMs).toISOString().slice(0, 10);
 }
 
-export interface ListingFlagsInput {
-  verified: boolean;
-  premiumUntil: number | null;
+/**
+ * Two parsers, not one (ROADMAP W2-2). `verified` is a human assertion and
+ * `premiumUntil` is a sale; they are submitted by two different forms and
+ * written by two different query-module functions, so a combined parser would
+ * be the one place they were still coupled — and would happily carry an absent
+ * checkbox from the premium form through as `verified: false`.
+ *
+ * That is the actual bug the split removes: an unchecked HTML checkbox sends
+ * nothing at all, so any form that did not render the checkbox silently
+ * un-verified the business on save.
+ */
+export function parseListingVerifiedInput(fd: FormData): ParseResult<{ verified: boolean }> {
+  const verified = value(fd, 'verified') === 'on' || fd.get('verified') === 'true';
+  return { ok: true, data: { verified } };
 }
 
-export function parseListingFlagsInput(fd: FormData): ParseResult<ListingFlagsInput> {
-  const errors: Errors = {};
-  const verified = value(fd, 'verified') === 'on' || fd.get('verified') === 'true';
+export function parsePremiumUntilInput(fd: FormData): ParseResult<{ premiumUntil: number | null }> {
   const rawDate = value(fd, 'premiumUntil');
+  if (!rawDate) return { ok: true, data: { premiumUntil: null } };
 
-  let premiumUntil: number | null = null;
-  if (rawDate) {
-    premiumUntil = parsePremiumUntilDate(rawDate);
-    if (premiumUntil === null) errors['premiumUntil'] = 'Escribí una fecha válida (AAAA-MM-DD).';
+  const premiumUntil = parsePremiumUntilDate(rawDate);
+  if (premiumUntil === null) {
+    return { ok: false, errors: { premiumUntil: 'Escribí una fecha válida (AAAA-MM-DD).' } };
   }
-
-  if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, data: { verified, premiumUntil } };
+  return { ok: true, data: { premiumUntil } };
 }
 
 // ---------------------------------------------------------------------------

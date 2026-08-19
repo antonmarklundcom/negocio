@@ -10,7 +10,7 @@ import { categories, cities, listingGallery, listingHours, listings } from './sc
 import { serialiseLines, serialisePiped } from '@/lib/admin/blocks';
 import { dayHoursToRows, rowsToDayHours } from './mappers';
 import type { DayHours } from '../types';
-import type { ListingFormInput, ListingFlagsInput } from '@/lib/admin/validation';
+import type { ListingFormInput } from '@/lib/admin/validation';
 import { MAX_GALLERY_IMAGES } from '@/lib/media/upload';
 import { MAX_FEATURED_SLOTS } from '@/lib/config';
 
@@ -469,29 +469,43 @@ export async function setListingHours(
 }
 
 // ---------------------------------------------------------------------------
-// premiumUntil / verified (BUILD-SPEC-PR5 §3) — admin only, and deliberately a
-// SEPARATE function from updateListing rather than a widening of it: that
-// keeps the editor-facing write path physically unable to set these fields,
-// which is stronger than a conditional inside one function.
+// verified / premiumUntil (BUILD-SPEC-PR5 §3, split in ROADMAP W2-2) — admin
+// only, and deliberately SEPARATE functions rather than a widening of
+// updateListing: that keeps the editor-facing write path physically unable to
+// set either field, which is stronger than a conditional inside one function.
+//
+// W2-2 split them from each other for the same reason one level down. They are
+// two different kinds of claim:
+//
+//   `verified`     — a HUMAN ASSERTION. Somebody rang the business or walked
+//                    in. It is never bought, and it never expires on a clock.
+//   `premiumUntil` — a SALE. It has a price, a package and an end date, and it
+//                    is (from W2-3) accompanied by a row in `sales`.
+//
+// Sharing one write path meant saving one silently rewrote the other, the
+// activity log could not tell an upsell from a verification, and the future
+// `sales` role would have had to be trusted with both to be trusted with
+// either. Now `verified` can be granted to a role that must never touch
+// billing, and vice versa, without a line of new plumbing.
 // ---------------------------------------------------------------------------
 
-export async function setListingFlags(
+export async function setListingVerified(
   actor: SessionUser | null,
   id: string,
-  input: ListingFlagsInput,
+  verified: boolean,
   database: Db = getDb(),
 ): Promise<void> {
   const user = requireRole(actor, ['admin']);
 
   await database.transaction(async (tx) => {
     const [before] = await tx
-      .select({ verified: listings.verified, premiumUntil: listings.premiumUntil })
+      .select({ verified: listings.verified })
       .from(listings)
       .where(eq(listings.id, id))
       .limit(1);
     if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
 
-    await tx.update(listings).set({ verified: input.verified, premiumUntil: input.premiumUntil }).where(eq(listings.id, id));
+    await tx.update(listings).set({ verified }).where(eq(listings.id, id));
 
     await logActivity(tx, {
       userId: user.id,
@@ -499,7 +513,36 @@ export async function setListingFlags(
       entityId: id,
       action: 'update',
       before,
-      after: { verified: input.verified, premiumUntil: input.premiumUntil },
+      after: { verified },
+    });
+  });
+}
+
+export async function setListingPremiumUntil(
+  actor: SessionUser | null,
+  id: string,
+  premiumUntil: number | null,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin']);
+
+  await database.transaction(async (tx) => {
+    const [before] = await tx
+      .select({ premiumUntil: listings.premiumUntil })
+      .from(listings)
+      .where(eq(listings.id, id))
+      .limit(1);
+    if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    await tx.update(listings).set({ premiumUntil }).where(eq(listings.id, id));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing',
+      entityId: id,
+      action: 'update',
+      before,
+      after: { premiumUntil },
     });
   });
 }

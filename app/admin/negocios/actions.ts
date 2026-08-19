@@ -6,7 +6,12 @@ import { revalidatePublic } from '@/lib/admin/revalidate';
 import type { AdminFormState } from '@/components/admin/AdminForm';
 import { currentUser } from '@/lib/auth/session';
 import { isAuthError } from '@/lib/auth/roles';
-import { parseHoursInput, parseListingFlagsInput, parseListingInput } from '@/lib/admin/validation';
+import {
+  parseHoursInput,
+  parseListingInput,
+  parsePremiumUntilInput,
+  parseListingVerifiedInput,
+} from '@/lib/admin/validation';
 import { getCategories, getCities } from '@/lib/listings-repo';
 import {
   addGalleryImage,
@@ -22,7 +27,8 @@ import {
   removeGalleryImage,
   removeListingFeatured,
   setCoverImage,
-  setListingFlags,
+  setListingPremiumUntil,
+  setListingVerified,
   setListingHours,
   updateGalleryAlt,
   updateListing,
@@ -139,17 +145,39 @@ export async function saveHoursAction(id: string, _prev: AdminFormState, fd: For
 }
 
 // ---------------------------------------------------------------------------
-// verified / premiumUntil (BUILD-SPEC-PR5 §3)
+// verified (a human assertion) and premiumUntil (a sale) — two forms, two
+// actions, two query-module functions (ROADMAP W2-2).
 // ---------------------------------------------------------------------------
 
-export async function saveFlagsAction(id: string, _prev: AdminFormState, fd: FormData): Promise<AdminFormState> {
+export async function saveVerifiedAction(id: string, _prev: AdminFormState, fd: FormData): Promise<AdminFormState> {
   const actor = await currentUser();
 
-  const parsed = parseListingFlagsInput(fd);
+  const parsed = parseListingVerifiedInput(fd);
   if (!parsed.ok) return { errors: parsed.errors };
 
   try {
-    await setListingFlags(actor, id, parsed.data);
+    await setListingVerified(actor, id, parsed.data.verified);
+  } catch (err) {
+    return { formError: messageFor(err) };
+  }
+
+  revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
+  return { notice: parsed.data.verified ? 'Marcado como verificado.' : 'Verificación quitada.' };
+}
+
+export async function savePremiumUntilAction(
+  id: string,
+  _prev: AdminFormState,
+  fd: FormData,
+): Promise<AdminFormState> {
+  const actor = await currentUser();
+
+  const parsed = parsePremiumUntilInput(fd);
+  if (!parsed.ok) return { errors: parsed.errors };
+
+  try {
+    await setListingPremiumUntil(actor, id, parsed.data.premiumUntil);
   } catch (err) {
     return { formError: messageFor(err) };
   }
