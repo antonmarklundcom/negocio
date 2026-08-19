@@ -72,6 +72,8 @@ drizzle/                   Generated SQL migrations (applied from a local machin
 scripts/import-seed.ts     Idempotent seed → MySQL import (tsx)
 scripts/bootstrap-admin.ts Creates the first administrator, once (tsx)
 tests/                     vitest — pure, no database
+e2e/smoke.spec.ts          Playwright smoke suite (no database)
+e2e/admin.spec.ts          Playwright admin round-trip (needs MySQL)
 design/                    Approved visual reference + the brief behind it
                            (see design/README.md)
 legacy/                    The previous static prototype (kept for reference)
@@ -564,6 +566,43 @@ starts its own server (`npm run build && npm run start`) unless
 chromium`. This is a smoke suite, not a regression suite — the golden path a
 visitor takes (home → listing → search → category), plus `/admin` 404-ing with
 no database and an unknown route 404-ing.
+
+### The admin round-trip (MySQL) — `npm run test:e2e:admin`
+
+`npm run test:e2e:admin` (ROADMAP W1-6) is the only suite that needs a
+database. It signs in as a bootstrapped administrator, walks the forced
+password change, creates a listing, checks it on the public site, edits it,
+submits a review through the real public endpoint, approves it in the
+moderation queue, and deletes the listing with the typed-slug confirmation —
+all real writes against real MySQL.
+
+It covers what the DB-free smoke suite structurally cannot: without
+`DATABASE_URL` the panel 404s, so login, the guards, the CRUD slices and the
+moderation queue were never exercised end to end by anything. It earned its
+keep before it was merged, by catching a cache-invalidation bug in W1-3 that
+left edited listings stale on the public site indefinitely.
+
+It needs a **fresh** database — `bootstrap-admin` refuses to run twice, and the
+first test changes that account's password:
+
+```sh
+export DATABASE_URL="mysql://user:pass@host:3306/negocio_e2e"
+export SESSION_SECRET="$(openssl rand -base64 32)"
+export NEXT_PUBLIC_REVIEWS_ENABLED=true   # read at BUILD time, so set it first
+npm run db:migrate && npm run db:import-seed
+npm run bootstrap-admin -- --email e2e@negocio.com.py --name "E2E Admin"
+export E2E_ADMIN_EMAIL=e2e@negocio.com.py
+export E2E_ADMIN_PASSWORD="<the password it printed>"
+npm run test:e2e:admin
+```
+
+In CI it is `.github/workflows/admin-e2e.yml`, **manually triggered only**
+(Actions tab → "Admin e2e (MySQL)"). It brings up a MySQL service container and
+does all of the above itself. Run it before merging anything that touches
+`/admin`, `lib/db/*` or `lib/auth/*`, and after any autonomous batch of admin
+work. It is not on every PR because a service container plus migrations plus a
+seed import plus a production build plus a browser costs more minutes than the
+rest of this repo combined, and almost no PR touches the admin.
 
 ### CI is one job, on pull requests only
 

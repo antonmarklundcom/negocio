@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, gt, isNull, like, lt, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, like, lt, ne, or, sql } from 'drizzle-orm';
 import { getDb } from './client';
 import type { Db } from './connection';
 import { requireRole, AuthError } from '@/lib/auth/roles';
@@ -931,6 +931,120 @@ export async function listingStaleness(
   ]);
 
   return { porVencer, vencido, sinActualizar, sinContacto, topPorVencer };
+}
+
+/**
+ * Listings with the same name in the same city (ROADMAP W2-6).
+ *
+ * A WARNING, never a block. Two real businesses genuinely share a name in one
+ * city — franchises, "Farmacia San Roque" on two corners — so refusing the
+ * write would make the admin unable to record reality. But typing a business
+ * in twice is the single most common data-quality failure on a directory, and
+ * once both rows exist neither is obviously the wrong one.
+ *
+ * Case-insensitive by collation (the column is `utf8mb4_..._ci`), and it
+ * excludes the row being edited so saving an existing listing never warns
+ * about itself.
+ */
+export interface DuplicateCandidate {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export async function findDuplicateListings(
+  actor: SessionUser | null,
+  name: string,
+  ciudad: string,
+  excludeId: string | null = null,
+  database: Db = getDb(),
+): Promise<DuplicateCandidate[]> {
+  requireRole(actor, ['admin', 'editor']);
+
+  const trimmed = name.trim();
+  if (!trimmed || !ciudad) return [];
+
+  const conditions = [eq(listings.name, trimmed), eq(listings.ciudad, ciudad)];
+  if (excludeId) conditions.push(ne(listings.id, excludeId));
+
+  return database
+    .select({ id: listings.id, slug: listings.slug, name: listings.name })
+    .from(listings)
+    .where(and(...conditions))
+    .limit(5);
+}
+
+/** Thrown when a bulk re-categorisation names a category that does not exist. */
+export class UnknownCategoryError extends Error {
+  constructor(slug: string) {
+    super(`No existe el rubro "${slug}".`);
+    this.name = 'UnknownCategoryError';
+  }
+}
+
+/**
+ * Move several listings to another rubro in one transaction (ROADMAP W2-6).
+ *
+ * This exists to unblock category deletion: `deleteCategory` refuses while
+ * listings are attached (PR-4 open question 2), and the only alternative was
+ * opening each listing and changing one select. On a rubro with forty
+ * businesses that is not a workflow, it is a reason nobody ever tidies the
+ * taxonomy.
+ *
+ * The target category is checked against the table, not against the form's
+ * options: the ids arrive from the request and so does the target
+ * (Phase B rule 4). One `activity_log` row per listing, inside the same
+ * transaction as the update — the audit trail must show which businesses
+ * moved, not that "a bulk action happened".
+ */
+export async function recategoriseListings(
+  actor: SessionUser | null,
+  ids: string[],
+  categoria: string,
+  database: Db = getDb(),
+): Promise<number> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  const unique = [...new Set(ids.filter((id) => id.trim() !== ''))];
+  if (unique.length === 0) return 0;
+
+  return database.transaction(async (tx) => {
+    const [target] = await tx
+      .select({ slug: categories.slug })
+      .from(categories)
+      .where(eq(categories.slug, categoria))
+      .limit(1);
+    if (!target) throw new UnknownCategoryError(categoria);
+
+    const rows = await tx
+      .select({ id: listings.id, categoria: listings.categoria })
+      .from(listings)
+      .where(inArray(listings.id, unique));
+
+    // Silently ignore ids that do not exist rather than failing the whole
+    // batch: the same answer as row-not-found everywhere else, and a partial
+    // selection going stale mid-edit is ordinary, not an attack.
+    const moving = rows.filter((row) => row.categoria !== categoria);
+    if (moving.length === 0) return 0;
+
+    await tx
+      .update(listings)
+      .set({ categoria })
+      .where(inArray(listings.id, moving.map((row) => row.id)));
+
+    for (const row of moving) {
+      await logActivity(tx, {
+        userId: user.id,
+        entityType: 'listing',
+        entityId: row.id,
+        action: 'update',
+        before: { categoria: row.categoria },
+        after: { categoria },
+      });
+    }
+
+    return moving.length;
+  });
 }
 
 // ---------------------------------------------------------------------------

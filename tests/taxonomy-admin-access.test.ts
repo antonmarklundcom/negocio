@@ -21,6 +21,8 @@ import {
   updateCity,
   type AdminCategoryRow,
   type AdminCityRow,
+  listAllCategoryOptions,
+  listAllCityOptions,
 } from '@/lib/db/taxonomy-admin';
 import type { CategoryFormInput, CityFormInput } from '@/lib/admin/validation';
 
@@ -230,3 +232,34 @@ function fakeDeleteTx(existingRow: AdminCategoryRow | AdminCityRow, listingCount
 
   return { tx, deleteCalled: () => deleteCalled };
 }
+
+describe('lib/db/taxonomy-admin — the admin unfiltered reads (W2-6)', () => {
+  // These exist because the admin was reading `getCategories()`/`getCities()`
+  // from `lib/listings-repo.ts`, which return only taxonomy that ALREADY has
+  // listings. A category or city created in the admin was therefore absent
+  // from the new-listing select and rejected by the create validation — so it
+  // could never gain a listing, so it never became selectable. Found by the
+  // W1-6 admin e2e suite.
+  describe.each([
+    { name: 'listAllCategoryOptions', call: (actor: SessionUser | null, db: Db) => listAllCategoryOptions(actor, db) },
+    { name: 'listAllCityOptions', call: (actor: SessionUser | null, db: Db) => listAllCityOptions(actor, db) },
+  ])('$name', ({ call }) => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(call(ANONYMOUS, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('is reachable by an editor — an editor creates listings and needs the options', async () => {
+      const { db, touched } = recordingDb();
+      await expect(call(EDITOR, db)).rejects.toThrow(/the database was reached/);
+      expect(touched.length).toBeGreaterThan(0);
+    });
+
+    it('rejects an owner_admin actor AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(call(OWNER_ADMIN, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+  });
+});

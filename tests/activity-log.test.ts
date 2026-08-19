@@ -2,7 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { buildActivityLogRow } from '@/lib/db/activity-log';
+import { isAuthError } from '@/lib/auth/roles';
+import type { SessionUser } from '@/lib/auth/session';
+import type { Db } from '@/lib/db/connection';
+import {
+  activityEntityTypes,
+  buildActivityLogRow,
+  listActivity,
+} from '@/lib/db/activity-log';
 
 describe('buildActivityLogRow', () => {
   it('drops the before snapshot on a create', () => {
@@ -66,5 +73,50 @@ describe('buildActivityLogRow', () => {
       action: 'update',
     });
     expect(row.entityId).toBe('gastronomia');
+  });
+});
+
+describe('listActivity / activityEntityTypes — the readable audit trail (W2-6)', () => {
+  function recordingDb(): { db: Db; touched: string[] } {
+    const touched: string[] = [];
+    const handler: ProxyHandler<object> = {
+      get(_t, prop) {
+        const name = String(prop);
+        if (name === 'then' || name === 'catch' || name === 'finally') return undefined;
+        touched.push(name);
+        return () => {
+          throw new Error(`the database was reached: .${name}()`);
+        };
+      },
+    };
+    return { db: new Proxy({}, handler) as unknown as Db, touched };
+  }
+
+  const anonymous = null;
+  const editor: SessionUser = { id: 2, role: 'editor', ownerId: null, mustChangePassword: false };
+  const admin: SessionUser = { id: 1, role: 'admin', ownerId: null, mustChangePassword: false };
+
+  it.each([
+    { name: 'listActivity', call: (a: SessionUser | null, db: Db) => listActivity(a, {}, db) },
+    { name: 'activityEntityTypes', call: (a: SessionUser | null, db: Db) => activityEntityTypes(a, db) },
+  ])('$name throws for an anonymous caller AND never reaches the database', async ({ call }) => {
+    const { db, touched } = recordingDb();
+    await expect(call(anonymous, db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it.each([
+    { name: 'listActivity', call: (a: SessionUser | null, db: Db) => listActivity(a, {}, db) },
+    { name: 'activityEntityTypes', call: (a: SessionUser | null, db: Db) => activityEntityTypes(a, db) },
+  ])('$name rejects an editor — the log names who did what', async ({ call }) => {
+    const { db, touched } = recordingDb();
+    await expect(call(editor, db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('is reachable by an admin', async () => {
+    const { db, touched } = recordingDb();
+    await expect(listActivity(admin, {}, db)).rejects.toThrow(/the database was reached/);
+    expect(touched.length).toBeGreaterThan(0);
   });
 });

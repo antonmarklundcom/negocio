@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { AdminForm } from '@/components/admin/AdminForm';
 import { currentUser } from '@/lib/auth/session';
 import { hasRole } from '@/lib/auth/roles';
-import { getCategories, getCities } from '@/lib/listings-repo';
+import { listAllCategoryOptions, listAllCityOptions } from '@/lib/db/taxonomy-admin';
 import { FEATURED_PACKAGE_DAYS, getListingForEdit, PREMIUM_PACKAGE_DAYS } from '@/lib/db/listings-admin';
 import { MAX_FEATURED_SLOTS } from '@/lib/config';
 import { getListingLeadReport, getListingLeadTrend } from '@/lib/db/leads-admin';
@@ -66,8 +66,8 @@ export default async function EditListingPage(
   // declining (ROADMAP W2-5).
   const trendRanges = asuncionMonthRanges(6);
   const [categories, cities, leadReport, leadTrend] = await Promise.all([
-    getCategories(),
-    getCities(),
+    listAllCategoryOptions(actor),
+    listAllCityOptions(actor),
     getListingLeadReport(actor, listing.id, monthRange),
     getListingLeadTrend(actor, listing.id, trendRanges),
   ]);
@@ -148,8 +148,8 @@ export default async function EditListingPage(
       <AdminForm
         fields={listingFields(
           'update',
-          categories.map((c) => ({ value: c.slug, label: c.label })),
-          cities.map((c) => ({ value: c.slug, label: c.label })),
+          categories,
+          cities,
         )}
         action={update}
         submitLabel="Guardar cambios"

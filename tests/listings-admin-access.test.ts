@@ -11,6 +11,9 @@ import {
   createListing,
   deleteListing,
   DeleteNotConfirmedError,
+  findDuplicateListings,
+  recategoriseListings,
+  UnknownCategoryError,
   extendListingFeatured,
   extendListingPremium,
   getListingForEdit,
@@ -435,6 +438,99 @@ describe('lib/db/listings-admin — listExpiringSoon (W2-4)', () => {
     const { db, touched } = recordingDb();
     await expect(listExpiringSoon(OWNER_ADMIN, 1_700_000_000, 86_400, db)).rejects.toSatisfy(isAuthError);
     expect(touched).toEqual([]);
+  });
+});
+
+/**
+ * ROADMAP W2-6 — the duplicate warning and the bulk re-categorisation.
+ */
+describe('lib/db/listings-admin — data quality (W2-6)', () => {
+  describe('findDuplicateListings', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(findDuplicateListings(ANONYMOUS, 'Panadería', 'asuncion', null, db)).rejects.toSatisfy(
+        isAuthError,
+      );
+      expect(touched).toEqual([]);
+    });
+
+    it('asks the database nothing when the name or the city is blank', async () => {
+      // A half-filled create form must not turn into a table scan.
+      const blankName = recordingDb();
+      await expect(findDuplicateListings(ADMIN, '   ', 'asuncion', null, blankName.db)).resolves.toEqual([]);
+      expect(blankName.touched).toEqual([]);
+
+      const blankCity = recordingDb();
+      await expect(findDuplicateListings(ADMIN, 'Panadería', '', null, blankCity.db)).resolves.toEqual([]);
+      expect(blankCity.touched).toEqual([]);
+    });
+
+    it('is reachable by an editor', async () => {
+      const { db, touched } = recordingDb();
+      await expect(findDuplicateListings(EDITOR, 'Panadería', 'asuncion', null, db)).rejects.toThrow(
+        /the database was reached/,
+      );
+      expect(touched.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('recategoriseListings', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(recategoriseListings(ANONYMOUS, ['a'], 'restaurantes', db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('asks the database nothing for an empty selection', async () => {
+      const { db, touched } = recordingDb();
+      await expect(recategoriseListings(ADMIN, [], 'restaurantes', db)).resolves.toBe(0);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects a category that does not exist AND writes nothing', async () => {
+      // The target arrives from the request, so it is checked against the
+      // table rather than against the form's options (Phase B rule 4).
+      const { tx, writesRecorded } = fakeSequencedTx([[]]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(recategoriseListings(ADMIN, ['a'], 'no-existe', db)).rejects.toBeInstanceOf(
+        UnknownCategoryError,
+      );
+      expect(writesRecorded()).toBe(false);
+    });
+
+    it('moves only the rows that are not already in the target rubro', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([
+        [{ slug: 'talleres' }],
+        [
+          { id: 'a', categoria: 'restaurantes' },
+          { id: 'b', categoria: 'talleres' }, // already there
+          { id: 'c', categoria: 'tiendas' },
+        ],
+      ]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(recategoriseListings(ADMIN, ['a', 'b', 'c'], 'talleres', db)).resolves.toBe(2);
+      expect(writesRecorded()).toBe(true);
+    });
+
+    it('writes nothing when every selected row is already in the target rubro', async () => {
+      const { tx, writesRecorded } = fakeSequencedTx([
+        [{ slug: 'talleres' }],
+        [{ id: 'a', categoria: 'talleres' }],
+      ]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(recategoriseListings(ADMIN, ['a'], 'talleres', db)).resolves.toBe(0);
+      expect(writesRecorded()).toBe(false);
+    });
+
+    it('de-duplicates the id list and drops blanks before touching anything', async () => {
+      const { tx } = fakeSequencedTx([[{ slug: 'talleres' }], [{ id: 'a', categoria: 'tiendas' }]]);
+      const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+      await expect(recategoriseListings(ADMIN, ['a', 'a', '', '  '], 'talleres', db)).resolves.toBe(1);
+    });
   });
 });
 

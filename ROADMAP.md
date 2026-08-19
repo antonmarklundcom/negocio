@@ -627,11 +627,41 @@ Repo, docs and comments in English.
       `concurrency`/`cancel-in-progress` (an agent pushing three commits used
       to leave three runs racing), `paths-ignore` for docs, and
       `timeout-minutes` against GitHub's 360-minute default.
-- [ ] **W1-6 — Admin e2e in CI.** New CI job with a MySQL service container:
+- [x] **W1-6 — Admin e2e in CI.** New CI job with a MySQL service container:
       run migrations + `bootstrap-admin`, then Playwright covering login →
       listing CRUD round-trip → review moderation. This is the bug-insurance
-      for every later autonomous build; keep the existing DB-free `e2e` job
-      as-is. No migration.
+      for every later autonomous build; keep the existing DB-free `e2e`
+      coverage as-is. No migration.
+      *Shipped: `e2e/admin.spec.ts` (6 tests, serial),
+      `playwright.admin.config.ts`, `npm run test:e2e:admin`,
+      `.github/workflows/admin-e2e.yml`. Covers the forced password change
+      (including that `/admin` cannot be used to skip it), `/admin` 404-ing for
+      an anonymous context, listing create → visible publicly → edit → visible
+      publicly, a review submitted through the real public endpoint staying
+      invisible until approved in the queue, and W1-4's typed-slug delete (the
+      wrong confirmation deletes nothing and returns a message; the right one
+      removes the listing and the public page 404s). Every assertion is a real
+      write against real MySQL. Verified locally against MariaDB 10.11: 6/6.*
+      **CI trigger is `workflow_dispatch` only** (Lean CI, agreed 2026-08-19):
+      a service container + migrations + seed import + production build + a
+      browser costs more minutes than everything else in this repo combined,
+      and almost no PR touches the admin. Run it from the Actions tab before
+      merging admin/auth/db work.
+      **It paid for itself before merging:** its first run against a real
+      database found that W1-3's `revalidatePath('/lugar/[slug]', 'page')`
+      invalidated nothing, so staff edits never reached the public listing
+      page. Fixed in the W1-3 follow-up above.
+      **Watch the wait matchers.** `waitForURL('**/admin/negocios**')` also
+      matches `/admin/negocios/nuevo` and `/admin/negocios/<id>` — the pages
+      the forms are submitted *from* — so it resolved instantly and every
+      assertion after it raced the server action. That cost an afternoon and
+      briefly produced a wrong diagnosis; the spec now uses an anchored regex
+      and says so.
+      **Also found, not fixed here:** `getCategories()`/`getCities()` return
+      only taxonomy that *has listings*, so a newly created city can never be
+      selected on the new-listing form **and** is rejected by the create
+      validation — a new city is unusable until a listing already references
+      it, which is impossible. Filed for W2-6.
 
 ### Wave 2 — Structure & revenue *(W2-1 first; W2-2 before W2-3; rest parallel)*
 
@@ -712,11 +742,41 @@ Repo, docs and comments in English.
       every `ó` as mojibake. The trend is bucketed **in JavaScript** from one
       query rather than grouped in SQL, because grouping by month in SQL means
       date arithmetic in MySQL's timezone and this app computes time itself.
-- [ ] **W2-6 — Data quality + admin ergonomics.** Duplicate warning on listing
+- [x] **W2-6 — Data quality + admin ergonomics.** Duplicate warning on listing
       create (same name + city ⇒ warn, not block). Minimal bulk action:
       re-categorise selected listings (unblocks category deletion). Per-entity
       activity-log view (filterable, paginated) — the audit trail is written
       faithfully and currently unreadable beyond 10 dashboard rows. No migration.
+      *Shipped, plus the taxonomy fix W1-6 turned up:*
+      - ***The admin no longer reads the public taxonomy.***
+        `listAllCategoryOptions` / `listAllCityOptions` in
+        `lib/db/taxonomy-admin.ts` replace `getCategories()`/`getCities()` in
+        every admin select AND in the create-form validation. The public reads
+        deliberately return only taxonomy that already has listings; used by
+        the admin that filter was a trap with no exit — a category or city
+        created in the panel was absent from the select and rejected by
+        validation, so it could never gain a listing, so it never became
+        selectable. Verified end to end against MySQL: a new city now appears
+        in the Ciudad select on the next request (9 → 10 options).
+      - **Duplicate warning:** `findDuplicateListings` (same name + same city,
+        case-insensitive, excluding the row being edited). The first save
+        returns the matches with their URLs; saving again goes through. A
+        warning, never a block — franchises and two "Farmacia San Roque" on
+        different corners are real. `AdminFormState` gained `hidden` to carry
+        the acknowledgement, documented as UX state and never permission state.
+      - **Bulk re-categorise:** `recategoriseListings`, one transaction, one
+        `activity_log` row per listing moved (not one per "bulk action"), the
+        target rubro checked against the table rather than against the form's
+        options, rows already in the target skipped. Selection is DOM-only
+        checkboxes scoped to the visible page — a "select all 2000 matches"
+        that reaches beyond what you can see is how a bulk action becomes an
+        accident.
+      - **`/admin/actividad`:** filter by entity type, entity id and action,
+        paginated, admin-only. The log has been written faithfully since PR-3
+        and until now only its ten most recent rows were readable anywhere.
+      27 new tests (382 total). Canary across all three touched query modules
+      → 61 of 120 tests went red, guards restored. The W1-6 admin e2e suite
+      passes 6/6 against this branch.
 
 ### Wave 3 — Growth *(after Waves 1–2; i18n scaffold on Opus, rest Sonnet)*
 
