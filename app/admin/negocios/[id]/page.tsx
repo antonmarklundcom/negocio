@@ -11,7 +11,8 @@ import { MAX_FEATURED_SLOTS } from '@/lib/config';
 import { getListingLeadReport, getListingLeadTrend } from '@/lib/db/leads-admin';
 import { asuncionMonthRange, asuncionMonthRanges } from '@/lib/hours';
 import { mediaConfigured } from '@/lib/media/upload';
-import { LISTING_STATUS_LABELS } from '@/lib/admin/labels';
+import { LISTING_STATUS_LABELS, SALE_METHOD_LABELS } from '@/lib/admin/labels';
+import { SALE_METHODS } from '@/lib/db/schema';
 import { mediaUrl } from '@/lib/media/url';
 import { waLink } from '@/lib/format';
 import {
@@ -361,16 +362,24 @@ export default async function EditListingPage(
                 : 'No está premium. Un paquete lo activa desde hoy.'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {PREMIUM_PACKAGE_DAYS.map((days) => (
-                <form key={days} action={extendPremiumAction.bind(null, params.id, days)}>
+              {/* ONE form for the whole section, with a submit button per
+                  package length (ROADMAP W2-3). The amount and the method are
+                  required inputs on the sale, not optional extras: a revenue
+                  table with half its rows at ₲0 because the form let someone
+                  skip it looks like data and reports nonsense. */}
+              <form className="flex flex-wrap items-end gap-2">
+                <SaleFields idPrefix="premium" />
+                {PREMIUM_PACKAGE_DAYS.map((days) => (
                   <button
+                    key={days}
                     type="submit"
+                    formAction={extendPremiumAction.bind(null, params.id, days)}
                     className="rounded-card border-[1.5px] border-blue px-3.5 py-2 text-[13px] font-bold text-blue"
                   >
                     {days === 365 ? '+ 1 año' : `+ ${days} días`}
                   </button>
-                </form>
-              ))}
+                ))}
+              </form>
               {listing.whatsapp && (
                 <a
                   href={waLink(
@@ -399,16 +408,19 @@ export default async function EditListingPage(
                 : `No está en la portada. Hay como máximo ${MAX_FEATURED_SLOTS} lugares a la vez.`}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {FEATURED_PACKAGE_DAYS.map((days) => (
-                <form key={days} action={extendFeaturedAction.bind(null, params.id, days)}>
+              <form className="flex flex-wrap items-end gap-2">
+                <SaleFields idPrefix="featured" />
+                {FEATURED_PACKAGE_DAYS.map((days) => (
                   <button
+                    key={days}
                     type="submit"
+                    formAction={extendFeaturedAction.bind(null, params.id, days)}
                     className="rounded-card border-[1.5px] border-blue px-3.5 py-2 text-[13px] font-bold text-blue"
                   >
                     + {days} días
                   </button>
-                </form>
-              ))}
+                ))}
+              </form>
               {isCurrentlyFeatured && (
                 <form action={removeFeaturedAction.bind(null, params.id)}>
                   <button type="submit" className="rounded-card px-3.5 py-2 text-[13px] font-bold text-terra">
@@ -503,5 +515,57 @@ export default async function EditListingPage(
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * The amount and method that every package sale records (ROADMAP W2-3 / D5).
+ *
+ * Rendered inside the package form rather than as a separate step, so the sale
+ * and the package are one action for the person doing it — the same thing they
+ * already are in the database, where the `sales` row is written inside the
+ * package's own transaction.
+ *
+ * `inputMode="numeric"` rather than `type="number"`: the amount is typed with
+ * the thousands separators a Paraguayan actually uses ("65.000"), which a
+ * number input silently refuses. The parser strips non-digits.
+ */
+function SaleFields({ idPrefix }: { idPrefix: string }) {
+  return (
+    <>
+      <span className="flex flex-col">
+        <label htmlFor={`${idPrefix}-amount`} className="text-[12px] font-bold text-ink2">
+          Monto (Gs.)
+        </label>
+        <input
+          id={`${idPrefix}-amount`}
+          name="amountGs"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="65.000"
+          required
+          className="w-32 rounded-card border border-line px-2.5 py-2 text-[14px]"
+        />
+      </span>
+      <span className="flex flex-col">
+        <label htmlFor={`${idPrefix}-method`} className="text-[12px] font-bold text-ink2">
+          Medio de pago
+        </label>
+        <select
+          id={`${idPrefix}-method`}
+          name="method"
+          defaultValue=""
+          required
+          className="rounded-card border border-line bg-white px-2.5 py-2 text-[14px]"
+        >
+          <option value="">— Elegí —</option>
+          {SALE_METHODS.map((method) => (
+            <option key={method} value={method}>
+              {SALE_METHOD_LABELS[method]}
+            </option>
+          ))}
+        </select>
+      </span>
+    </>
   );
 }

@@ -4,6 +4,8 @@ import type {
   LeadSource,
   ListingStatus,
   ReviewStatus,
+  SaleMethod,
+  SalePackage,
   UserStatus,
 } from '@/lib/db/schema';
 
@@ -24,6 +26,20 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   draft: 'Borrador',
   published: 'Publicado',
   archived: 'Archivado',
+};
+
+/** Payment methods a Paraguayan business actually uses (ROADMAP W2-3 / D5). */
+export const SALE_METHOD_LABELS: Record<SaleMethod, string> = {
+  pagopar: 'Pagopar',
+  bancard: 'Bancard',
+  tigo: 'Tigo Money',
+  efectivo: 'Efectivo',
+  otro: 'Otro',
+};
+
+export const SALE_PACKAGE_LABELS: Record<SalePackage, string> = {
+  premium: 'Premium',
+  featured: 'Destacado en portada',
 };
 
 export const STATUS_LABELS: Record<UserStatus, string> = {

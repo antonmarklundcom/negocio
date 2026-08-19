@@ -3,10 +3,12 @@ import {
   BLOCK_KINDS,
   REVIEW_STATUSES,
   LISTING_STATUSES,
+  SALE_METHODS,
   STAFF_ROLES,
   USER_STATUSES,
   type BlockKind,
   type ListingStatus,
+  type SaleMethod,
   type ReviewStatus,
   type UserRole,
   type UserStatus,
@@ -714,4 +716,50 @@ export function parseLeadListParams(params: Record<string, string | string[] | u
 } {
   const base = parseListParams(params);
   return { ...base, source: oneOf(params, 'source') };
+}
+
+/**
+ * The amount and method that accompany a package sale (ROADMAP W2-3 / D5).
+ *
+ * Pure, like everything else in this module, and deliberately strict:
+ *
+ *  - The amount is parsed from a string that may carry the thousands
+ *    separators a Paraguayan actually types — `65.000`, `65 000`, `Gs. 65.000`.
+ *    Rejecting those would mean the person retypes the number until the form
+ *    stops complaining, which is how ₲65 gets recorded instead of ₲65.000.
+ *  - There is NO decimal handling, on purpose. The guaraní has no subunit, so
+ *    a "65.000,50" is a typo, not a price, and a dot is a thousands separator
+ *    every time.
+ *  - Zero is allowed but must be typed. A giveaway is a real event; an empty
+ *    field is a skipped question.
+ */
+export interface SaleFormInput {
+  amountGs: number;
+  method: SaleMethod;
+}
+
+export type SaleParse = { ok: true; data: SaleFormInput } | { ok: false; message: string };
+
+export function parseSaleInput(fd: FormData): SaleParse {
+  const rawAmount = value(fd, 'amountGs');
+  if (!rawAmount) return { ok: false, message: 'Escribí el monto de la venta en guaraníes.' };
+
+  // Strip everything that is not a digit: "Gs. 65.000" and "65 000" are the
+  // same number, and both are how this gets typed in practice.
+  const digits = rawAmount.replace(/[^\d]/g, '');
+  if (!digits || !/^\d+$/.test(digits)) {
+    return { ok: false, message: 'El monto tiene que ser un número en guaraníes, sin centavos.' };
+  }
+
+  const amountGs = Number(digits);
+  if (!Number.isSafeInteger(amountGs)) {
+    return { ok: false, message: 'Ese monto es demasiado grande.' };
+  }
+
+  const rawMethod = value(fd, 'method');
+  if (!(SALE_METHODS as readonly string[]).includes(rawMethod)) {
+    return { ok: false, message: 'Elegí un medio de pago.' };
+  }
+
+  return { ok: true, data: { amountGs, method: rawMethod as SaleMethod } };
 }

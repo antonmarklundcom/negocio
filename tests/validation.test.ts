@@ -7,6 +7,7 @@ import {
   parseListingVerifiedInput,
   parsePremiumUntilInput,
   parseListingInput,
+  parseSaleInput,
   parseListParams,
   parseLoginInput,
   parsePasswordChangeInput,
@@ -611,5 +612,47 @@ describe('parseListingInput — status (ROADMAP W2-1)', () => {
       OK_CITIES,
     );
     expect(result.ok && 'status' in result.data).toBe(false);
+  });
+});
+
+describe('parseSaleInput (ROADMAP W2-3)', () => {
+  it('accepts a plain number', () => {
+    expect(parseSaleInput(form({ amountGs: '65000', method: 'efectivo' }))).toEqual({
+      ok: true,
+      data: { amountGs: 65000, method: 'efectivo' },
+    });
+  });
+
+  it('accepts the thousands separators a Paraguayan actually types', () => {
+    // Rejecting these means the person retypes until the form stops
+    // complaining, which is how Gs. 65 gets recorded instead of Gs. 65.000.
+    for (const typed of ['65.000', '65 000', 'Gs. 65.000', '₲65.000']) {
+      const result = parseSaleInput(form({ amountGs: typed, method: 'bancard' }));
+      expect(result.ok && result.data.amountGs, typed).toBe(65000);
+    }
+  });
+
+  it('accepts an explicit zero — a giveaway is a real event', () => {
+    const result = parseSaleInput(form({ amountGs: '0', method: 'otro' }));
+    expect(result.ok && result.data.amountGs).toBe(0);
+  });
+
+  it('rejects an empty amount — a skipped question is not a zero', () => {
+    const result = parseSaleInput(form({ method: 'efectivo' }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects an amount with no digits at all', () => {
+    expect(parseSaleInput(form({ amountGs: 'gratis', method: 'efectivo' })).ok).toBe(false);
+  });
+
+  it('rejects an unknown payment method', () => {
+    expect(parseSaleInput(form({ amountGs: '65000', method: 'bitcoin' })).ok).toBe(false);
+    expect(parseSaleInput(form({ amountGs: '65000' })).ok).toBe(false);
+  });
+
+  it('rejects an amount too large to be a safe integer', () => {
+    const result = parseSaleInput(form({ amountGs: '9'.repeat(20), method: 'efectivo' }));
+    expect(result.ok).toBe(false);
   });
 });
