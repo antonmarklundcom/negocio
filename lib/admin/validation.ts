@@ -9,7 +9,7 @@ import {
   type UserRole,
   type UserStatus,
 } from '@/lib/db/schema';
-import { parseLines, parsePipedLines, type LineError } from './blocks';
+import { parseLines, parsePipedLines } from './blocks';
 import { toMinutes } from '@/lib/db/open-now';
 import type { DayHours } from '@/lib/types';
 
