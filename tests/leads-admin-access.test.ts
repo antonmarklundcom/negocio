@@ -6,7 +6,13 @@ import { isAuthError } from '@/lib/auth/roles';
 import type { SessionUser } from '@/lib/auth/session';
 import type { Db } from '@/lib/db/connection';
 import type { UserRole } from '@/lib/db/schema';
-import { countLeadsSince, getListingLeadReport, listLeads } from '@/lib/db/leads-admin';
+import {
+  countLeadsSince,
+  getListingLeadReport,
+  getListingLeadTrend,
+  listLeads,
+  listLeadsForExport,
+} from '@/lib/db/leads-admin';
 
 /**
  * Access tests for `lib/db/leads-admin.ts`, same canary shape as
@@ -98,6 +104,82 @@ describe('lib/db/leads-admin — the authorization boundary', () => {
       const { db, touched } = recordingDb();
       await expect(getListingLeadReport(ADMIN, 'x', range, db)).rejects.toThrow(/the database was reached/);
       expect(touched.length).toBeGreaterThan(0);
+    });
+  });
+});
+
+const RANGES = [
+  { start: new Date('2026-06-01T03:00:00Z'), end: new Date('2026-07-01T03:00:00Z'), monthLabel: 'junio de 2026' },
+  { start: new Date('2026-07-01T03:00:00Z'), end: new Date('2026-08-01T03:00:00Z'), monthLabel: 'julio de 2026' },
+];
+
+describe('lib/db/leads-admin — W2-5 additions', () => {
+  describe('listLeadsForExport — admin only, like the screen it exports', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(listLeadsForExport(ANONYMOUS, {}, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('rejects an editor AND never reaches the database', async () => {
+      // The whole point of the admin-only guard on `listLeads` is that a lead
+      // carries a member of the public's contact details. A CSV of all of them
+      // must not be the way around it.
+      const { db, touched } = recordingDb();
+      await expect(listLeadsForExport(EDITOR, {}, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('is reachable by an admin', async () => {
+      const { db, touched } = recordingDb();
+      await expect(listLeadsForExport(ADMIN, {}, db)).rejects.toThrow(/the database was reached/);
+      expect(touched.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('getListingLeadTrend — admin and editor, like the monthly figure', () => {
+    it('throws for an anonymous caller AND never reaches the database', async () => {
+      const { db, touched } = recordingDb();
+      await expect(getListingLeadTrend(ANONYMOUS, 'x', RANGES, db)).rejects.toSatisfy(isAuthError);
+      expect(touched).toEqual([]);
+    });
+
+    it('is reachable by an editor', async () => {
+      const { db, touched } = recordingDb();
+      await expect(getListingLeadTrend(EDITOR, 'x', RANGES, db)).rejects.toThrow(
+        /the database was reached/,
+      );
+      expect(touched.length).toBeGreaterThan(0);
+    });
+
+    it('returns nothing, and asks the database nothing, for an empty range list', async () => {
+      const { db, touched } = recordingDb();
+      await expect(getListingLeadTrend(ADMIN, 'x', [], db)).resolves.toEqual([]);
+      expect(touched).toEqual([]);
+    });
+
+    it('buckets rows into the right months and leaves empty months at zero', async () => {
+      const rows = [
+        { source: 'listing_whatsapp', createdAt: new Date('2026-06-15T12:00:00Z') },
+        { source: 'listing_whatsapp', createdAt: new Date('2026-06-20T12:00:00Z') },
+        { source: 'listing_message', createdAt: new Date('2026-06-21T12:00:00Z') },
+        // Outside both months — must not land anywhere.
+        { source: 'listing_message', createdAt: new Date('2026-05-31T12:00:00Z') },
+        // Not a per-listing signal; must not be counted as one.
+        { source: 'sumate', createdAt: new Date('2026-06-22T12:00:00Z') },
+      ];
+      const chain: Record<string, unknown> = {
+        from: () => chain,
+        where: () => chain,
+        then: (resolve: (v: unknown) => unknown) => Promise.resolve(rows).then(resolve),
+      };
+      const db = { select: () => chain } as unknown as Db;
+
+      const result = await getListingLeadTrend(ADMIN, 'x', RANGES, db);
+      expect(result).toEqual([
+        { monthLabel: 'junio de 2026', whatsappClicks: 2, messages: 1, total: 3 },
+        { monthLabel: 'julio de 2026', whatsappClicks: 0, messages: 0, total: 0 },
+      ]);
     });
   });
 });
