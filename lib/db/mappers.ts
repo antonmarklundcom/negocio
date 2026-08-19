@@ -120,6 +120,7 @@ export function rowToListing(
     productos: nonEmpty(row.productos),
     servicios: nonEmpty(row.servicios),
 
+    status: row.status,
     verified: row.verified,
     premiumUntil: orUndefined(row.premiumUntil),
     featuredUntil: orUndefined(row.featuredUntil),

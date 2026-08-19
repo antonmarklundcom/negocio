@@ -11,6 +11,7 @@ import { MAX_FEATURED_SLOTS } from '@/lib/config';
 import { getListingLeadReport, getListingLeadTrend } from '@/lib/db/leads-admin';
 import { asuncionMonthRange, asuncionMonthRanges } from '@/lib/hours';
 import { mediaConfigured } from '@/lib/media/upload';
+import { LISTING_STATUS_LABELS } from '@/lib/admin/labels';
 import { mediaUrl } from '@/lib/media/url';
 import { waLink } from '@/lib/format';
 import {
@@ -30,6 +31,7 @@ import {
   removeFeaturedAction,
   removeGalleryImageAction,
   savePremiumUntilAction,
+  setStatusAction,
   saveVerifiedAction,
   saveHoursAction,
   setCoverImageAction,
@@ -80,6 +82,7 @@ export default async function EditListingPage(
   const galleryError = typeof searchParams.galleryError === 'string' ? searchParams.galleryError : undefined;
   const flagsError = typeof searchParams.flagsError === 'string' ? searchParams.flagsError : undefined;
   const deleteError = typeof searchParams.deleteError === 'string' ? searchParams.deleteError : undefined;
+  const statusError = typeof searchParams.statusError === 'string' ? searchParams.statusError : undefined;
   const isAdmin = hasRole(actor, ['admin']);
   const isCurrentlyPremium = !!listing.premiumUntil && listing.premiumUntil > Date.now() / 1000;
   const isCurrentlyFeatured = !!listing.featuredUntil && listing.featuredUntil > Date.now() / 1000;
@@ -101,6 +104,68 @@ export default async function EditListingPage(
         </div>
         <p className="mt-1 font-mono text-[14px] text-ink2">/lugar/{listing.slug}</p>
       </div>
+
+      {/* Lifecycle (ROADMAP W2-1 / D2). Its own buttons, above everything
+          else, because "is this on the site right now" is the first thing
+          anyone opening this page wants to know — and because putting it in
+          the big edit form would mean saving a phone number could publish a
+          draft or un-archive a business that closed. */}
+      <section className="rounded-card border border-line bg-white p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+              listing.status === 'published'
+                ? 'bg-blue/10 text-blue'
+                : listing.status === 'draft'
+                  ? 'bg-terragold/20 text-ink'
+                  : 'bg-line2 text-ink2'
+            }`}
+          >
+            {LISTING_STATUS_LABELS[listing.status]}
+          </span>
+          <p className="text-[14px] text-ink2">
+            {listing.status === 'published'
+              ? 'Visible en el sitio, en las búsquedas y en el sitemap.'
+              : listing.status === 'draft'
+                ? 'Todavía no se ve en el sitio.'
+                : 'Fuera del sitio. Los datos, las reseñas y el historial siguen acá.'}
+          </p>
+          <div className="ml-auto flex flex-wrap gap-2">
+            {listing.status !== 'published' && (
+              <form action={setStatusAction.bind(null, params.id, 'published')}>
+                <button type="submit" className="rounded-card bg-blue px-4 py-2 text-sm font-bold text-white">
+                  Publicar
+                </button>
+              </form>
+            )}
+            {listing.status === 'published' && (
+              <form action={setStatusAction.bind(null, params.id, 'draft')}>
+                <button
+                  type="submit"
+                  className="rounded-card border-[1.5px] border-blue px-4 py-2 text-sm font-bold text-blue"
+                >
+                  Pasar a borrador
+                </button>
+              </form>
+            )}
+            {listing.status !== 'archived' && (
+              <form action={setStatusAction.bind(null, params.id, 'archived')}>
+                <button
+                  type="submit"
+                  className="rounded-card border-[1.5px] border-terra px-4 py-2 text-sm font-bold text-terra"
+                >
+                  Archivar
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+        {statusError && (
+          <p role="alert" className="mt-3 text-[13px] font-semibold text-terra">
+            {statusError}
+          </p>
+        )}
+      </section>
 
       <section className="rounded-card border border-line bg-cream/60 p-5">
         <h2 className="font-serif text-[18px] font-semibold capitalize">{monthRange.monthLabel}</h2>
@@ -396,7 +461,12 @@ export default async function EditListingPage(
         <section className="rounded-card border border-terra bg-terra/5 p-5">
           <h2 className="font-serif text-[20px] font-semibold">Eliminar negocio</h2>
           <p className="mt-1 text-[15px] text-ink2">
-            Borra el negocio y todo lo que depende de él (horarios, galería). No se puede deshacer.
+            Borra el negocio y todo lo que depende de él (horarios, galería, reseñas). No se puede
+            deshacer, y el historial queda apuntando a un id que ya no existe.
+          </p>
+          <p className="mt-2 text-[15px] font-semibold text-ink">
+            Si el negocio cerró, usá <span className="text-terra">Archivar</span> arriba: sale del
+            sitio igual y no se pierde nada. Esto es solo para una fila de prueba o un duplicado.
           </p>
           {/* The confirmation is a typed slug, not a checkbox and not a
               `confirm()` dialog: it has to be something the person cannot do

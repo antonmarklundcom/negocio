@@ -52,8 +52,19 @@ export function openNowSql(at: WallClock): SQL<unknown> {
   );
 }
 
+/**
+ * Only `published` rows are ever public (ROADMAP W2-1 / D2).
+ *
+ * This lives at the top of `buildListingWhere` rather than at each call site
+ * because `buildListingWhere` IS the public read path: every listing query the
+ * site makes goes through it, so a new caller cannot forget the filter. The
+ * admin does not use this builder at all — `lib/db/listings-admin.ts` has its
+ * own, which is how staff still see drafts and archived rows.
+ */
+export const PUBLIC_STATUS_CONDITION = () => eq(listings.status, 'published');
+
 export function buildListingWhere(params: ListingQuery, at: WallClock, nowSeconds: number): SQL | undefined {
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [PUBLIC_STATUS_CONDITION()];
 
   if (params.categoria) conditions.push(eq(listings.categoria, params.categoria));
   if (params.ciudad) conditions.push(eq(listings.ciudad, params.ciudad));
@@ -81,7 +92,8 @@ export function buildListingWhere(params: ListingQuery, at: WallClock, nowSecond
     if (textMatch) conditions.push(textMatch);
   }
 
-  if (conditions.length === 0) return undefined;
+  // Never `undefined`: the status filter is always present, so a caller that
+  // passes no parameters still gets published rows only.
   return and(...conditions);
 }
 

@@ -682,13 +682,35 @@ Repo, docs and comments in English.
 
 ### Wave 2 — Structure & revenue *(W2-1 first; W2-2 before W2-3; rest parallel)*
 
-- [ ] **W2-1 — Listing status. MIGRATION. (Opus)** `listings.status`
+- [x] **W2-1 — Listing status. MIGRATION (`drizzle/0005_*`). (Opus)** `listings.status`
       enum `draft | published | archived` (default `published` for existing
       rows). Public providers (`db.ts` **and** `seed.ts`), sitemap and SEO
       combos serve only `published`. Admin: status field + filter, "Archivar"
       replaces hard delete in the UI (hard `deleteListing` stays admin-only
       for true mistakes). New listings can be saved as `draft`. Follow the
       PR-4 slice pattern; access tests + canary run as always.
+      *Shipped: `listings.status` enum defaulting to `published` (`drizzle/0005_*`,
+      plus a `status` index and a `(status, categoria, ciudad)` composite,
+      since every public read now leads with it). The public filter lives at
+      the top of **`buildListingWhere`** rather than at each call site — that
+      function IS the public read path, so a new caller cannot forget it;
+      `buildListingWhere` can therefore no longer return `undefined`, and its
+      test says so. `db.ts`'s five other reads (by-slug, categories, cities,
+      both combo lists) filter explicitly, and `seed.ts` filters too so the two
+      providers cannot drift — the seam's whole promise is that a page renders
+      the same either way. Sitemap and SEO combos follow automatically, since
+      they read through the repo. Admin: a status badge and filter on the list,
+      a lifecycle panel on the edit page, `status` on the create form only.
+      `setListingStatus` logs `archive` as its own action, so the audit trail
+      separates "took this off the site" from "edited a field". 14 new tests
+      (424 total); canary → 37 of 78 tests red, guard restored. The admin e2e
+      suite gained an archive → 404 → republish → 200 round-trip: 7/7 green.*
+      **Two decisions:** status is on the create form and **not** the edit
+      form — it moves through its own buttons, so saving a phone number can
+      never publish a draft or un-archive a business that closed. And an
+      unrecognised `status` value falls back to `draft`, never `published`: a
+      typo, a stale cached form or a hand-rolled POST must not be able to put
+      something on the public site.
 - [x] **W2-2 — Split `verified` out of `setListingFlags`.** Own admin-only
       query-module function + own form section, so `verified` (a human
       assertion) and `premiumUntil` (a sale) stop sharing a write path.

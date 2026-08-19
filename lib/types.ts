@@ -23,6 +23,17 @@ export type Listing = {
   slug: string;
   name: string;
 
+  /**
+   * Lifecycle (ROADMAP W2-1 / D2). Optional so the seed dataset — where every
+   * listing is live by construction — does not have to repeat it 33 times;
+   * absent means `published`.
+   *
+   * Both providers filter on it, so a component never has to. It is on the
+   * public shape anyway so the two providers return the SAME object for the
+   * same row, which is the entire promise of the seam in `lib/listings-repo.ts`.
+   */
+  status?: 'draft' | 'published' | 'archived';
+
   categoria: string; // taxonomy slug (rubro)
   categoriaLabel: string;
   subtitle?: string; // e.g. "Cocina paraguaya"

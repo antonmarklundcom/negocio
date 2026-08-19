@@ -1,4 +1,11 @@
-import type { ActivityAction, BlockKind, LeadSource, ReviewStatus, UserStatus } from '@/lib/db/schema';
+import type {
+  ActivityAction,
+  BlockKind,
+  LeadSource,
+  ListingStatus,
+  ReviewStatus,
+  UserStatus,
+} from '@/lib/db/schema';
 
 /**
  * User-facing labels for enum values. Kept apart from the schema so the
@@ -10,6 +17,13 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   update: 'modificó',
   delete: 'eliminó',
   archive: 'archivó',
+};
+
+/** Listing lifecycle (ROADMAP W2-1 / D2). */
+export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
+  draft: 'Borrador',
+  published: 'Publicado',
+  archived: 'Archivado',
 };
 
 export const STATUS_LABELS: Record<UserStatus, string> = {

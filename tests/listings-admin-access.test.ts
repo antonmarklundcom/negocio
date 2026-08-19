@@ -27,6 +27,7 @@ import {
   setListingPremiumUntil,
   setListingVerified,
   setListingHours,
+  setListingStatus,
   updateGalleryAlt,
   updateListing,
 } from '@/lib/db/listings-admin';
@@ -419,6 +420,44 @@ describe('lib/db/listings-admin — destructive-action safety (W1-4)', () => {
 /**
  * ROADMAP W2-6 — the duplicate warning and the bulk re-categorisation.
  */
+describe('lib/db/listings-admin — lifecycle (W2-1)', () => {
+  it('throws for an anonymous caller AND never reaches the database', async () => {
+    const { db, touched } = recordingDb();
+    await expect(setListingStatus(ANONYMOUS, 'x', 'archived', db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('is reachable by an editor — a closed business must not wait for an admin', async () => {
+    const { db, touched } = recordingDb();
+    await expect(setListingStatus(EDITOR, 'x', 'archived', db)).rejects.toThrow(
+      /the database was reached/,
+    );
+    expect(touched.length).toBeGreaterThan(0);
+  });
+
+  it('rejects an owner_admin actor AND never reaches the database', async () => {
+    const { db, touched } = recordingDb();
+    await expect(setListingStatus(OWNER_ADMIN, 'x', 'draft', db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('refuses a listing that does not exist AND writes nothing', async () => {
+    const { tx, writesRecorded } = fakeSequencedTx([[]]);
+    const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+    await expect(setListingStatus(ADMIN, 'x', 'archived', db)).rejects.toSatisfy(isAuthError);
+    expect(writesRecorded()).toBe(false);
+  });
+
+  it('writes the new status', async () => {
+    const { tx, writesRecorded } = fakeSequencedTx([[{ status: 'published' }]]);
+    const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+    await expect(setListingStatus(ADMIN, 'x', 'archived', db)).resolves.toBeUndefined();
+    expect(writesRecorded()).toBe(true);
+  });
+});
+
 describe('lib/db/listings-admin — data quality (W2-6)', () => {
   describe('findDuplicateListings', () => {
     it('throws for an anonymous caller AND never reaches the database', async () => {

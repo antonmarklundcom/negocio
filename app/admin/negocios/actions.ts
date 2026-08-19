@@ -31,12 +31,14 @@ import {
   setListingPremiumUntil,
   setListingVerified,
   recategoriseListings,
+  setListingStatus,
   setListingHours,
   UnknownCategoryError,
   updateGalleryAlt,
   updateListing,
 } from '@/lib/db/listings-admin';
 import { uploadListingImage } from '@/lib/media/upload';
+import type { ListingStatus } from '@/lib/db/schema';
 
 /**
  * Server actions: parse, call the query module, revalidate, redirect. Do NOT
@@ -394,4 +396,25 @@ export async function recategoriseAction(fd: FormData): Promise<void> {
       ? 'No hubo cambios: esos negocios ya estaban en ese rubro.'
       : `${moved} ${moved === 1 ? 'negocio movido' : 'negocios movidos'}.`,
   );
+}
+
+// ---------------------------------------------------------------------------
+// lifecycle (ROADMAP W2-1) — its own buttons, never the big edit form, so that
+// saving a phone number can never publish a draft or un-archive a business
+// that closed.
+// ---------------------------------------------------------------------------
+
+export async function setStatusAction(id: string, status: ListingStatus): Promise<void> {
+  const actor = await currentUser();
+
+  try {
+    await setListingStatus(actor, id, status);
+  } catch (err) {
+    redirect(`/admin/negocios/${id}?statusError=${encodeURIComponent(messageFor(err))}`);
+  }
+
+  revalidatePath('/admin/negocios');
+  revalidatePath(`/admin/negocios/${id}`);
+  revalidatePublic();
+  redirect(`/admin/negocios/${id}`);
 }
