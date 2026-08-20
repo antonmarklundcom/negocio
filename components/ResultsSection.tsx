@@ -1,4 +1,6 @@
+import { getTranslations } from 'next-intl/server';
 import type { ListingQuery } from '@/lib/types';
+import type { Locale } from '@/lib/i18n/routing';
 import { getListings, getCategories, getCities } from '@/lib/listings-repo';
 import { FilterBar } from './FilterBar';
 import { SearchView } from './SearchView';
@@ -15,15 +17,18 @@ export async function ResultsSection({
   query,
   basePath,
   baseParams,
+  locale,
   showRubro = true,
   showZona = true,
 }: {
   query: ListingQuery;
   basePath: string;
   baseParams: Record<string, string>;
+  locale: Locale;
   showRubro?: boolean;
   showZona?: boolean;
 }) {
+  const t = await getTranslations({ locale, namespace: 'search' });
   const [{ items, total }, categories, cities] = await Promise.all([
     getListings(query),
     getCategories(),
@@ -59,8 +64,8 @@ export async function ResultsSection({
 
       {items.length === 0 ? (
         <div className="rounded-card border border-line bg-paper p-10 text-center">
-          <p className="font-serif text-xl font-semibold">No encontramos negocios</p>
-          <p className="mt-2 text-sm text-ink2">Probá quitar algún filtro o buscar otra zona.</p>
+          <p className="font-serif text-xl font-semibold">{t('noResults')}</p>
+          <p className="mt-2 text-sm text-ink2">{t('noResultsHint')}</p>
         </div>
       ) : (
         <>

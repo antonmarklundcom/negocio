@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useState } from 'react';
 import { submitLead } from '@/lib/lead-client';
 import { Honeypot } from './Honeypot';
@@ -19,6 +21,7 @@ export function ListingMessageForm({
   slug: string;
   variant?: 'inline' | 'textarea';
 }) {
+  const t = useTranslations('forms');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
@@ -47,11 +50,11 @@ export function ListingMessageForm({
     return (
       <form onSubmit={onSubmit}>
         <Honeypot />
-        <div className="mb-2 text-[13px] font-bold">Enviá una consulta</div>
+        <div className="mb-2 text-[13px] font-bold">{t('messageHeading')}</div>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Hola, quería consultar por…"
+          placeholder={t('messagePlaceholderShort')}
           className="mb-2.5 h-[74px] w-full resize-none rounded-xl border border-line bg-cream px-3 py-2.5 text-[13px] text-ink outline-none focus:border-blue"
         />
         <button
@@ -59,9 +62,9 @@ export function ListingMessageForm({
           disabled={status === 'sending'}
           className="w-full rounded-xl bg-blue py-3 text-sm font-bold text-white transition-colors hover:bg-blued disabled:opacity-60"
         >
-          {status === 'sending' ? 'Enviando…' : 'Enviar mensaje'}
+          {status === 'sending' ? t('sending') : t('messageSubmit')}
         </button>
-        {status === 'error' && <p className="mt-2 text-xs text-terra">No se pudo enviar. Probá de nuevo.</p>}
+        {status === 'error' && <p className="mt-2 text-xs text-terra">{t('sendFailed')}</p>}
       </form>
     );
   }
@@ -72,7 +75,7 @@ export function ListingMessageForm({
       <input
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Escribí tu consulta…"
+        placeholder={t('messagePlaceholder')}
         className="flex-1 rounded-[10px] border border-line bg-cream px-3 py-2.5 text-[13px] text-ink outline-none focus:border-blue"
       />
       <button

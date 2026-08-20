@@ -7,7 +7,7 @@ import { Breadcrumb, type Crumb } from '@/components/Breadcrumb';
 import { JsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { toLocale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 /**
  * The real destination behind the mobile "Categorías" tab, which used to point
@@ -26,10 +26,11 @@ export async function generateMetadata(props: {
 }): Promise<Metadata> {
   const { locale: raw } = await props.params;
   const locale = toLocale(raw);
+  const t = await getTranslations({ locale, namespace: 'rubros' });
   return {
-    title: 'Rubros — todos los negocios de Paraguay',
+    title: t('title'),
     description:
-      'Explorá todos los rubros de negocios en Paraguay: restaurantes, tiendas, servicios para el hogar, talleres, salud y más.',
+      t('description'),
     alternates: alternatesFor('/rubros', locale),
   };
 }
@@ -41,6 +42,7 @@ export default async function RubrosPage(props: { params: Promise<{ locale: stri
   // translation without it makes the route dynamic, which would quietly undo
   // W1-3's caching — the page would still be correct, just uncached.
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'rubros' });
 
   const [categories, combos] = await Promise.all([getCategories(), getCategoryCityCombosWithListings()]);
 
@@ -62,10 +64,10 @@ export default async function RubrosPage(props: { params: Promise<{ locale: stri
         <Breadcrumb items={crumbs} />
 
         <h1 className="mt-4 font-serif text-[28px] font-semibold leading-tight md:text-[38px]">
-          Todos los rubros
+          {t('heading')}
         </h1>
         <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink2">
-          Elegí un rubro para ver los negocios, o entrá directo a tu ciudad.
+          {t('lead')}
         </p>
 
         <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

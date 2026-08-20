@@ -1,4 +1,6 @@
 import Image from 'next/image';
+import { getTranslations } from 'next-intl/server';
+import type { Locale } from '@/lib/i18n/routing';
 import type { Listing } from '@/lib/types';
 import { categoryBlockKind } from '@/lib/categories';
 import { mediaUrl } from '@/lib/media/url';
@@ -9,13 +11,13 @@ import { WhatsAppButton } from './WhatsAppButton';
  * category's blockKind and renders ONLY the sections that have data. The
  * reference's restaurant content is just the `food` instance — generalised here.
  */
-export function CategoryBlock({ listing }: { listing: Listing }) {
+export function CategoryBlock({ listing, locale }: { listing: Listing; locale: Locale }) {
   const kind = categoryBlockKind(listing.categoria);
 
-  if (kind === 'food') return <FoodBlock listing={listing} />;
-  if (kind === 'shop') return <ShopBlock listing={listing} />;
-  if (kind === 'service') return <ServiceBlock listing={listing} />;
-  return <DefaultBlock listing={listing} />;
+  if (kind === 'food') return <FoodBlock listing={listing} locale={locale} />;
+  if (kind === 'shop') return <ShopBlock listing={listing} locale={locale} />;
+  if (kind === 'service') return <ServiceBlock listing={listing} locale={locale} />;
+  return <DefaultBlock listing={listing} locale={locale} />;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -37,14 +39,15 @@ function Chips({ items }: { items: string[] }) {
   );
 }
 
-function FoodBlock({ listing }: { listing: Listing }) {
+async function FoodBlock({ listing, locale }: { listing: Listing; locale: Locale }) {
+  const t = await getTranslations({ locale, namespace: 'blocks' });
   const { especialidades, destacadoItem } = listing;
   if (!especialidades?.length && !destacadoItem) return null;
   return (
     <section>
       {especialidades?.length ? (
         <>
-          <SectionTitle>Especialidades</SectionTitle>
+          <SectionTitle>{t('especialidades')}</SectionTitle>
           <Chips items={especialidades} />
         </>
       ) : null}
@@ -68,12 +71,13 @@ function FoodBlock({ listing }: { listing: Listing }) {
   );
 }
 
-function ShopBlock({ listing }: { listing: Listing }) {
+async function ShopBlock({ listing, locale }: { listing: Listing; locale: Locale }) {
+  const t = await getTranslations({ locale, namespace: 'blocks' });
   const { productos } = listing;
   if (!productos?.length) return null;
   return (
     <section>
-      <SectionTitle>Productos destacados</SectionTitle>
+      <SectionTitle>{t('productos')}</SectionTitle>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {productos.map((p) => (
           <div key={p.title} className="overflow-hidden rounded-card border border-line bg-paper">
@@ -95,12 +99,13 @@ function ShopBlock({ listing }: { listing: Listing }) {
   );
 }
 
-function ServiceBlock({ listing }: { listing: Listing }) {
+async function ServiceBlock({ listing, locale }: { listing: Listing; locale: Locale }) {
+  const t = await getTranslations({ locale, namespace: 'blocks' });
   const { servicios, especialidades } = listing;
   if (!servicios?.length && !especialidades?.length) return null;
   return (
     <section>
-      <SectionTitle>Servicios</SectionTitle>
+      <SectionTitle>{t('servicios')}</SectionTitle>
       {especialidades?.length ? (
         <div className="mb-4">
           <Chips items={especialidades} />
@@ -131,12 +136,13 @@ function ServiceBlock({ listing }: { listing: Listing }) {
   );
 }
 
-function DefaultBlock({ listing }: { listing: Listing }) {
+async function DefaultBlock({ listing, locale }: { listing: Listing; locale: Locale }) {
+  const t = await getTranslations({ locale, namespace: 'blocks' });
   const { especialidades } = listing;
   if (!especialidades?.length) return null;
   return (
     <section>
-      <SectionTitle>Información</SectionTitle>
+      <SectionTitle>{t('informacion')}</SectionTitle>
       <Chips items={especialidades} />
     </section>
   );

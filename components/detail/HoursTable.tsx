@@ -1,8 +1,11 @@
 import type { DayHours } from '@/lib/types';
-import { DAY_LABELS, formatRanges, nowInAsuncion } from '@/lib/hours';
+import { getTranslations } from 'next-intl/server';
+import { formatRanges, nowInAsuncion } from '@/lib/hours';
+import type { Locale } from '@/lib/i18n/routing';
 
 /** Hours table with today highlighted (§6.1). Rows ordered from today onward. */
-export function HoursTable({ hours }: { hours: DayHours[] }) {
+export async function HoursTable({ hours, locale }: { hours: DayHours[]; locale: Locale }) {
+  const t = await getTranslations({ locale, namespace: 'hours' });
   const { day: today } = nowInAsuncion();
   const order = Array.from({ length: 7 }, (_, i) => ((today + i) % 7) as DayHours['day']);
   const byDay = new Map(hours.map((h) => [h.day, h]));
@@ -20,9 +23,9 @@ export function HoursTable({ hours }: { hours: DayHours[] }) {
             }`}
           >
             <span className={isToday ? 'font-bold' : ''}>
-              {isToday ? `Hoy · ${DAY_LABELS[d]}` : DAY_LABELS[d]}
+              {isToday ? t('todayIs', { day: t(`days.${d}`) }) : t(`days.${d}`)}
             </span>
-            <span className={dh ? '' : 'text-ink3'}>{formatRanges(dh)}</span>
+            <span className={dh ? '' : 'text-ink3'}>{formatRanges(dh) ?? t('closedThatDay')}</span>
           </div>
         );
       })}

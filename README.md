@@ -170,6 +170,28 @@ each in `HTML_LANG` / `OG_LOCALE` / `LOCALE_LABEL`. The key-parity test in
 `tests/i18n.test.ts` fails first if a message is missed, and
 `untranslatedCategories()` fails if a rubro is.
 
+**Where the strings live.** Every user-facing string on the public site is in
+`messages/*.json` (14 namespaces). Two rules kept while extracting them:
+
+- **Counted sentences are one ICU message**, not `count + ' negocio' + (s)` —
+  see `landing.categoryLead`, `favorites.savedCount`. Spanish and English agree
+  on one-vs-many; the next locale may not.
+- **A sentence with variants is several whole messages**, not one message with
+  a translated fragment glued into it. "opens tomorrow at 8" and "opens Monday
+  at 8" are `hours.opensTomorrow` and `hours.opensOnDay`, because word order
+  around an inserted day name is not universal. `/buscar`'s title is the single
+  deliberate exception and says so in a comment.
+
+`lib/hours.ts` deliberately contains **no language**: it returns `opensDay` +
+`opensWhen`, and `formatRanges` returns `null` rather than the word "Cerrado".
+The UI names them. The staff panel keeps its own Spanish day labels — it is
+Spanish-only, and those are validation messages, not display copy.
+
+**Known limitation:** the 404 body always renders in the default locale, so
+`/en/nada` shows an English header around a Spanish 404. `not-found.tsx`
+receives no props; `components/NotFoundBody.tsx` records what was tried and why
+it was reverted.
+
 **`revalidatePublic()` is per-locale.** `revalidatePath('/', 'layout')` matches
 nothing now that the public site lives under `[locale]`; it loops over
 `routing.locales` instead. A new locale that skipped this would serve stale

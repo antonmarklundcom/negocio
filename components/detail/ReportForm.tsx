@@ -1,11 +1,13 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useState } from 'react';
 import { submitLead } from '@/lib/lead-client';
 import { Honeypot } from '@/components/Honeypot';
 
 /**
- * "Reportar información incorrecta" (ROADMAP W1-1b).
+ * {t('reportHeading')} (ROADMAP W1-1b).
  *
  * A directory is only worth using while its data is true, and the people who
  * notice a wrong phone number first are visitors, not staff. This is the
@@ -25,6 +27,7 @@ import { Honeypot } from '@/components/Honeypot';
  * does not get sent.
  */
 export function ReportForm({ listingId, slug }: { listingId: string; slug: string }) {
+  const t = useTranslations('forms');
   const [message, setMessage] = useState('');
   const [contact, setContact] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -74,11 +77,12 @@ export function ReportForm({ listingId, slug }: { listingId: string; slug: strin
             required
             maxLength={2000}
             rows={3}
-            placeholder="Ej. el teléfono ya no existe, cerró, la dirección cambió."
+            placeholder={t('reportPlaceholder')}
             className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[14px] outline-none focus:border-blue"
           />
           <label htmlFor="report-contact" className="block text-[13px] font-semibold text-ink2">
-            Tu contacto <span className="font-normal text-ink3">(opcional)</span>
+            {t('reportContactLabel')}{' '}
+            <span className="font-normal text-ink3">{t('optional')}</span>
           </label>
           <input
             id="report-contact"
@@ -86,7 +90,7 @@ export function ReportForm({ listingId, slug }: { listingId: string; slug: strin
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             maxLength={160}
-            placeholder="Correo o WhatsApp, por si necesitamos preguntarte algo"
+            placeholder={t('reportContactPlaceholder')}
             className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[14px] outline-none focus:border-blue"
           />
           {status === 'error' && (
@@ -99,7 +103,7 @@ export function ReportForm({ listingId, slug }: { listingId: string; slug: strin
             disabled={status === 'sending'}
             className="rounded-xl border-[1.5px] border-blue px-4 py-2 text-[13px] font-bold text-blue disabled:opacity-60"
           >
-            {status === 'sending' ? 'Enviando…' : 'Enviar reporte'}
+            {status === 'sending' ? t('sending') : t('reportSubmit')}
           </button>
         </form>
       )}

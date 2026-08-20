@@ -7,7 +7,7 @@ import type { Category, City } from '@/lib/types';
 import { REVIEWS_ENABLED } from '@/lib/config';
 import { roundCoord } from '@/lib/geo';
 import { getPathname } from '@/lib/i18n/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { Locale } from '@/lib/i18n/routing';
 import { ChevronDown, Pin, Search } from './icons';
 
@@ -42,6 +42,7 @@ export function FilterBar({
   const pathname = usePathname();
   const params = useSearchParams();
   const locale = useLocale() as Locale;
+  const t = useTranslations('filters');
   // The real, locale-prefixed URL, because a plain GET submit bypasses the router.
   const formAction = getPathname({ href: pathname, locale });
   const [geo, setGeo] = useState<'idle' | 'locating' | 'denied'>('idle');
@@ -119,8 +120,8 @@ export function FilterBar({
             name="q"
             type="search"
             defaultValue={params.get('q') ?? ''}
-            placeholder="Buscar por nombre, rubro o barrio…"
-            aria-label="Buscar negocios"
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('searchAria')}
             className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink3"
           />
         </label>
@@ -128,7 +129,7 @@ export function FilterBar({
           type="submit"
           className="rounded-[10px] bg-ink px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-blued"
         >
-          Buscar
+          {t('searchSubmit')}
         </button>
       </form>
 
@@ -136,12 +137,12 @@ export function FilterBar({
         {showRubro && (
           <label className={`relative ${pill}`}>
             <select
-              aria-label="Filtrar por rubro"
+              aria-label={t('rubroAria')}
               value={params.get('rubro') ?? ''}
               onChange={(e) => setParam('rubro', e.target.value || null)}
               className="cursor-pointer appearance-none bg-transparent pr-5 outline-none"
             >
-              <option value="">Rubro: todos</option>
+              <option value="">{t('rubroAll')}</option>
               {categories.map((c) => (
                 <option key={c.slug} value={c.slug}>
                   {c.labelPlural}
@@ -155,7 +156,7 @@ export function FilterBar({
         {showZona && (
           <label className={`relative ${pill}`}>
             <select
-              aria-label="Filtrar por zona o ciudad"
+              aria-label={t('zonaAria')}
               value={params.get('zona') ?? params.get('ciudad') ?? ''}
               onChange={(e) => {
                 const v = e.target.value;
@@ -169,8 +170,8 @@ export function FilterBar({
               }}
               className="cursor-pointer appearance-none bg-transparent pr-5 outline-none"
             >
-              <option value="">Zona: todas</option>
-              <optgroup label="Ciudades">
+              <option value="">{t('zonaAll')}</option>
+              <optgroup label={t('cities')}>
                 {cities.map((c) => (
                   <option key={c.slug} value={`c:${c.slug}`}>
                     {c.label}
@@ -178,7 +179,7 @@ export function FilterBar({
                 ))}
               </optgroup>
               {zonas.length > 0 && (
-                <optgroup label="Barrios">
+                <optgroup label={t('barrios')}>
                   {zonas.map((z) => (
                     <option key={z} value={`z:${z}`}>
                       {z}
@@ -199,7 +200,7 @@ export function FilterBar({
           }`}
         >
           {abierto && <span className="h-2 w-2 rounded-full bg-terragold" />}
-          Abierto ahora
+          {t('openNow')}
         </button>
 
         <button
@@ -214,30 +215,30 @@ export function FilterBar({
         >
           <Pin size={13} />
           {geo === 'locating'
-            ? 'Buscando tu ubicación…'
+            ? t('locating')
             : geo === 'denied'
-              ? 'No pudimos ubicarte'
-              : 'Cerca de mí'}
+              ? t('locateFailed')
+              : t('nearMe')}
         </button>
 
         <div className="flex-1" />
 
         <label className="flex items-center gap-1.5 text-[13px] font-semibold text-ink2">
-          <span className="hidden sm:inline">Ordenar:</span>
+          <span className="hidden sm:inline">{t('sortLabel')}</span>
           <span className="relative flex items-center">
             <select
-              aria-label="Ordenar resultados"
+              aria-label={t('sortAria')}
               value={sort}
               onChange={(e) => setParam('sort', e.target.value === 'relevancia' ? null : e.target.value)}
               className="cursor-pointer appearance-none bg-transparent pr-5 font-semibold text-ink outline-none"
             >
-              <option value="relevancia">Relevancia</option>
-              <option value="destacados">Destacados</option>
+              <option value="relevancia">{t('sortRelevance')}</option>
+              <option value="destacados">{t('sortFeatured')}</option>
               {/* Only offered while the ratings UI itself is on (§6.6). */}
-              {REVIEWS_ENABLED && <option value="calificacion">Mejor calificados</option>}
+              {REVIEWS_ENABLED && <option value="calificacion">{t('sortRating')}</option>}
               {/* Selectable only once "Cerca de mí" has supplied a position. */}
-              {nearby && <option value="cerca">Cerca de mí</option>}
-              <option value="nombre">Nombre</option>
+              {nearby && <option value="cerca">{t('sortNearby')}</option>}
+              <option value="nombre">{t('sortName')}</option>
             </select>
             <ChevronDown size={13} className="pointer-events-none absolute right-0 text-ink3" />
           </span>

@@ -1,4 +1,6 @@
+import { getTranslations } from 'next-intl/server';
 import type { Review } from '@/lib/types';
+import type { Locale } from '@/lib/i18n/routing';
 import { TIMEZONE } from '@/lib/config';
 import { ReviewForm } from '../ReviewForm';
 
@@ -14,14 +16,23 @@ import { ReviewForm } from '../ReviewForm';
  * honestly ("todavía no tiene reseñas"), rather than inventing a rating or
  * hiding the ability to leave the first one.
  */
-export function Reviews({ listingId, reviews }: { listingId: string; reviews: Review[] }) {
+export async function Reviews({
+  listingId,
+  reviews,
+  locale,
+}: {
+  listingId: string;
+  reviews: Review[];
+  locale: Locale;
+}) {
+  const t = await getTranslations({ locale, namespace: 'reviews' });
   return (
     <section id="resenas">
-      <h2 className="mb-3 font-serif text-[21px] font-semibold">Reseñas</h2>
+      <h2 className="mb-3 font-serif text-[21px] font-semibold">{t('heading')}</h2>
 
       {reviews.length === 0 ? (
         <p className="mb-4 text-[15px] text-ink2">
-          Este negocio todavía no tiene reseñas publicadas. Si lo visitaste, dejá la primera.
+          {t('empty')}
         </p>
       ) : (
         <ul className="mb-5 space-y-3">
