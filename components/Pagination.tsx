@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { pageWindow } from '@/lib/pagination-window';
 
 /** SSR page-based pagination (§6.2). Each page is server-rendered and indexable. */
 export function Pagination({
@@ -22,7 +23,8 @@ export function Pagination({
     return qs ? `${basePath}?${qs}` : basePath;
   };
 
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  // Windowed rather than every page (ROADMAP W3-1) — see lib/pagination-window.ts.
+  const slots = pageWindow(page, totalPages);
 
   return (
     <nav className="mt-8 flex items-center justify-center gap-2" aria-label="Paginación">
@@ -34,18 +36,24 @@ export function Pagination({
           Anterior
         </Link>
       )}
-      {pages.map((p) => (
-        <Link
-          key={p}
-          href={href(p)}
-          aria-current={p === page ? 'page' : undefined}
-          className={`min-w-[36px] rounded-[10px] border px-3 py-2 text-center text-sm font-semibold ${
-            p === page ? 'border-ink bg-ink text-white' : 'border-line bg-paper text-ink2 hover:text-ink'
-          }`}
-        >
-          {p}
-        </Link>
-      ))}
+      {slots.map((slot, i) =>
+        slot === 'gap' ? (
+          <span key={`gap-${i}`} aria-hidden className="px-1 text-sm font-semibold text-ink3">
+            …
+          </span>
+        ) : (
+          <Link
+            key={slot}
+            href={href(slot)}
+            aria-current={slot === page ? 'page' : undefined}
+            className={`min-w-[36px] rounded-[10px] border px-3 py-2 text-center text-sm font-semibold ${
+              slot === page ? 'border-ink bg-ink text-white' : 'border-line bg-paper text-ink2 hover:text-ink'
+            }`}
+          >
+            {slot}
+          </Link>
+        ),
+      )}
       {page < totalPages && (
         <Link
           href={href(page + 1)}

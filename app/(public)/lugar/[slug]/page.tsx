@@ -21,6 +21,7 @@ import { StickyWhatsAppBar } from '@/components/detail/StickyWhatsAppBar';
 import { LockedRow, LockedGallery, LockedCategory, UpgradeCta } from '@/components/detail/Locked';
 import { Reviews } from '@/components/detail/Reviews';
 import { ShareButton } from '@/components/detail/ShareButton';
+import { SimilarListings } from '@/components/detail/SimilarListings';
 import { ReportForm } from '@/components/detail/ReportForm';
 import { Phone, Clock } from '@/components/icons';
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
@@ -222,6 +223,10 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
             </div>
           </aside>
         </div>
+
+        <div className="mt-10">
+          <SimilarListings listing={l} />
+        </div>
       </div>
 
       {l.whatsapp && (
@@ -370,6 +375,10 @@ function FreeDetail({ listing: l, crumbs, reviews }: DetailProps) {
               <LockedRow title="WhatsApp" sub="Solo perfiles Premium" />
             </div>
           </aside>
+        </div>
+
+        <div className="mt-10">
+          <SimilarListings listing={l} />
         </div>
       </div>
     </>

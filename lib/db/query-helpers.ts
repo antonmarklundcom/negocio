@@ -65,18 +65,31 @@ export type SortPlan = {
   premiumFirst: boolean;
   /** Verified before unverified (relevancia only). */
   verifiedFirst: boolean;
+  /** Rated listings before unrated, then rating descending (ROADMAP W3-1). */
+  ratingFirst: boolean;
+  /** Nearest first, using `params.near` (ROADMAP W3-1). */
+  distanceFirst: boolean;
 };
 
 /**
  * Which ordering a `ListingQuery` means, mirroring `lib/providers/query.ts` so
  * seed and DB results are ordered identically:
- *   nombre      → name only
- *   destacados  → premium, then name
- *   relevancia  → premium (when asked), then verified, then name
+ *   nombre        → name only
+ *   destacados    → premium, then name
+ *   calificacion  → rated before unrated, rating desc, then name
+ *   cerca         → nearest first, un-geocoded last, then name
+ *   relevancia    → premium (when asked), then verified, then name
+ *
+ * `cerca` without a point is `relevancia`. That is the same call the in-memory
+ * engine makes: a visitor who declined the browser's location prompt gets the
+ * normal ordering, not an empty page and not an arbitrary one.
  */
-export function sortPlan(params: Pick<ListingQuery, 'sort' | 'premiumFirst'>): SortPlan {
+export function sortPlan(params: Pick<ListingQuery, 'sort' | 'premiumFirst' | 'near'>): SortPlan {
+  const base = { premiumFirst: false, verifiedFirst: false, ratingFirst: false, distanceFirst: false };
   const sort = params.sort ?? 'relevancia';
-  if (sort === 'nombre') return { premiumFirst: false, verifiedFirst: false };
-  if (sort === 'destacados') return { premiumFirst: true, verifiedFirst: false };
-  return { premiumFirst: params.premiumFirst ?? true, verifiedFirst: true };
+  if (sort === 'nombre') return base;
+  if (sort === 'destacados') return { ...base, premiumFirst: true };
+  if (sort === 'calificacion') return { ...base, ratingFirst: true };
+  if (sort === 'cerca' && params.near) return { ...base, distanceFirst: true };
+  return { ...base, premiumFirst: params.premiumFirst ?? true, verifiedFirst: true };
 }

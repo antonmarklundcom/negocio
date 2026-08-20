@@ -101,7 +101,15 @@ export type ListingQuery = {
   abierto?: boolean;
   /** Only listings with an active "destacado en portada" slot (ROADMAP Phase D item 3). */
   destacado?: boolean;
-  sort?: 'relevancia' | 'destacados' | 'nombre';
+  sort?: 'relevancia' | 'destacados' | 'nombre' | 'calificacion' | 'cerca';
+  /**
+   * The visitor's own position, for `sort: 'cerca'` (ROADMAP W3-1). Rounded to
+   * `COORD_PRECISION` before it ever reaches here. `sort: 'cerca'` with no
+   * point falls back to `relevancia` rather than returning nothing.
+   */
+  near?: { lat: number; lng: number };
+  /** Exclude one listing by id — "Negocios similares" must not list the page it is on. */
+  excludeId?: string;
   premiumFirst?: boolean;
   page?: number;
   pageSize?: number;

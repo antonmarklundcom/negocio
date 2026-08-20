@@ -832,11 +832,52 @@ Repo, docs and comments in English.
 
 ### Wave 3 — Growth *(after Waves 1–2; i18n scaffold on Opus, rest Sonnet)*
 
-- [ ] **W3-1 — Discovery UX.** "Negocios similares" on `lugar/[slug]` (same
+- [x] **W3-1 — Discovery UX.** "Negocios similares" on `lugar/[slug]` (same
       rubro + ciudad/zona — conversion + internal-linking SEO, absent today).
       "Cerca de mí" geolocation sort on `/buscar` (lat/lng already modeled
       end-to-end). Search fixes: visible free-text `q` input in `FilterBar`,
       rating sort, pagination windowing. No migration.
+      *Shipped: `lib/geo.ts` (pure), `lib/similar.ts` (pure),
+      `lib/pagination-window.ts` (pure), `components/detail/SimilarListings.tsx`,
+      a visible search field and a "Cerca de mí" button in `FilterBar`, two new
+      sorts (`calificacion`, `cerca`) implemented **twice** — once in
+      `lib/providers/query.ts` for seed and once in `lib/db/listing-query.ts`
+      for MySQL — and a windowed pager. 31 new tests (413 total).*
+      **Four decisions worth keeping:**
+      - **Coordinates are rounded to three places (~110 m) before they enter
+        the URL.** The sort has to live in the query string to stay shareable
+        and pageable, which means it also lands in `document.referrer` on every
+        outbound link. Three places ranks a city correctly and cannot say which
+        building someone is in.
+      - **The distance formula lives in `lib/geo.ts` and the SQL mirrors it**,
+        with `cos(lat)` computed in the app and bound as a parameter. MySQL
+        never does trigonometry, for the same reason `isPremiumSql` takes the
+        instant instead of calling `NOW()`: two providers that each derive
+        "near" separately will disagree.
+      - **Unrated is not zero-rated and un-geocoded is not nearest.** Both sorts
+        carry an explicit "is null" key rather than a `COALESCE`, in SQL *and*
+        in memory — MySQL's own NULL placement differs between ASC and DESC, so
+        the two engines would otherwise agree only by accident.
+      - **`sort=cerca` with no point is `relevancia`**, not an empty page. A
+        declined location prompt is an answer.
+      **A latent bug found on the way:** the four routes that render
+      `<Pagination>` each carried their own hand-written list of which query
+      params survive a page link. `lat`/`lng` would have been missing from all
+      four, and the failure was silent — page 2 would keep `sort=cerca`, drop
+      the position, and render an ordinary alphabetical page that looked fine.
+      Replaced by one `carriedParams()` in `lib/search-params.ts`.
+      **Also fixed, one line:** the desktop header's "Categorías" link still
+      pointed at `/buscar`. W1-1 fixed the mobile tab and missed its twin.
+      **Canary run twice.** The first run left two guards undetected: the
+      "unrated is not zero" and "blank barrio is not a barrio" tests both
+      passed against deliberately broken code. Rewritten (the blank-barrio
+      candidate is now listed *second*, so a wrong preference reorders it) plus
+      five SQL-shape assertions on `buildListingOrderBy`/`buildListingWhere`.
+      Second run: 10 of 482 tests red across four query modules, guards
+      restored. **One canary is still uncaught and deliberately so** — scoring
+      an unrated listing as `0` in the in-memory engine is indistinguishable
+      from the correct behaviour while ratings are 1–5. The explicit key stays
+      as defence against a future 0, and no test claims to cover it.
 - [ ] **W3-2 — Favorites (localStorage).** Save/unsave on cards + detail, a
       `/favoritos` page reading localStorage. No accounts, no DB, no migration.
 - [ ] **W3-3 — i18n scaffold. (Opus)** `next-intl`, `/en` route prefix

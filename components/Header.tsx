@@ -11,7 +11,9 @@ export function Header() {
         </Link>
 
         <nav className="ml-4 hidden items-center gap-5 text-sm font-semibold text-ink2 md:flex">
-          <Link href="/buscar" className="transition-colors hover:text-ink">
+          {/* /rubros is the crawlable category hub (W1-1); this link was still
+              pointing at /buscar, the same stale target the mobile tab had. */}
+          <Link href="/rubros" className="transition-colors hover:text-ink">
             Categorías
           </Link>
           <Link href="/buscar" className="transition-colors hover:text-ink">
