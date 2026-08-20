@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { SITE_NAME, SITE_URL } from '../config';
 import { OG_LOCALE, routing, type Locale } from './routing';
-import { alternatesFor } from './alternates';
+import { alternatesFor, localeUrl } from './alternates';
 
 /**
  * The site-wide default metadata, in one place.
@@ -34,12 +34,30 @@ export function defaultMetadata(locale: Locale = routing.defaultLocale): Metadat
     title: { default: TITLES[locale], template: `%s · ${SITE_NAME}` },
     description: DESCRIPTIONS[locale],
     alternates: alternatesFor('/', locale),
-    openGraph: {
-      type: 'website',
-      locale: OG_LOCALE[locale],
-      siteName: SITE_NAME,
-      url: SITE_URL,
-    },
+    openGraph: siteOpenGraph('/', locale),
     robots: { index: true, follow: true },
+  };
+}
+
+/**
+ * The site-wide Open Graph fields, for a given page.
+ *
+ * **Any page that sets `openGraph` at all must build it from here.** Next
+ * merges metadata *shallowly*: a page's `openGraph` object replaces the
+ * layout's outright rather than filling in around it, so the four fields above
+ * — `type`, `locale`, `siteName`, `url` — vanish from every page that declared
+ * an `openGraph` of its own. Measured on a production build before this helper
+ * existed: `/lugar/<slug>` emitted `og:title`, `og:description` and nothing
+ * else, on a site whose links are shared almost entirely on WhatsApp.
+ *
+ * `url` is per-page and locale-prefixed, so the shared card names the page it
+ * came from rather than the home page.
+ */
+export function siteOpenGraph(path: string, locale: Locale): NonNullable<Metadata['openGraph']> {
+  return {
+    type: 'website',
+    locale: OG_LOCALE[locale],
+    siteName: SITE_NAME,
+    url: localeUrl(path, locale),
   };
 }

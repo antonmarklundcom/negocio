@@ -1075,6 +1075,46 @@ Repo, docs and comments in English.
       Verified: 525 unit tests, smoke 10/10, **admin e2e 9/9 against real
       MySQL**, and both locales curled against the production build.
 
+### Wave 3 follow-up — share/structured-data correctness (2026-08-20)
+
+- [x] **W3-5 — The locale move's SEO tail. No migration.** Three defects the
+      `[locale]` refactor left behind, all found by curling a production build
+      rather than by reading code, and all on the public pages the site is
+      actually shared and indexed from.
+      *Shipped:*
+      **(a) JSON-LD spoke Spanish on English pages.** `lib/jsonld.tsx` built
+      every URL as `SITE_URL + path`, so `/en/lugar/x` carried a
+      self-referencing canonical of `/en/lugar/x` beside a `LocalBusiness`
+      whose `@id` and `url` were the *Spanish* `/lugar/x` — the structured data
+      contradicting the canonical on the same page, and the two locale pages
+      claiming to be one entity. Breadcrumbs had it too: English labels
+      ("Home", "Restaurant") pointing at Spanish URLs. `locale` is now a
+      **required** argument on every builder that emits a URL, so a caller that
+      forgets it fails to compile instead of silently emitting Spanish. Canary:
+      the old expressions restored → 4 of 8 new tests red.
+      **(b) Every listing page lost the site-wide `og:` fields.** Next merges
+      metadata *shallowly* — a page returning its own `openGraph` replaces the
+      layout's outright — so `/lugar/<slug>` shipped `og:title` and
+      `og:description` and nothing else: no `og:site_name`, no `og:locale`, no
+      `og:type`, no `og:url`, on a site whose distribution is WhatsApp. New
+      `siteOpenGraph(path, locale)` in `lib/i18n/metadata.ts` is the one place
+      those fields live, and `og:url` is now per-page and locale-prefixed.
+      **(c) A business with no cover photo shared with no image at all.** The
+      site-wide card documents itself as "auto-applied site-wide" and, because
+      of (b), was not: `images: undefined` is a *present key*, so it overrode
+      the generated card and emitted nothing. That hit exactly backwards — the
+      free listings with no photo are the ones that most need a fallback. Fixed
+      with a **per-listing** card at
+      `lugar/[slug]/opengraph-image.tsx` (business name + rubro · barrio,
+      ciudad, in the page's language), rendered on demand rather than
+      prerendered per listing. A listing *with* a photo still wins: the
+      explicit `openGraph.images` takes precedence, so this is the fallback,
+      not the default.
+      Verified: 551 unit tests (8 new), lint + typecheck clean, smoke e2e 10/10,
+      and both locales re-curled against a production build — `@id` now
+      `/en/lugar/…` on the English page, full `og:` block on every detail page,
+      and a real 1200×630 PNG on a photo-less listing in both languages.
+
 ### Gated items (build when their gate is met — decisions already made)
 
 - [ ] **Owner portal (PR-6)** — gate: **≥20 paying businesses** AND password

@@ -109,7 +109,7 @@ export default async function CategoryCityBarrioPage(
 
   return (
     <div className="mx-auto max-w-content px-4 py-6 md:px-8 md:py-8">
-      <JsonLd data={breadcrumbJsonLd(crumbs)} />
+      <JsonLd data={breadcrumbJsonLd(crumbs, locale)} />
       <Breadcrumb items={crumbs} />
 
       <header className="mb-5 mt-3">

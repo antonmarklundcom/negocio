@@ -59,7 +59,7 @@ export default async function RubrosPage(props: { params: Promise<{ locale: stri
 
   return (
     <div className="bg-cream">
-      <JsonLd data={breadcrumbJsonLd(crumbs)} />
+      <JsonLd data={breadcrumbJsonLd(crumbs, locale)} />
       <div className="mx-auto max-w-content px-4 py-6 md:px-8 md:py-8">
         <Breadcrumb items={crumbs} />
 

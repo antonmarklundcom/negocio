@@ -42,7 +42,7 @@ export default async function HomePage(props: { params: Promise<{ locale: string
 
   return (
     <div>
-      <JsonLd data={siteJsonLd()} />
+      <JsonLd data={siteJsonLd(locale)} />
 
       {/* Hero */}
       <section className="border-b border-line bg-[linear-gradient(160deg,#FBF6EC,#F2E7D6)]">

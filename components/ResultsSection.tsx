@@ -71,7 +71,7 @@ export async function ResultsSection({
         <>
           <SearchView listings={items} />
           <Pagination basePath={basePath} baseParams={baseParams} page={page} totalPages={totalPages} />
-          <JsonLd data={itemListJsonLd(items)} />
+          <JsonLd data={itemListJsonLd(items, locale, basePath)} />
         </>
       )}
     </div>
