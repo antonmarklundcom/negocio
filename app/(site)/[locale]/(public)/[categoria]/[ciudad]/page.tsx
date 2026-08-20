@@ -6,7 +6,7 @@ import {
   getCategoryCityCombosWithListings,
   getCategoryCityZonaCombosWithListings,
 } from '@/lib/listings-repo';
-import { isKnownCategory, getCategory, categoryLabelPlural } from '@/lib/categories';
+import { categoryLabelPluralFor, isKnownCategory } from '@/lib/categories';
 import { isKnownCity, cityLabel } from '@/lib/cities';
 import { RESERVED_SLUGS } from '@/lib/config';
 import { carriedParams, toListingQuery, type RawParams } from '@/lib/search-params';
@@ -18,6 +18,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { toLocale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 /** Pre-build only category×city combos that actually have listings (§6.3). */
 /**
@@ -44,12 +45,14 @@ export async function generateMetadata(
   }
 ): Promise<Metadata> {
   const params = await props.params;
-  if (!valid(params.categoria, params.ciudad)) return { title: 'Página no encontrada' };
-  const plural = categoryLabelPlural(params.categoria);
+  const locale = toLocale(params.locale);
+  const t = await getTranslations({ locale, namespace: 'landing' });
+  if (!valid(params.categoria, params.ciudad)) return { title: t('notFoundTitle') };
+  const plural = categoryLabelPluralFor(params.categoria, locale);
   const city = cityLabel(params.ciudad);
   return {
-    title: `${plural} en ${city}`,
-    description: `Los mejores ${plural.toLowerCase()} en ${city}. Fotos, horarios, ubicación y contacto directo.`,
+    title: t('categoryCityTitle', { category: plural, city }),
+    description: t('categoryCityDescription', { category: plural.toLowerCase(), city }),
     alternates: alternatesFor(`/${params.categoria}/${params.ciudad}`, toLocale(params.locale)),
   };
 }
@@ -62,6 +65,10 @@ export default async function CategoryCityPage(
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
+  const locale = toLocale(params.locale);
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'landing' });
+  const tb = await getTranslations({ locale, namespace: 'breadcrumb' });
   if (!valid(params.categoria, params.ciudad)) notFound();
 
   const query = toListingQuery(searchParams, {
@@ -79,11 +86,10 @@ export default async function CategoryCityPage(
     .filter((c) => c.categoria === params.categoria && c.ciudad === params.ciudad)
     .sort((a, b) => a.zona.localeCompare(b.zona, 'es'));
 
-  const plural = categoryLabelPlural(params.categoria);
+  const plural = categoryLabelPluralFor(params.categoria, locale);
   const city = cityLabel(params.ciudad);
-  const cat = getCategory(params.categoria)!;
   const crumbs = [
-    { label: 'Inicio', href: '/' },
+    { label: tb('home'), href: '/' },
     { label: plural, href: `/${params.categoria}` },
     { label: city },
   ];
@@ -97,15 +103,14 @@ export default async function CategoryCityPage(
 
       <header className="mb-5 mt-3">
         <h1 className="font-serif text-[28px] font-semibold leading-tight md:text-[34px]">
-          {plural} en {city}
+          {t('categoryCityTitle', { category: plural, city })}
         </h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink2">
-          {cat.labelPlural} en {city}: {total} {total === 1 ? 'negocio' : 'negocios'} con fotos, horarios y
-          contacto directo. Elegí, comparás y escribís en segundos.
+          {t('cityLead', { category: plural, city, count: total })}
         </p>
         {barrios.length > 0 && (
           <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-ink2">
-            <span className="font-semibold">Por barrio:</span>
+            <span className="font-semibold">{t('byBarrio')}</span>
             {barrios.map((b) => (
               <Link
                 key={b.zona}
@@ -131,6 +136,7 @@ export default async function CategoryCityPage(
           not a cosmetic one. */}
       <Suspense fallback={<ResultsSkeleton />}>
         <ResultsSection
+          locale={locale}
           query={query}
           basePath={`/${params.categoria}/${params.ciudad}`}
           baseParams={baseParams}

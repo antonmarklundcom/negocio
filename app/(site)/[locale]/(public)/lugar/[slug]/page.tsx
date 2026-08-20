@@ -4,6 +4,7 @@ import { getListingBySlug, getListings } from '@/lib/listings-repo';
 import { dbConfigured } from '@/lib/db/client';
 import { listApprovedReviews } from '@/lib/db/reviews';
 import { isPremium } from '@/lib/listing';
+import { categoryLabelFor } from '@/lib/categories';
 import { computeOpenState } from '@/lib/hours';
 import { formatPhone } from '@/lib/format';
 import { FREE_PHONE_TAPTOCALL, REVIEWS_ENABLED, SITE_URL, listingPath } from '@/lib/config';
@@ -27,9 +28,9 @@ import { ReportForm } from '@/components/detail/ReportForm';
 import { Phone, Clock } from '@/components/icons';
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import type { Review } from '@/lib/types';
-import { toLocale } from '@/lib/i18n/routing';
+import { toLocale, type Locale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 /**
  * ISR (ROADMAP W1-3). This page used to be fully dynamic: every visit to every
@@ -65,11 +66,14 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
 export async function generateMetadata(props: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const params = await props.params;
   const l = await getListingBySlug(params.slug);
-  if (!l) return { title: 'Negocio no encontrado' };
+  const locale = toLocale(params.locale);
+  const t = await getTranslations({ locale, namespace: 'detail' });
+  if (!l) return { title: t('notFoundTitle') };
   const where = l.zona ? `${l.zona}, ${l.ciudadLabel}` : l.ciudadLabel;
+  const category = categoryLabelFor(l.categoria, locale);
   return {
-    title: `${l.name} — ${l.categoriaLabel} en ${where}`,
-    description: l.description?.slice(0, 160) ?? `${l.name}, ${l.categoriaLabel} en ${where}.`,
+    title: t('metaTitle', { name: l.name, category, where }),
+    description: l.description?.slice(0, 160) ?? t('metaDescription', { name: l.name, category, where }),
     alternates: alternatesFor(listingPath(l.slug), toLocale(params.locale)),
     openGraph: {
       title: l.name,
@@ -86,15 +90,17 @@ export default async function ListingPage(props: { params: Promise<{ locale: str
   // ROADMAP W3-3: opts this route back into static rendering. Reading a
   // translation without it makes the route dynamic, which would quietly undo
   // W1-3's caching — the page would still be correct, just uncached.
-  setRequestLocale(params.locale);
+  const locale = toLocale(params.locale);
+  setRequestLocale(locale);
   const listing = await getListingBySlug(params.slug);
   if (!listing) notFound();
 
+  const tb = await getTranslations({ locale, namespace: 'breadcrumb' });
   const premium = isPremium(listing);
   const open = computeOpenState(listing.hours);
   const crumbs: Crumb[] = [
-    { label: 'Inicio', href: '/' },
-    { label: listing.categoriaLabel, href: `/${listing.categoria}` },
+    { label: tb('home'), href: '/' },
+    { label: categoryLabelFor(listing.categoria, locale), href: `/${listing.categoria}` },
     { label: listing.name },
   ];
 
@@ -112,9 +118,9 @@ export default async function ListingPage(props: { params: Promise<{ locale: str
       <JsonLd data={breadcrumbJsonLd(crumbs)} />
 
       {premium ? (
-        <PremiumDetail listing={listing} open={open} crumbs={crumbs} reviews={reviewsOn ? reviews : null} />
+        <PremiumDetail listing={listing} open={open} crumbs={crumbs} reviews={reviewsOn ? reviews : null} locale={locale} />
       ) : (
-        <FreeDetail listing={listing} open={open} crumbs={crumbs} reviews={reviewsOn ? reviews : null} />
+        <FreeDetail listing={listing} open={open} crumbs={crumbs} reviews={reviewsOn ? reviews : null} locale={locale} />
       )}
     </div>
   );
@@ -126,26 +132,38 @@ type DetailProps = {
   crumbs: Crumb[];
   /** Approved reviews, or `null` when the reviews feature is off (§6.6 honesty gate). */
   reviews: Review[] | null;
+  locale: Locale;
 };
 
 function OpenState({ open }: { open: ReturnType<typeof computeOpenState> }) {
   if ('unknown' in open) return null;
   if (open.open) return <OpenNowPill closesAt={open.closesAt} />;
-  return <ClosedPill opensAt={open.opensAt} dayLabel={open.opensDayLabel} />;
+  return <ClosedPill opensAt={open.opensAt} opensDay={open.opensDay} opensWhen={open.opensWhen} />;
 }
 
-function Rating({ rating, reviewsCount }: { rating?: number; reviewsCount?: number }) {
+function Rating({
+  rating,
+  reviewsCount,
+  t,
+}: {
+  rating?: number;
+  reviewsCount?: number;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}) {
   if (!REVIEWS_ENABLED || !rating) return null;
   return (
     <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
       <span className="tracking-wide text-terragold">★★★★★</span> {rating.toFixed(1)}
-      {reviewsCount ? <span className="font-medium text-ink3">· {reviewsCount} reseñas</span> : null}
+      {reviewsCount ? (
+        <span className="font-medium text-ink3">{t('reviewsCount', { count: reviewsCount })}</span>
+      ) : null}
     </span>
   );
 }
 
 // ---------------------------------------------------------------- PREMIUM ----
-function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
+async function PremiumDetail({ listing: l, open, crumbs, reviews, locale }: DetailProps) {
+  const t = await getTranslations({ locale, namespace: 'detail' });
   const gallery = l.coverImage ? [l.coverImage, ...(l.gallery ?? [])] : l.gallery ?? [];
   const dedup = [...new Set(gallery)].map(mediaUrl);
 
@@ -175,7 +193,7 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
             <h1 className="font-serif text-[31px] font-semibold leading-[1.02] md:text-[42px]">{l.name}</h1>
 
             <div className="mt-3 flex flex-wrap items-center gap-4">
-              <Rating rating={l.rating} reviewsCount={l.reviewsCount} />
+              <Rating rating={l.rating} reviewsCount={l.reviewsCount} t={t} />
               <OpenState open={open} />
             </div>
 
@@ -185,25 +203,25 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
 
             {/* Mobile contact card (desktop uses the sticky rail) */}
             <div className="mt-5 md:hidden">
-              <ContactCard listing={l} />
+              <ContactCard listing={l} locale={locale} />
             </div>
 
             <div className="mt-7 space-y-7">
-              <CategoryBlock listing={l} />
+              <CategoryBlock listing={l} locale={locale} />
 
               {l.hours && l.hours.length > 0 && (
                 <section>
                   <h2 className="mb-3 flex items-center gap-2 font-serif text-[21px] font-semibold">
                     <Clock size={18} className="text-ink2" />
-                    Horarios
+                    {t('hoursHeading')}
                   </h2>
-                  <HoursTable hours={l.hours} />
+                  <HoursTable hours={l.hours} locale={locale} />
                 </section>
               )}
 
               {l.lat != null && l.lng != null && (
                 <section>
-                  <h2 className="mb-3 font-serif text-[21px] font-semibold">Ubicación</h2>
+                  <h2 className="mb-3 font-serif text-[21px] font-semibold">{t('location')}</h2>
                   <div className="overflow-hidden rounded-card border border-line">
                     <LocationMapLazy lat={l.lat} lng={l.lng} name={l.name} />
                     <div className="flex items-center justify-between gap-3 bg-paper px-4 py-3">
@@ -214,14 +232,14 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
                         rel="noopener noreferrer"
                         className="shrink-0 rounded-[10px] border-[1.5px] border-blue px-3.5 py-2 text-[12px] font-bold text-blue"
                       >
-                        Cómo llegar
+                        {t('directions')}
                       </a>
                     </div>
                   </div>
                 </section>
               )}
 
-              {reviews && <Reviews listingId={l.id} reviews={reviews} />}
+              {reviews && <Reviews listingId={l.id} reviews={reviews} locale={locale} />}
 
               <ReportForm listingId={l.id} slug={l.slug} />
             </div>
@@ -230,13 +248,13 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
           {/* Desktop sticky contact rail */}
           <aside className="hidden md:block">
             <div className="sticky top-24">
-              <ContactCard listing={l} open={open} desktop />
+              <ContactCard listing={l} open={open} desktop locale={locale} />
             </div>
           </aside>
         </div>
 
         <div className="mt-10">
-          <SimilarListings listing={l} />
+          <SimilarListings listing={l} locale={locale} />
         </div>
       </div>
 
@@ -253,15 +271,18 @@ function PremiumDetail({ listing: l, open, crumbs, reviews }: DetailProps) {
   );
 }
 
-function ContactCard({
+async function ContactCard({
   listing: l,
   open,
   desktop = false,
+  locale,
 }: {
   listing: DetailProps['listing'];
   open?: ReturnType<typeof computeOpenState>;
   desktop?: boolean;
+  locale: Locale;
 }) {
+  const t = await getTranslations({ locale, namespace: 'detail' });
   return (
     <div className="rounded-card border border-line bg-paper p-5 shadow-card">
       {desktop && open && (
@@ -284,7 +305,7 @@ function ContactCard({
           className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-blue py-3 text-[15px] font-bold text-blue"
         >
           <Phone size={17} />
-          Llamar · {formatPhone(l.phone)}
+          {t('call')} · {formatPhone(l.phone)}
         </a>
       )}
       <ListingMessageForm listingId={l.id} slug={l.slug} variant={desktop ? 'textarea' : 'inline'} />
@@ -310,7 +331,8 @@ function ContactCard({
 }
 
 // ------------------------------------------------------------------- FREE ----
-function FreeDetail({ listing: l, crumbs, reviews }: DetailProps) {
+async function FreeDetail({ listing: l, crumbs, reviews, locale }: DetailProps) {
+  const t = await getTranslations({ locale, namespace: 'detail' });
   return (
     <>
       {/* Warm fallback header, no cover */}
@@ -348,34 +370,34 @@ function FreeDetail({ listing: l, crumbs, reviews }: DetailProps) {
           <div className="space-y-4">
             {l.description && <p className="text-[15px] leading-relaxed text-ink2">{l.description}</p>}
 
-            <LockedGallery />
-            <LockedCategory />
+            <LockedGallery locale={locale} />
+            <LockedCategory locale={locale} />
 
             {l.hours && l.hours.length > 0 && (
               <section>
-                <h2 className="mb-2 font-serif text-[17px] font-semibold">Horarios</h2>
-                <HoursTable hours={l.hours} />
+                <h2 className="mb-2 font-serif text-[17px] font-semibold">{t('hoursHeading')}</h2>
+                <HoursTable hours={l.hours} locale={locale} />
               </section>
             )}
 
-            {reviews && <Reviews listingId={l.id} reviews={reviews} />}
+            {reviews && <Reviews listingId={l.id} reviews={reviews} locale={locale} />}
 
             <ReportForm listingId={l.id} slug={l.slug} />
 
-            <UpgradeCta />
+            <UpgradeCta locale={locale} />
           </div>
 
           {/* Right: quiet phone + locked WhatsApp */}
           <aside className="space-y-3">
             <div className="rounded-card border border-line bg-paper p-5">
-              <div className="mb-3.5 text-[13px] font-bold">Contacto</div>
+              <div className="mb-3.5 text-[13px] font-bold">{t('contact')}</div>
               {l.phone && (
                 <div className="mb-2.5 flex items-center gap-3 rounded-xl border border-line bg-cream px-4 py-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-paper text-ink2">
                     <Phone size={18} />
                   </div>
                   <div className="flex-1">
-                    <div className="text-[11px] font-semibold text-ink3">Teléfono</div>
+                    <div className="text-[11px] font-semibold text-ink3">{t('phone')}</div>
                     {FREE_PHONE_TAPTOCALL ? (
                       <a href={`tel:${l.phone.replace(/\s/g, '')}`} className="text-[15px] font-bold text-ink">
                         {formatPhone(l.phone)}
@@ -386,13 +408,13 @@ function FreeDetail({ listing: l, crumbs, reviews }: DetailProps) {
                   </div>
                 </div>
               )}
-              <LockedRow title="WhatsApp" sub="Solo perfiles Premium" />
+              <LockedRow title="WhatsApp" sub={t('whatsappPremiumOnly')} />
             </div>
           </aside>
         </div>
 
         <div className="mt-10">
-          <SimilarListings listing={l} />
+          <SimilarListings listing={l} locale={locale} />
         </div>
       </div>
     </>

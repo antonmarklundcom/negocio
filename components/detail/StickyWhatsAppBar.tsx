@@ -2,6 +2,7 @@
 
 import { waLink } from '@/lib/format';
 import { trackLead } from '@/lib/lead-client';
+import { useTranslations } from 'next-intl';
 import { WhatsApp, Phone } from '@/components/icons';
 
 /** Mobile-only sticky bottom WhatsApp bar for premium profiles (§6.1). */
@@ -18,17 +19,18 @@ export function StickyWhatsAppBar({
   slug: string;
   name: string;
 }) {
+  const t = useTranslations('detail');
   return (
     <div className="fixed inset-x-0 bottom-[57px] z-30 flex gap-2.5 border-t border-line bg-cream/95 px-4 py-2.5 backdrop-blur md:hidden">
       <a
-        href={waLink(whatsapp, `Hola ${name}, los encontré en negocio.com.py`)}
+        href={waLink(whatsapp, t('whatsappMessageShort', { name }))}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => trackLead({ source: 'listing_whatsapp', listingId, slug })}
         className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-wab py-3 text-[15px] font-bold text-[#053d22] shadow-wa"
       >
         <WhatsApp size={19} />
-        Escribir por WhatsApp
+        {t('whatsappWrite')}
       </a>
       {phone && (
         <a

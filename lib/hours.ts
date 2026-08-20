@@ -1,12 +1,30 @@
 import type { DayHours } from './types';
 import { TIMEZONE } from './config';
 
-export const DAY_LABELS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-export const DAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-
+/**
+ * Day names are NOT here any more (ROADMAP W3-4).
+ *
+ * This module is pure, is shared by both providers, and answers "is it open
+ * right now" — a question with no language in it. It used to also hand back
+ * `'hoy'`, `'mañana'` and `'Domingo'`, which meant a Spanish string travelled
+ * from a domain function into an English page with nowhere to be translated.
+ * It now returns the **day index and how far away it is**, and the UI names it
+ * (`messages/*.json` → `hours.days`, `hours.today`, `hours.tomorrow`).
+ *
+ * The admin keeps its own Spanish day labels (`lib/admin/validation.ts`,
+ * `admin/negocios/fields.ts`) — the panel is Spanish-only by decision, and its
+ * labels are validation messages rather than display copy.
+ */
 export type OpenState =
   | { open: true; closesAt: string }
-  | { open: false; opensAt?: string; opensDayLabel?: string }
+  | {
+      open: false;
+      opensAt?: string;
+      /** 0 = Sunday … 6 = Saturday, the day the next opening falls on. */
+      opensDay?: number;
+      /** How far away that day is: today, tomorrow, or further out. */
+      opensWhen?: 'today' | 'tomorrow' | 'later';
+    }
   | { unknown: true };
 
 /** Current wall-clock day/minute in America/Asuncion, independent of server TZ. */
@@ -138,16 +156,24 @@ export function computeOpenState(hours: DayHours[] | undefined, now: Date = new 
       return {
         open: false,
         opensAt: r.open,
-        opensDayLabel: i === 0 ? 'hoy' : i === 1 ? 'mañana' : DAY_LABELS[d],
+        opensDay: d,
+        opensWhen: i === 0 ? 'today' : i === 1 ? 'tomorrow' : 'later',
       };
     }
   }
   return { open: false };
 }
 
-/** "11:00 – 15:00 · 19:00 – 23:00" for one day's ranges. */
-export function formatRanges(dh: DayHours | undefined): string {
-  if (!dh || dh.ranges.length === 0) return 'Cerrado';
+/**
+ * "11:00 – 15:00 · 19:00 – 23:00" for one day's ranges, or `null` when the
+ * business is shut that day.
+ *
+ * `null` rather than the word "Cerrado" for the same reason the day names left:
+ * a closed day is a fact, and the word for it belongs to whichever language the
+ * page is being rendered in.
+ */
+export function formatRanges(dh: DayHours | undefined): string | null {
+  if (!dh || dh.ranges.length === 0) return null;
   return dh.ranges.map((r) => `${r.open} – ${r.close}`).join(' · ');
 }
 

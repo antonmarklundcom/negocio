@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { Listing } from '@/lib/types';
@@ -17,6 +19,7 @@ const ResultsMap = dynamic(() => import('./ResultsMap').then((m) => m.ResultsMap
  * is fully SSR'd and indexable; only the toggle and map are interactive.
  */
 export function SearchView({ listings }: { listings: Listing[] }) {
+  const t = useTranslations('search');
   const [view, setView] = useState<'lista' | 'mapa'>('lista');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const hasGeo = listings.some((l) => l.lat != null && l.lng != null);
@@ -34,7 +37,7 @@ export function SearchView({ listings }: { listings: Listing[] }) {
                 view === v ? 'bg-ink text-white' : 'text-ink2'
               }`}
             >
-              {v}
+              {v === 'lista' ? t('viewList') : t('viewMap')}
             </button>
           ))}
         </div>

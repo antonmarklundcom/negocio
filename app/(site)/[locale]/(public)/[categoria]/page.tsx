@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Link } from '@/lib/i18n/link';
 import { getListings, getCategoryCityCombosWithListings } from '@/lib/listings-repo';
-import { isKnownCategory, getCategory, categoryLabelPlural } from '@/lib/categories';
+import { categoryLabelPluralFor, isKnownCategory } from '@/lib/categories';
 import { cityLabel } from '@/lib/cities';
 import { RESERVED_SLUGS } from '@/lib/config';
 import { carriedParams, toListingQuery, type RawParams } from '@/lib/search-params';
@@ -13,6 +13,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { toLocale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 /** Pre-build category landings that actually have listings. */
 /**
@@ -35,11 +36,13 @@ function valid(categoria: string): boolean {
 
 export async function generateMetadata(props: { params: Promise<{ locale: string; categoria: string }> }): Promise<Metadata> {
   const params = await props.params;
-  if (!valid(params.categoria)) return { title: 'Página no encontrada' };
-  const plural = categoryLabelPlural(params.categoria);
+  const locale = toLocale(params.locale);
+  const t = await getTranslations({ locale, namespace: 'landing' });
+  if (!valid(params.categoria)) return { title: t('notFoundTitle') };
+  const plural = categoryLabelPluralFor(params.categoria, locale);
   return {
-    title: `${plural} en Paraguay`,
-    description: `Encontrá ${plural.toLowerCase()} en todo Paraguay. Mirá fotos, horarios y contactá directo.`,
+    title: t('categoryTitle', { category: plural }),
+    description: t('categoryDescription', { category: plural.toLowerCase() }),
     alternates: alternatesFor(`/${params.categoria}`, toLocale(params.locale)),
   };
 }
@@ -52,16 +55,19 @@ export default async function CategoryPage(
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
+  const locale = toLocale(params.locale);
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'landing' });
+  const tb = await getTranslations({ locale, namespace: 'breadcrumb' });
   if (!valid(params.categoria)) notFound();
 
   const query = toListingQuery(searchParams, { categoria: params.categoria });
   const { total } = await getListings(query);
   if (total === 0) notFound(); // never render an empty shell (§6.3)
 
-  const plural = categoryLabelPlural(params.categoria);
-  const cat = getCategory(params.categoria)!;
+  const plural = categoryLabelPluralFor(params.categoria, locale);
   const crumbs = [
-    { label: 'Inicio', href: '/' },
+    { label: tb('home'), href: '/' },
     { label: plural },
   ];
 
@@ -78,11 +84,14 @@ export default async function CategoryPage(
 
       <header className="mb-5 mt-3">
         <h1 className="font-serif text-[28px] font-semibold leading-tight md:text-[34px]">
-          {plural} en Paraguay
+          {t('categoryTitle', { category: plural })}
         </h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink2">
-          {plural} en todo el país. Mirá fotos, horarios y ubicación, y contactá directo por WhatsApp o
-          teléfono. {total} {total === 1 ? 'negocio' : 'negocios'} en {cat.labelPlural.toLowerCase()}.
+          {t('categoryLead', {
+            category: plural,
+            count: total,
+            categoryLower: plural.toLowerCase(),
+          })}
         </p>
         {cities.length > 1 && (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -111,6 +120,7 @@ export default async function CategoryPage(
           not a cosmetic one. */}
       <Suspense fallback={<ResultsSkeleton />}>
         <ResultsSection
+          locale={locale}
           query={query}
           basePath={`/${params.categoria}`}
           baseParams={baseParams}

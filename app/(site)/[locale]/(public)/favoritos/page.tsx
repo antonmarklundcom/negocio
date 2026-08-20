@@ -4,7 +4,7 @@ import { getListings } from '@/lib/listings-repo';
 import { decodeFavorites, FAVORITES_LIMIT } from '@/lib/favorites';
 import { ListingCard } from '@/components/ListingCard';
 import { FavoritesSync } from '@/components/FavoritesSync';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { toLocale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
 
@@ -20,9 +20,10 @@ export async function generateMetadata(props: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale: raw } = await props.params;
+  const t = await getTranslations({ locale: toLocale(raw), namespace: 'favorites' });
   return {
-    title: 'Mis favoritos',
-    description: 'Los negocios que guardaste en este dispositivo.',
+    title: t('title'),
+    description: t('description'),
     // A personal URL, and one that carries a list of slugs. Nothing here belongs
     // in an index, and it must never end up in the sitemap.
     robots: { index: false, follow: false },
@@ -36,8 +37,10 @@ export default async function FavoritosPage(props: {
   params: Promise<{ locale: string }>;
   searchParams: Promise<RawParams>;
 }) {
-  const { locale } = await props.params;
-  setRequestLocale(toLocale(locale));
+  const { locale: rawLocale } = await props.params;
+  const locale = toLocale(rawLocale);
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'favorites' });
   const searchParams = await props.searchParams;
   const ids = searchParams.ids;
   const slugs = decodeFavorites(Array.isArray(ids) ? ids[0] : ids);
@@ -61,11 +64,11 @@ export default async function FavoritosPage(props: {
   return (
     <div className="mx-auto max-w-content px-4 py-6 md:px-8 md:py-8">
       <header className="mb-5">
-        <h1 className="font-serif text-[28px] font-semibold leading-tight md:text-[32px]">Mis favoritos</h1>
+        <h1 className="font-serif text-[28px] font-semibold leading-tight md:text-[32px]">{t('title')}</h1>
         <p className="mt-1 text-sm font-semibold text-ink2">
           {listings.length === 0
-            ? 'Guardados solo en este dispositivo'
-            : `${listings.length} ${listings.length === 1 ? 'negocio guardado' : 'negocios guardados'} · solo en este dispositivo`}
+            ? t('onlyThisDevice')
+            : t('savedCount', { count: listings.length })}
         </p>
       </header>
 
@@ -81,9 +84,7 @@ export default async function FavoritosPage(props: {
 
       {missing > 0 && (
         <p className="mt-6 text-sm text-ink2">
-          {missing === 1
-            ? 'Un negocio que guardaste ya no está disponible.'
-            : `${missing} negocios que guardaste ya no están disponibles.`}
+          {t('missing', { count: missing })}
         </p>
       )}
     </div>

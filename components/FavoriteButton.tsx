@@ -8,6 +8,7 @@ import {
   serialiseFavorites,
   toggleFavorite,
 } from '@/lib/favorites';
+import { useTranslations } from 'next-intl';
 import { Heart } from './icons';
 
 /**
@@ -59,6 +60,7 @@ export function FavoriteButton({
    * wrong state for a frame on every saved business. `null` renders the neutral
    * outline and resolves after mount.
    */
+  const t = useTranslations('detail');
   const [saved, setSaved] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -87,7 +89,7 @@ export function FavoriteButton({
   );
 
   const on = saved === true;
-  const label = on ? `Quitar ${name} de favoritos` : `Guardar ${name} en favoritos`;
+  const label = on ? t('unsaveAria', { name }) : t('saveAria', { name });
 
   if (variant === 'icon') {
     return (
@@ -116,7 +118,7 @@ export function FavoriteButton({
       } ${className}`}
     >
       <Heart size={15} className={on ? 'fill-current' : undefined} />
-      {on ? 'Guardado' : 'Guardar'}
+      {on ? t('saved') : t('save')}
     </button>
   );
 }

@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
 import { Link } from '@/lib/i18n/link';
+import { getPathname } from '@/lib/i18n/navigation';
 import { getListings, getCategories } from '@/lib/listings-repo';
+import { categoryLabelPluralFor } from '@/lib/categories';
 import { CategoryIcon, Search } from '@/components/icons';
 import { ListingCard } from '@/components/ListingCard';
 import { JsonLd, siteJsonLd } from '@/lib/jsonld';
 import { MAX_FEATURED_SLOTS } from '@/lib/config';
 import { toLocale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 export const revalidate = 3600;
 
@@ -28,6 +30,7 @@ export default async function HomePage(props: { params: Promise<{ locale: string
   // translation without it makes the route dynamic, which would quietly undo
   // W1-3's caching — the page would still be correct, just uncached.
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'home' });
 
   const [categories, featured, destacadoPortada] = await Promise.all([
     getCategories(),
@@ -45,20 +48,19 @@ export default async function HomePage(props: { params: Promise<{ locale: string
       <section className="border-b border-line bg-[linear-gradient(160deg,#FBF6EC,#F2E7D6)]">
         <div className="mx-auto max-w-content px-4 py-12 md:px-8 md:py-20">
           <h1 className="max-w-2xl font-serif text-[34px] font-semibold leading-[1.05] md:text-[52px]">
-            Encontrá negocios de confianza cerca tuyo.
+            {t('heroTitle')}
           </h1>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-ink2 md:text-[18px]">
-            Restaurantes, tiendas, servicios y profesionales en todo Paraguay. Buscá, comparás y contactás
-            directo — gratis.
+            {t('heroLead')}
           </p>
 
-          <form action="/buscar" className="mt-7 flex max-w-xl items-center gap-2">
+          <form action={getPathname({ href: '/buscar', locale })} className="mt-7 flex max-w-xl items-center gap-2">
             <label className="flex flex-1 items-center gap-2 rounded-card border border-line bg-paper px-4 py-3 shadow-card">
               <Search size={18} className="text-ink3" />
               <input
                 name="q"
-                placeholder="¿Qué estás buscando?"
-                aria-label="Buscar negocios"
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchLabel')}
                 className="w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-ink3"
               />
             </label>
@@ -66,7 +68,7 @@ export default async function HomePage(props: { params: Promise<{ locale: string
               type="submit"
               className="rounded-card bg-blue px-5 py-3 text-[15px] font-bold text-white transition-colors hover:bg-blued"
             >
-              Buscar
+              {t('searchSubmit')}
             </button>
           </form>
         </div>
@@ -76,7 +78,7 @@ export default async function HomePage(props: { params: Promise<{ locale: string
           Phase D item 3), so it renders above the general Premium pool. */}
       {destacadoPortada.items.length > 0 && (
         <section className="mx-auto max-w-content px-4 pt-12 md:px-8">
-          <h2 className="mb-6 font-serif text-[24px] font-semibold md:text-[28px]">Destacado en portada</h2>
+          <h2 className="mb-6 font-serif text-[24px] font-semibold md:text-[28px]">{t('featuredOnHome')}</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {destacadoPortada.items.map((l) => (
               <ListingCard key={l.id} listing={l} />
@@ -87,7 +89,7 @@ export default async function HomePage(props: { params: Promise<{ locale: string
 
       {/* Categories */}
       <section className="mx-auto max-w-content px-4 py-12 md:px-8">
-        <h2 className="mb-6 font-serif text-[24px] font-semibold md:text-[28px]">Explorá por rubro</h2>
+        <h2 className="mb-6 font-serif text-[24px] font-semibold md:text-[28px]">{t('browseByCategory')}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {categories.map((c) => (
             <Link
@@ -99,7 +101,7 @@ export default async function HomePage(props: { params: Promise<{ locale: string
                 <CategoryIcon name={c.icon} size={22} />
               </span>
               <span className="text-[14px] font-semibold leading-snug text-ink group-hover:text-blued">
-                {c.labelPlural}
+                {categoryLabelPluralFor(c.slug, locale)}
               </span>
             </Link>
           ))}
@@ -110,9 +112,9 @@ export default async function HomePage(props: { params: Promise<{ locale: string
       {featured.items.length > 0 && (
         <section className="mx-auto max-w-content px-4 pb-12 md:px-8">
           <div className="mb-6 flex items-end justify-between">
-            <h2 className="font-serif text-[24px] font-semibold md:text-[28px]">Negocios destacados</h2>
+            <h2 className="font-serif text-[24px] font-semibold md:text-[28px]">{t('featured')}</h2>
             <Link href="/buscar" className="text-sm font-semibold text-blue hover:text-blued">
-              Ver todos
+              {t('seeAll')}
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -128,18 +130,17 @@ export default async function HomePage(props: { params: Promise<{ locale: string
         <div className="rounded-card bg-ink p-8 md:flex md:items-center md:justify-between md:p-12">
           <div>
             <h2 className="font-serif text-[26px] font-semibold text-white md:text-[32px]">
-              ¿Tenés un negocio?
+              {t('ctaTitle')}
             </h2>
             <p className="mt-2 max-w-md text-[15px] leading-relaxed text-white/70">
-              Sumalo gratis y empezá a recibir clientes hoy. Pasá a Premium para fotos, WhatsApp y más
-              visibilidad.
+              {t('ctaBody')}
             </p>
           </div>
           <Link
             href="/sumar-negocio"
             className="mt-5 inline-block rounded-card bg-white px-6 py-3.5 text-sm font-bold text-ink md:mt-0"
           >
-            Sumá tu negocio
+            {t('ctaButton')}
           </Link>
         </div>
       </section>
