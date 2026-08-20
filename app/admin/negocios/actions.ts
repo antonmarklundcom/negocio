@@ -39,6 +39,7 @@ import {
 } from '@/lib/db/listings-admin';
 import { uploadListingImage } from '@/lib/media/upload';
 import type { ListingStatus } from '@/lib/db/schema';
+import { parseSaleInput } from '@/lib/admin/validation';
 
 /**
  * Server actions: parse, call the query module, revalidate, redirect. Do NOT
@@ -229,12 +230,21 @@ export async function savePremiumUntilAction(
 // manual premium sales flow (ROADMAP Phase D item 2)
 // ---------------------------------------------------------------------------
 
-export async function extendPremiumAction(id: string, days: PremiumPackageDays): Promise<void> {
+export async function extendPremiumAction(id: string, days: PremiumPackageDays, fd: FormData): Promise<void> {
   const actor = await currentUser();
   const nowSeconds = Math.floor(Date.now() / 1000);
 
+  // ROADMAP W2-3: amount and method are required inputs on the package form,
+  // because a revenue table with half its rows at ₲0 "because the form let me
+  // skip it" is worse than no revenue table — it looks like data and reports
+  // nonsense.
+  const sale = parseSaleInput(fd);
+  if (!sale.ok) {
+    redirect(`/admin/negocios/${id}?flagsError=${encodeURIComponent(sale.message)}`);
+  }
+
   try {
-    await extendListingPremium(actor, id, days, nowSeconds);
+    await extendListingPremium(actor, id, days, nowSeconds, sale.data);
   } catch (err) {
     redirect(`/admin/negocios/${id}?flagsError=${encodeURIComponent(messageFor(err))}`);
   }
@@ -248,12 +258,21 @@ export async function extendPremiumAction(id: string, days: PremiumPackageDays):
 // "destacado en portada" — home-page featured slots (ROADMAP Phase D item 3)
 // ---------------------------------------------------------------------------
 
-export async function extendFeaturedAction(id: string, days: FeaturedPackageDays): Promise<void> {
+export async function extendFeaturedAction(
+  id: string,
+  days: FeaturedPackageDays,
+  fd: FormData,
+): Promise<void> {
   const actor = await currentUser();
   const nowSeconds = Math.floor(Date.now() / 1000);
 
+  const sale = parseSaleInput(fd);
+  if (!sale.ok) {
+    redirect(`/admin/negocios/${id}?flagsError=${encodeURIComponent(sale.message)}`);
+  }
+
   try {
-    await extendListingFeatured(actor, id, days, nowSeconds);
+    await extendListingFeatured(actor, id, days, nowSeconds, sale.data);
   } catch (err) {
     redirect(`/admin/negocios/${id}?flagsError=${encodeURIComponent(messageFor(err))}`);
   }

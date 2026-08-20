@@ -6,7 +6,17 @@ import type { Db } from './connection';
 import { requireRole, AuthError } from '@/lib/auth/roles';
 import type { SessionUser } from '@/lib/auth/session';
 import { logActivity } from './activity-log';
-import { categories, cities, listingGallery, listingHours, listings, type ListingStatus } from './schema';
+import {
+  categories,
+  cities,
+  listingGallery,
+  listingHours,
+  listings,
+  sales,
+  SALE_METHODS,
+  type ListingStatus,
+  type SaleMethod,
+} from './schema';
 import { serialiseLines, serialisePiped } from '@/lib/admin/blocks';
 import { dayHoursToRows, rowsToDayHours } from './mappers';
 import type { DayHours } from '../types';
@@ -578,6 +588,34 @@ export async function setListingPremiumUntil(
  * what was already paid for. Only falls back to "from today" when the
  * listing is not currently premium (expired or never was).
  */
+/**
+ * What a package sale records (ROADMAP W2-3 / D5).
+ *
+ * Amount and method are REQUIRED, not optional-with-a-default. A revenue table
+ * with half its rows at ₲0 "because the form let me skip it" is worse than no
+ * revenue table: it looks like data and reports nonsense. If a package is
+ * genuinely given away, that is `amountGs: 0` typed deliberately.
+ */
+export interface SaleInput {
+  /** Whole guaraníes. The currency has no subunit, so this is never a decimal. */
+  amountGs: number;
+  method: SaleMethod;
+}
+
+/**
+ * Re-checked in the query module even though the form validates it, because
+ * the form is not the only caller — same reason `assertAssignableRole` exists
+ * in `lib/db/users.ts`.
+ */
+function assertSaleInput(sale: SaleInput): void {
+  if (!Number.isInteger(sale.amountGs) || sale.amountGs < 0) {
+    throw new AuthError('El monto de la venta tiene que ser un número entero de guaraníes.', 'forbidden');
+  }
+  if (!SALE_METHODS.includes(sale.method)) {
+    throw new AuthError('Ese medio de pago no existe.', 'forbidden');
+  }
+}
+
 export const PREMIUM_PACKAGE_DAYS = [30, 90, 365] as const;
 export type PremiumPackageDays = (typeof PREMIUM_PACKAGE_DAYS)[number];
 
@@ -586,16 +624,18 @@ export async function extendListingPremium(
   id: string,
   days: PremiumPackageDays,
   nowSeconds: number,
+  sale: SaleInput,
   database: Db = getDb(),
 ): Promise<void> {
   const user = requireRole(actor, ['admin']);
   if (!PREMIUM_PACKAGE_DAYS.includes(days)) {
     throw new AuthError('Ese paquete de premium no existe.', 'forbidden');
   }
+  assertSaleInput(sale);
 
   await database.transaction(async (tx) => {
     const [before] = await tx
-      .select({ verified: listings.verified, premiumUntil: listings.premiumUntil })
+      .select({ name: listings.name, verified: listings.verified, premiumUntil: listings.premiumUntil })
       .from(listings)
       .where(eq(listings.id, id))
       .limit(1);
@@ -605,6 +645,19 @@ export async function extendListingPremium(
     const premiumUntil = base + days * 86400;
 
     await tx.update(listings).set({ premiumUntil }).where(eq(listings.id, id));
+
+    // Same transaction as the thing the money bought (ROADMAP W2-3 / D5). A
+    // sale recorded afterwards from the route could be lost while the premium
+    // still landed, and the books would quietly under-report.
+    await tx.insert(sales).values({
+      listingId: id,
+      listingName: before.name,
+      packageKind: 'premium',
+      days,
+      amountGs: sale.amountGs,
+      method: sale.method,
+      soldBy: user.id,
+    });
 
     await logActivity(tx, {
       userId: user.id,
@@ -639,16 +692,18 @@ export async function extendListingFeatured(
   id: string,
   days: FeaturedPackageDays,
   nowSeconds: number,
+  sale: SaleInput,
   database: Db = getDb(),
 ): Promise<void> {
   const user = requireRole(actor, ['admin']);
   if (!FEATURED_PACKAGE_DAYS.includes(days)) {
     throw new AuthError('Ese paquete de portada no existe.', 'forbidden');
   }
+  assertSaleInput(sale);
 
   await database.transaction(async (tx) => {
     const [before] = await tx
-      .select({ featuredUntil: listings.featuredUntil })
+      .select({ name: listings.name, featuredUntil: listings.featuredUntil })
       .from(listings)
       .where(eq(listings.id, id))
       .limit(1);
@@ -674,6 +729,16 @@ export async function extendListingFeatured(
     const featuredUntil = base + days * 86400;
 
     await tx.update(listings).set({ featuredUntil }).where(eq(listings.id, id));
+
+    await tx.insert(sales).values({
+      listingId: id,
+      listingName: before.name,
+      packageKind: 'featured',
+      days,
+      amountGs: sale.amountGs,
+      method: sale.method,
+      soldBy: user.id,
+    });
 
     await logActivity(tx, {
       userId: user.id,

@@ -402,3 +402,50 @@ export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 // Re-exported so the mapper's intent is readable next to the table it maps.
 export type { DayHours, Listing, Review };
+
+/**
+ * Revenue (ROADMAP W2-3 / D5). One row per package sold, written INSIDE the
+ * same transaction as the package it pays for, so the money and the thing the
+ * money bought cannot disagree.
+ *
+ * `amount_gs` is an integer of guaraníes, not a decimal. The guaraní has no
+ * subunit — there are no céntimos — so a decimal type would model a precision
+ * that does not exist and invite rounding where none is possible. `bigint`
+ * because ₲ figures are large: a year of premium is already eight digits.
+ *
+ * `listing_id` is deliberately NOT a foreign key, for the same reason `leads`
+ * is not: a sale is history and must outlive the listing it was made against.
+ * A business that closes and gets hard-deleted must not silently erase the
+ * revenue it produced.
+ *
+ * `sold_by` is nullable with `onDelete: 'set null'` — the sale outlives the
+ * seller's account, and the actor is in `activity_log` anyway.
+ */
+export const SALE_PACKAGES = ['premium', 'featured'] as const;
+export type SalePackage = (typeof SALE_PACKAGES)[number];
+
+export const SALE_METHODS = ['pagopar', 'bancard', 'tigo', 'efectivo', 'otro'] as const;
+export type SaleMethod = (typeof SALE_METHODS)[number];
+
+export const sales = mysqlTable(
+  'sales',
+  {
+    id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+    listingId: varchar('listing_id', { length: 64 }).notNull(),
+    /** Denormalised on purpose: the report must still name the business after a hard delete. */
+    listingName: varchar('listing_name', { length: 200 }).notNull(),
+    packageKind: mysqlEnum('package_kind', SALE_PACKAGES).notNull(),
+    days: int('days').notNull(),
+    /** Whole guaraníes. The currency has no subunit. */
+    amountGs: bigint('amount_gs', { mode: 'number' }).notNull(),
+    method: mysqlEnum('method', SALE_METHODS).notNull(),
+    soldBy: int('sold_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    listingIdx: index('sales_listing_idx').on(t.listingId),
+    createdIdx: index('sales_created_idx').on(t.createdAt),
+  }),
+);
+
+export type SaleRow = typeof sales.$inferSelect;

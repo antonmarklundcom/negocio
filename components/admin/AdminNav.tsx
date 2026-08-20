@@ -66,6 +66,13 @@ export function AdminNav({ user }: { user: SessionUser }) {
             )}
             {isAdmin && (
               <li>
+                <Link href="/admin/ventas" className="hover:text-blue">
+                  Ventas
+                </Link>
+              </li>
+            )}
+            {isAdmin && (
+              <li>
                 <Link href="/admin/actividad" className="hover:text-blue">
                   Actividad
                 </Link>

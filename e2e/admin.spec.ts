@@ -210,6 +210,46 @@ test('archiving takes a listing off the public site without losing it', async ({
   expect(back?.status()).toBe(200);
 });
 
+test('selling a package records the sale in the same breath', async ({ page }) => {
+  // ROADMAP W2-3 / D5. The amount and the method are required inputs on the
+  // package form, and the row lands in `sales` inside the package's own
+  // transaction — so this asserts both halves in one action.
+  await signIn(page, PASSWORD);
+  await page.waitForURL('**/admin');
+  await page.goto(`/admin/negocios/${listingId}`);
+
+  await page.locator('#premium-amount').fill('65.000');
+  await page.locator('#premium-method').selectOption('efectivo');
+  // NOT waitForURL: the action redirects back to the page it was submitted
+  // from, so any URL matcher is satisfied before the transaction commits and
+  // /admin/ventas gets fetched too early. The premium date appearing in the
+  // form is the real completion signal.
+  await page.getByRole('button', { name: '+ 30 días' }).first().click();
+  await expect(page.locator('input[name="premiumUntil"]')).not.toHaveValue('');
+
+  await page.goto('/admin/ventas');
+  const row = page.getByRole('row').filter({ hasText: RENAMED });
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('65.000');
+  await expect(row).toContainText('Efectivo');
+  await expect(row).toContainText('Premium');
+});
+
+test('a package with no amount is refused, and sells nothing', async ({ page }) => {
+  await signIn(page, PASSWORD);
+  await page.waitForURL('**/admin');
+  await page.goto(`/admin/negocios/${listingId}`);
+
+  // The method is chosen but the amount is left blank. `noValidate` is not set
+  // on this form, so the browser blocks it — clear `required` to prove the
+  // SERVER refuses too, which is the half that matters.
+  await page.locator('#premium-amount').evaluate((el) => el.removeAttribute('required'));
+  await page.locator('#premium-method').selectOption('efectivo');
+  await page.getByRole('button', { name: '+ 30 días' }).first().click();
+
+  await expect(page.getByText(/monto de la venta/i)).toBeVisible();
+});
+
 test('deleting requires the slug typed back, then removes the listing', async ({ page }) => {
   await signIn(page, PASSWORD);
   await page.waitForURL('**/admin');

@@ -729,12 +729,33 @@ Repo, docs and comments in English.
       parser's suite. 14 new tests (362 total); canary run: `requireRole`
       deleted from every guard in `lib/db/listings-admin.ts` → 33 of 64 tests
       went red, guard restored.*
-- [ ] **W2-3 — Revenue record. MIGRATION.** `sales` table (listing_id, package
+- [x] **W2-3 — Revenue record. MIGRATION (`drizzle/0006_*`).** `sales` table (listing_id, package
       kind premium/featured, days, amount ₲, method Pagopar/Bancard/Tigo/efectivo/otro,
       sold_by from session, created_at). Written **in the same transaction** as
       `extendListingPremium`/`extendListingFeatured` (amount/method become
       required inputs on those forms). `/admin/ventas`: list + month/year
       totals, CSV export. Activity-logged like every mutation.
+      *Shipped: the `sales` table (`drizzle/0006_*`), written **inside the same
+      transaction** as `extendListingPremium` / `extendListingFeatured`, which
+      now take a required `SaleInput`. There is deliberately **no
+      `createSale`** anywhere — a sale that can be recorded on its own is a
+      sale that can disagree with the thing the money bought, and a test
+      asserts the module never grows one. `/admin/ventas` (admin-only): month
+      total, a six-month bar list, the ledger and a CSV export reusing
+      `lib/admin/csv.ts`. 22 new tests (446 total); canary on the new module →
+      6 of 11 red, guard restored. Admin e2e now 9/9, including
+      sell-a-package → the row appears in `/admin/ventas`, and
+      package-without-an-amount → refused by the server, not just the browser.*
+      **Four modelling decisions:** `amount_gs` is an integer, not a decimal —
+      the guaraní has no subunit, so a decimal models a precision that does not
+      exist. The form accepts `65.000`, `65 000` and `Gs. 65.000`, because that
+      is how the number is typed here and rejecting it just means retyping
+      until ₲65 gets recorded instead of ₲65.000. `listing_id` is **not** a
+      foreign key (same reason as `leads`): a sale is history and must outlive
+      a hard-deleted listing, so the business name is denormalised onto the
+      row. And amount and method are **required**, never defaulted — a revenue
+      table with half its rows at ₲0 because the form allowed a skip looks like
+      data and reports nonsense. A real giveaway is `0`, typed.
 - [ ] **W2-4 — Mail + expiry digest.** Env-gated SMTP (nodemailer,
       `SMTP_*` unset → feature off, app boots fine — same pattern as Sentry/R2).
       Weekly "expiring in ≤14 days" digest (premium + featured) to staff:
