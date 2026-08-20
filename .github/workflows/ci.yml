@@ -29,6 +29,20 @@ concurrency:
 
 jobs:
   check:
+    # DRAFT PRs DO NOT RUN CI (agreed 2026-08-20, same budget logic as the rest
+    # of this file). A skipped job bills ZERO minutes, so work-in-progress can be
+    # pushed as often as it likes and costs nothing; marking the PR "Ready for
+    # review" runs the suite once.
+    #
+    # This was measured, not guessed: in one session ten pushes to open PRs
+    # became ten runs and ~29 minutes, for code that had already been
+    # typechecked, linted, tested, built and run through BOTH Playwright suites
+    # locally beforehand. CI here is the second opinion, not the first, and a
+    # second opinion on a commit nobody is reviewing yet is not worth a minute.
+    #
+    # Cost of being wrong: a draft PR shows no green tick. Marking it ready
+    # gives you one. Delete this line to go back.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     name: Typecheck, lint, test, build, e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20

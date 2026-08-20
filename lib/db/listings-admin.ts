@@ -1180,3 +1180,56 @@ export async function setListingStatus(
     });
   });
 }
+
+// ---------------------------------------------------------------------------
+// expiry digest (ROADMAP W2-4)
+// ---------------------------------------------------------------------------
+
+export interface ExpiringListing {
+  id: string;
+  slug: string;
+  name: string;
+  ciudadLabel: string;
+  premiumUntil: number | null;
+  featuredUntil: number | null;
+}
+
+/**
+ * Listings whose premium OR featured slot ends within `withinSeconds`
+ * (ROADMAP W2-4). Both, in one list, because the sales conversation is about
+ * the business and not about the product: telling someone their premium
+ * expires on Friday and only mentioning next week that their portada slot
+ * expired on Saturday is two calls where one would do.
+ *
+ * `nowSeconds` is passed in — nothing here calls NOW(), same as everywhere
+ * else in this module. Already-expired rows are excluded: this is the "call
+ * them before it lapses" list, and the dashboard's `vencido` count is the
+ * other one.
+ */
+export async function listExpiringSoon(
+  actor: SessionUser | null,
+  nowSeconds: number,
+  withinSeconds: number,
+  database: Db = getDb(),
+): Promise<ExpiringListing[]> {
+  requireRole(actor, ['admin', 'editor']);
+
+  const until = nowSeconds + withinSeconds;
+  const soon = (column: typeof listings.premiumUntil | typeof listings.featuredUntil) =>
+    and(gt(column, nowSeconds), lt(column, until));
+
+  return database
+    .select({
+      id: listings.id,
+      slug: listings.slug,
+      name: listings.name,
+      ciudadLabel: cities.label,
+      premiumUntil: listings.premiumUntil,
+      featuredUntil: listings.featuredUntil,
+    })
+    .from(listings)
+    .innerJoin(cities, eq(cities.slug, listings.ciudad))
+    .where(or(soon(listings.premiumUntil), soon(listings.featuredUntil)))
+    .orderBy(asc(sql`least(coalesce(${listings.premiumUntil}, 9999999999), coalesce(${listings.featuredUntil}, 9999999999))`))
+    .limit(200);
+}

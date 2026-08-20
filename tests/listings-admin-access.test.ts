@@ -18,6 +18,7 @@ import {
   extendListingPremium,
   getListingForEdit,
   isListingSlugTaken,
+  listExpiringSoon,
   listListings,
   MAX_FEATURED_SLOTS,
   moveGalleryImage,
@@ -416,6 +417,30 @@ describe('lib/db/listings-admin — destructive-action safety (W1-4)', () => {
       await expect(setCoverImage(ADMIN, 'x', null, db)).resolves.toBeUndefined();
       expect(writesRecorded()).toBe(true);
     });
+  });
+});
+
+describe('lib/db/listings-admin — listExpiringSoon (W2-4)', () => {
+  it('throws for an anonymous caller AND never reaches the database', async () => {
+    // The digest route runs with no signed-in human behind it, which makes
+    // this the one caller most likely to grow a "skip the guard" path.
+    const { db, touched } = recordingDb();
+    await expect(listExpiringSoon(ANONYMOUS, 1_700_000_000, 86_400, db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('is reachable by an editor', async () => {
+    const { db, touched } = recordingDb();
+    await expect(listExpiringSoon(EDITOR, 1_700_000_000, 86_400, db)).rejects.toThrow(
+      /the database was reached/,
+    );
+    expect(touched.length).toBeGreaterThan(0);
+  });
+
+  it('rejects an owner_admin actor AND never reaches the database', async () => {
+    const { db, touched } = recordingDb();
+    await expect(listExpiringSoon(OWNER_ADMIN, 1_700_000_000, 86_400, db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
   });
 });
 

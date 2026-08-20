@@ -769,13 +769,34 @@ Repo, docs and comments in English.
       row. And amount and method are **required**, never defaulted — a revenue
       table with half its rows at ₲0 because the form allowed a skip looks like
       data and reports nonsense. A real giveaway is `0`, typed.
-- [ ] **W2-4 — Mail + expiry digest.** Env-gated SMTP (nodemailer,
+- [x] **W2-4 — Mail + expiry digest.** Env-gated SMTP (nodemailer,
       `SMTP_*` unset → feature off, app boots fine — same pattern as Sentry/R2).
       Weekly "expiring in ≤14 days" digest (premium + featured) to staff:
       token-guarded `/api/internal/expiry-digest` hit by an external cron
       (cron-job.org / UptimeRobot), since Hostinger's Node app has no cron.
       **This mail infra is also the PR-6 blocker-killer** (password reset by
       email needs exactly this transport). No migration.
+      *Shipped: `lib/mail.ts` (nodemailer, all five `SMTP_*` required together
+      because a half-configured transport hangs on connect rather than failing
+      loudly), `listExpiringSoon` covering **premium and featured in one list**
+      — the sales conversation is about the business, not the product, so two
+      calls where one would do is the thing to avoid — `lib/admin/digest.ts`
+      (pure: listings in, subject and text out, tested without SMTP, a database
+      or a clock) and `POST /api/internal/expiry-digest`.
+      **The token is the only thing between the public internet and a mail
+      send**, so: compared with `timingSafeEqual` rather than `===`; **unset
+      means the endpoint 404s**, because "forgot to set it" must never mean
+      "open to everyone"; 404 and never 401; and `POST`, because a crawler, a
+      link preview or a browser prefetch issues GETs and every one of them
+      would send mail. It writes nothing, so a scheduler retrying on a timeout
+      sends a duplicate email and corrupts no state. With nothing expiring it
+      sends nothing at all. 20 new tests (402 total); canary run → 35 of 67
+      tests in `tests/listings-admin-access.test.ts` went red, guard restored.*
+      **USER:** set `SMTP_*` + `MAIL_FROM` (Hostinger email works:
+      `smtp.hostinger.com`, port 465), generate `EXPIRY_DIGEST_TOKEN` with
+      `openssl rand -base64 32`, then point a free weekly cron (cron-job.org)
+      at `POST https://negocio.com.py/api/internal/expiry-digest` with
+      `Authorization: Bearer <token>`.
 - [x] **W2-5 — Reporting polish.** CSV export on `/admin/leads` (admin-only,
       same guard as the list). Month-over-month lead trend (extend
       `asuncionMonthRange` usage to N previous months) on
