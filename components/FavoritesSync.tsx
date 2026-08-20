@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useEffect, useState } from 'react';
 import { useRouter } from '@/lib/i18n/link';
 import {
@@ -31,6 +33,7 @@ import {
  * into Spanish the moment their list synced.
  */
 export function FavoritesSync({ shown }: { shown: string[] }) {
+  const t = useTranslations('favorites');
   const router = useRouter();
   const [empty, setEmpty] = useState<boolean | null>(null);
 
@@ -67,9 +70,9 @@ export function FavoritesSync({ shown }: { shown: string[] }) {
 
   return (
     <div className="rounded-card border border-line bg-paper p-10 text-center">
-      <p className="font-serif text-xl font-semibold">Todavía no guardaste ningún negocio</p>
+      <p className="font-serif text-xl font-semibold">{t('emptyTitle')}</p>
       <p className="mt-2 text-sm text-ink2">
-        Tocá el corazón en cualquier negocio para guardarlo acá. Se guarda solo en este dispositivo.
+        {t('emptyHint')}
       </p>
     </div>
   );

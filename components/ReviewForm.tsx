@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useState } from 'react';
 import { Honeypot } from './Honeypot';
 import { REVIEW_BODY_MAX, REVIEW_BODY_MIN, REVIEW_AUTHOR_MAX } from '@/lib/reviews';
@@ -19,15 +21,22 @@ import { REVIEW_BODY_MAX, REVIEW_BODY_MIN, REVIEW_AUTHOR_MAX } from '@/lib/revie
 const field =
   'w-full rounded-[10px] border border-line bg-cream px-3.5 py-3 text-[15px] text-ink outline-none focus:border-blue';
 
+/**
+ * Rating options. The stars and the word are ONE message per rating rather
+ * than stars + a separate adjective: "★★★★ · Muy bueno" and "★★★★ · Very good"
+ * happen to line up, but a language that puts the qualifier first would need
+ * the whole string, and there are only five of them.
+ */
 const RATING_OPTIONS = [
-  { value: '5', label: '★★★★★ · Excelente' },
-  { value: '4', label: '★★★★ · Muy bueno' },
-  { value: '3', label: '★★★ · Normal' },
-  { value: '2', label: '★★ · Malo' },
-  { value: '1', label: '★ · Muy malo' },
-];
+  { value: '5', key: 'rating5' },
+  { value: '4', key: 'rating4' },
+  { value: '3', key: 'rating3' },
+  { value: '2', key: 'rating2' },
+  { value: '1', key: 'rating1' },
+] as const;
 
 export function ReviewForm({ listingId }: { listingId: string }) {
+  const t = useTranslations('forms');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [error, setError] = useState('');
 
@@ -53,12 +62,12 @@ export function ReviewForm({ listingId }: { listingId: string }) {
 
       if (res.status === 429) {
         setStatus('error');
-        setError('Ya enviaste varias reseñas. Esperá un rato antes de mandar otra.');
+        setError(t('reviewRateLimited'));
         return;
       }
       if (!res.ok) {
         setStatus('error');
-        setError('Revisá que la reseña tenga al menos 10 caracteres y volvé a intentar.');
+        setError(t('reviewTooShort'));
         return;
       }
 
@@ -66,14 +75,14 @@ export function ReviewForm({ listingId }: { listingId: string }) {
       setStatus('sent');
     } catch {
       setStatus('error');
-      setError('No se pudo enviar. Probá de nuevo.');
+      setError(t('sendFailed'));
     }
   }
 
   if (status === 'sent') {
     return (
       <div className="rounded-card border border-line bg-wabg p-5 text-center">
-        <p className="font-serif text-[18px] font-semibold text-wa">¡Gracias por tu reseña!</p>
+        <p className="font-serif text-[18px] font-semibold text-wa">{t('reviewThanks')}</p>
         <p className="mt-1.5 text-[14px] text-ink2">
           La vamos a leer antes de publicarla. Si cumple con las reglas del sitio, va a aparecer acá en poco tiempo.
         </p>
@@ -86,29 +95,29 @@ export function ReviewForm({ listingId }: { listingId: string }) {
       <Honeypot />
       <div>
         <label htmlFor="review-author" className="mb-1.5 block text-[13px] font-bold">
-          Tu nombre
+          {t('reviewNameLabel')}
         </label>
         <input
           id="review-author"
           name="author"
           required
           maxLength={REVIEW_AUTHOR_MAX}
-          placeholder="Cómo querés que aparezca"
+          placeholder={t('reviewNamePlaceholder')}
           className={field}
         />
       </div>
 
       <div>
         <label htmlFor="review-rating" className="mb-1.5 block text-[13px] font-bold">
-          Tu puntuación
+          {t('reviewRatingLabel')}
         </label>
         <select id="review-rating" name="rating" required defaultValue="" className={field}>
           <option value="" disabled>
-            Elegí de 1 a 5 estrellas
+            {t('reviewRatingPlaceholder')}
           </option>
           {RATING_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {t(o.key)}
             </option>
           ))}
         </select>
@@ -116,7 +125,7 @@ export function ReviewForm({ listingId }: { listingId: string }) {
 
       <div>
         <label htmlFor="review-body" className="mb-1.5 block text-[13px] font-bold">
-          Contá cómo te fue
+          {t('reviewBodyLabel')}
         </label>
         <textarea
           id="review-body"
@@ -125,7 +134,7 @@ export function ReviewForm({ listingId }: { listingId: string }) {
           rows={4}
           minLength={REVIEW_BODY_MIN}
           maxLength={REVIEW_BODY_MAX}
-          placeholder="¿Qué pediste o qué servicio usaste? ¿Cómo te atendieron?"
+          placeholder={t('reviewBodyPlaceholder')}
           className={`${field} resize-none`}
         />
       </div>
@@ -135,7 +144,7 @@ export function ReviewForm({ listingId }: { listingId: string }) {
         disabled={status === 'sending'}
         className="w-full rounded-card bg-blue py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-blued disabled:opacity-60"
       >
-        {status === 'sending' ? 'Enviando…' : 'Enviar reseña'}
+        {status === 'sending' ? t('sending') : t('reviewSubmit')}
       </button>
 
       <p className="text-center text-[12px] text-ink3">

@@ -2,6 +2,7 @@
 
 import { waLink } from '@/lib/format';
 import { trackLead } from '@/lib/lead-client';
+import { useTranslations } from 'next-intl';
 import { WhatsApp } from './icons';
 
 /** Small green WhatsApp quick-action used on premium result cards (§6.2). */
@@ -16,12 +17,13 @@ export function WhatsAppQuickButton({
   slug: string;
   name: string;
 }) {
+  const t = useTranslations('detail');
   return (
     <a
-      href={waLink(whatsapp, `Hola ${name}, los encontré en negocio.com.py`)}
+      href={waLink(whatsapp, t('whatsappMessageShort', { name }))}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Escribir a ${name} por WhatsApp`}
+      aria-label={t('whatsappAria', { name })}
       onClick={(e) => {
         e.stopPropagation();
         trackLead({ source: 'listing_whatsapp', listingId, slug });

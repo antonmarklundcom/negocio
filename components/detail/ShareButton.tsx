@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Share } from '@/components/icons';
 
 /**
@@ -12,6 +13,7 @@ import { Share } from '@/components/icons';
  * server, so it carries whatever the visitor is actually looking at.
  */
 export function ShareButton({ name, className = '' }: { name: string; className?: string }) {
+  const t = useTranslations('detail');
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   async function onClick() {
@@ -48,7 +50,7 @@ export function ShareButton({ name, className = '' }: { name: string; className?
       className={`inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-semibold text-ink2 transition-colors hover:border-blue hover:text-blue ${className}`}
     >
       <Share size={15} />
-      {state === 'copied' ? 'Link copiado' : state === 'failed' ? 'No se pudo copiar' : 'Compartir'}
+      {state === 'copied' ? t('shareCopied') : state === 'failed' ? t('shareFailed') : t('share')}
     </button>
   );
 }

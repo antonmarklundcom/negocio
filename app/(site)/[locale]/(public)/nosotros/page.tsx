@@ -2,16 +2,17 @@ import type { Metadata } from 'next';
 import { Link } from '@/lib/i18n/link';
 import { toLocale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 export async function generateMetadata(props: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale: raw } = await props.params;
   const locale = toLocale(raw);
+  const t = await getTranslations({ locale, namespace: 'about' });
   return {
-    title: 'Nosotros',
-    description: 'negocio.com.py es el directorio de negocios de Paraguay: rápido, cálido y confiable.',
+    title: t('title'),
+    description: t('description'),
     alternates: alternatesFor('/nosotros', locale),
   };
 }
@@ -23,25 +24,22 @@ export default async function NosotrosPage(props: { params: Promise<{ locale: st
   // translation without it makes the route dynamic, which would quietly undo
   // W1-3's caching — the page would still be correct, just uncached.
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'about' });
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 md:px-8 md:py-16">
       <h1 className="font-serif text-[32px] font-semibold leading-tight md:text-[42px]">
-        El directorio de negocios de Paraguay
+        {t('heading')}
       </h1>
       <div className="mt-6 space-y-4 text-[16px] leading-relaxed text-ink2">
         <p>
-          negocio.com.py nació para conectar a las personas con los negocios locales de su barrio y su ciudad.
-          Creemos que encontrar un buen restaurante, un taller de confianza o un profesional cerca tuyo debería
-          ser simple, rápido y gratis.
+          {t('p1')}
         </p>
         <p>
-          Reunimos negocios de todo el país —de Asunción a Encarnación, de Ciudad del Este a Luque— en un solo
-          lugar, con la información que realmente importa: cómo contactarlos, dónde están y a qué hora abren.
+          {t('p2')}
         </p>
         <p>
-          Para los negocios, somos una forma honesta de ganar visibilidad y recibir clientes. Sin promesas
-          infladas ni reseñas falsas: mostramos lo que es real.
+          {t('p3')}
         </p>
       </div>
 
@@ -53,7 +51,7 @@ export default async function NosotrosPage(props: { params: Promise<{ locale: st
           href="/sumar-negocio"
           className="rounded-card border-[1.5px] border-blue px-5 py-3 text-sm font-bold text-blue"
         >
-          Sumá tu negocio
+          {t('cta')}
         </Link>
       </div>
     </div>

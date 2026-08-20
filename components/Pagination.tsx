@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { Link } from '@/lib/i18n/link';
 import { pageWindow } from '@/lib/pagination-window';
 
@@ -13,6 +16,7 @@ export function Pagination({
   page: number;
   totalPages: number;
 }) {
+  const t = useTranslations('search');
   if (totalPages <= 1) return null;
 
   const href = (p: number) => {
@@ -27,13 +31,13 @@ export function Pagination({
   const slots = pageWindow(page, totalPages);
 
   return (
-    <nav className="mt-8 flex items-center justify-center gap-2" aria-label="Paginación">
+    <nav className="mt-8 flex items-center justify-center gap-2" aria-label={t('pagination')}>
       {page > 1 && (
         <Link
           href={href(page - 1)}
           className="rounded-[10px] border border-line bg-paper px-3 py-2 text-sm font-semibold text-ink2 hover:text-ink"
         >
-          Anterior
+          {t('previous')}
         </Link>
       )}
       {slots.map((slot, i) =>
@@ -59,7 +63,7 @@ export function Pagination({
           href={href(page + 1)}
           className="rounded-[10px] border border-line bg-paper px-3 py-2 text-sm font-semibold text-ink2 hover:text-ink"
         >
-          Ver más
+          {t('next')}
         </Link>
       )}
     </nav>

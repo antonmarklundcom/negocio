@@ -4,7 +4,7 @@ import {
   getListings,
   getCategoryCityZonaCombosWithListings,
 } from '@/lib/listings-repo';
-import { isKnownCategory, getCategory, categoryLabelPlural } from '@/lib/categories';
+import { categoryLabelPluralFor, isKnownCategory } from '@/lib/categories';
 import { isKnownCity, cityLabel } from '@/lib/cities';
 import { RESERVED_SLUGS } from '@/lib/config';
 import { carriedParams, toListingQuery, type RawParams } from '@/lib/search-params';
@@ -16,6 +16,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { toLocale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 /**
  * SEO barrio pages (ROADMAP Phase D item 6): "Los mejores [rubro] en
@@ -55,15 +56,17 @@ export async function generateMetadata(
   props: { params: Promise<{ locale: string; categoria: string; ciudad: string; barrio: string }> },
 ): Promise<Metadata> {
   const params = await props.params;
-  if (!validRoute(params.categoria, params.ciudad)) return { title: 'Página no encontrada' };
+  const locale = toLocale(params.locale);
+  const t = await getTranslations({ locale, namespace: 'landing' });
+  if (!validRoute(params.categoria, params.ciudad)) return { title: t('notFoundTitle') };
   const combo = await findCombo(params.categoria, params.ciudad, params.barrio);
-  if (!combo) return { title: 'Página no encontrada' };
+  if (!combo) return { title: t('notFoundTitle') };
 
-  const plural = categoryLabelPlural(params.categoria);
+  const plural = categoryLabelPluralFor(params.categoria, locale);
   const city = cityLabel(params.ciudad);
   return {
-    title: `${plural} en ${combo.zona}, ${city}`,
-    description: `Los mejores ${plural.toLowerCase()} en ${combo.zona}, ${city}. Fotos, horarios, ubicación y contacto directo.`,
+    title: t('barrioTitle', { category: plural, barrio: combo.zona, city }),
+    description: t('barrioDescription', { category: plural.toLowerCase(), barrio: combo.zona, city }),
     alternates: alternatesFor(`/${params.categoria}/${params.ciudad}/${params.barrio}`, toLocale(params.locale)),
   };
 }
@@ -76,6 +79,10 @@ export default async function CategoryCityBarrioPage(
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
+  const locale = toLocale(params.locale);
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'landing' });
+  const tb = await getTranslations({ locale, namespace: 'breadcrumb' });
   if (!validRoute(params.categoria, params.ciudad)) notFound();
 
   const combo = await findCombo(params.categoria, params.ciudad, params.barrio);
@@ -89,11 +96,10 @@ export default async function CategoryCityBarrioPage(
   const { total } = await getListings(query);
   if (total === 0) notFound();
 
-  const plural = categoryLabelPlural(params.categoria);
+  const plural = categoryLabelPluralFor(params.categoria, locale);
   const city = cityLabel(params.ciudad);
-  const cat = getCategory(params.categoria)!;
   const crumbs = [
-    { label: 'Inicio', href: '/' },
+    { label: tb('home'), href: '/' },
     { label: plural, href: `/${params.categoria}` },
     { label: city, href: `/${params.categoria}/${params.ciudad}` },
     { label: combo.zona },
@@ -108,11 +114,10 @@ export default async function CategoryCityBarrioPage(
 
       <header className="mb-5 mt-3">
         <h1 className="font-serif text-[28px] font-semibold leading-tight md:text-[34px]">
-          {plural} en {combo.zona}, {city}
+          {t('barrioTitle', { category: plural, barrio: combo.zona, city })}
         </h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink2">
-          {cat.labelPlural} en {combo.zona}, {city}: {total} {total === 1 ? 'negocio' : 'negocios'} con fotos,
-          horarios y contacto directo. Elegí, comparás y escribís en segundos.
+          {t('barrioLead', { category: plural, barrio: combo.zona, city, count: total })}
         </p>
       </header>
 
@@ -128,6 +133,7 @@ export default async function CategoryCityBarrioPage(
           not a cosmetic one. */}
       <Suspense fallback={<ResultsSkeleton />}>
         <ResultsSection
+          locale={locale}
           query={query}
           basePath={`/${params.categoria}/${params.ciudad}/${params.barrio}`}
           baseParams={baseParams}

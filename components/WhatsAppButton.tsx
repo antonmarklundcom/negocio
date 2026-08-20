@@ -2,6 +2,7 @@
 
 import { waLink } from '@/lib/format';
 import { trackLead } from '@/lib/lead-client';
+import { useTranslations } from 'next-intl';
 import { WhatsApp } from './icons';
 
 /** Full-width WhatsApp action (premium contact card / sticky bar). */
@@ -10,7 +11,7 @@ export function WhatsAppButton({
   listingId,
   slug,
   name,
-  label = 'WhatsApp',
+  label,
   className = '',
 }: {
   whatsapp: string;
@@ -20,16 +21,17 @@ export function WhatsAppButton({
   label?: string;
   className?: string;
 }) {
+  const t = useTranslations('detail');
   return (
     <a
-      href={waLink(whatsapp, `Hola ${name}, los encontré en negocio.com.py y quería consultar…`)}
+      href={waLink(whatsapp, t('whatsappMessage', { name }))}
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => trackLead({ source: 'listing_whatsapp', listingId, slug })}
       className={`inline-flex items-center justify-center gap-2 rounded-xl bg-wab px-4 py-3.5 text-[15px] font-bold text-[#053d22] shadow-wa transition-transform hover:-translate-y-0.5 ${className}`}
     >
       <WhatsApp size={19} />
-      {label}
+      {label ?? 'WhatsApp'}
     </a>
   );
 }

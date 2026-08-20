@@ -1001,12 +1001,58 @@ Repo, docs and comments in English.
       the category canary undetected — the silent Spanish fallback satisfied a
       test that only checked "not the raw slug" — so the lookup now exposes
       `untranslatedCategories()` and the test asserts against that.
-- [ ] **W3-4 — i18n extraction (batch).** Sonnet grind in slices, each PR
-      shippable: (a) home + category/city/barrio landing templates,
-      (b) listing detail + cards/pills, (c) buscar + forms + reviews,
-      (d) static pages (precios, nosotros, contacto, sumar-negocio).
+- [x] **W3-4 — i18n extraction (batch).** Slices (a) home + category/city/barrio
+      landing templates, (b) listing detail + cards/pills, (c) buscar + forms +
+      reviews, (d) static pages (precios, nosotros, contacto, sumar-negocio).
       ~103 files carry inline Spanish incl. composed sentences — expect ICU
       plurals. Guaraní: not now (D1); nearly free after this.
+      *Shipped: every user-facing string on the public site is now in
+      `messages/{es,en}.json` — 14 namespaces, ~200 keys. The only Spanish left
+      in `components/` and `app/(site)/` is a `›` breadcrumb separator. The
+      staff panel is untouched and stays Spanish-only by decision.*
+      **Deviation from "each PR shippable": one PR, four commits.** The session
+      brief asked for four PRs for all of Wave 3 (W3-1…W3-4), and the slices'
+      value was resumability across sessions, which does not apply when they
+      are all built in one. It also costs one CI run instead of four.
+      **ICU plurals, where they actually are.** The counted sentences on the
+      three landing templates and on `/favoritos` are single ICU messages with
+      an inline `{count, plural, …}`, not `count + ' negocio' + (s)`. English
+      and Spanish happen to agree on one-vs-many; Guaraní will not necessarily,
+      and the message is where that gets fixed.
+      **Composed sentences were NOT glued from fragments.** `/buscar`'s title is
+      the one exception and says so in a comment: which fragments exist depends
+      on which filters are set, and a single ICU message with five optional
+      slots is unreadable to whoever translates it next. Everywhere else — the
+      three "opens tomorrow / opens Monday" variants, the five star ratings —
+      each variant is its own whole message.
+      **`lib/hours.ts` stopped speaking Spanish.** It is a pure domain module
+      answering "is it open right now", and it was also handing back `'hoy'`,
+      `'mañana'` and `'Domingo'` — Spanish travelling from a domain function
+      into an English page with nowhere left to translate it. It now returns
+      `opensDay` + `opensWhen`, and `formatRanges` returns `null` instead of the
+      word "Cerrado". The admin keeps its own Spanish day labels: the panel is
+      Spanish-only, and those are validation messages, not display copy.
+      **Two components became client components, deliberately.** `ListingCard`
+      is rendered from a server tree (home) *and* a client one (`SearchView`
+      owns the list/map toggle), and a component in a client tree cannot be
+      async — so `getTranslations` is unavailable to it and its `Pills`.
+      `useTranslations` reads the provider instead. They still server-render to
+      HTML; the cost is hydration, not SEO.
+      **The social card is now drawn per locale**, and the bug on the way there
+      is worth recording: `params` is a Promise in Next 16, so reading
+      `params.locale` off the un-awaited Promise silently yielded `undefined`,
+      fell back to Spanish, and rendered BOTH cards in Spanish **while their
+      `alt` text translated correctly** — invisible unless you diff the two
+      PNGs, which is how it was caught.
+      **One accepted limitation:** the 404 body always renders in the default
+      locale, so `/en/nada` shows an English header around a Spanish 404.
+      `not-found.tsx` takes no props; a locale-scoped copy was built and
+      measured, and it made the response carry two conflicting 404 headings and
+      stopped `/nada` being byte-identical to `/admin` — which is a stated
+      security decision. A Spanish sentence on an error page is the cheaper
+      defect; `components/NotFoundBody.tsx` records why.
+      Verified: 525 unit tests, smoke 10/10, **admin e2e 9/9 against real
+      MySQL**, and both locales curled against the production build.
 
 ### Gated items (build when their gate is met — decisions already made)
 

@@ -1,3 +1,5 @@
+'use client';
+
 import { Link } from '@/lib/i18n/link';
 import Image from 'next/image';
 import type { Listing } from '@/lib/types';
