@@ -7,7 +7,7 @@ import {
 import { isKnownCategory, getCategory, categoryLabelPlural } from '@/lib/categories';
 import { isKnownCity, cityLabel } from '@/lib/cities';
 import { RESERVED_SLUGS, SITE_URL } from '@/lib/config';
-import { toListingQuery, type RawParams } from '@/lib/search-params';
+import { carriedParams, toListingQuery, type RawParams } from '@/lib/search-params';
 import { slugify } from '@/lib/format';
 import { Suspense } from 'react';
 import { ResultsSection } from '@/components/ResultsSection';
@@ -97,12 +97,7 @@ export default async function CategoryCityBarrioPage(
     { label: combo.zona },
   ];
 
-  const baseParams: Record<string, string> = {};
-  for (const k of ['q', 'abierto', 'sort']) {
-    const v = searchParams[k];
-    const s = Array.isArray(v) ? v[0] : v;
-    if (s) baseParams[k] = s;
-  }
+  const baseParams = carriedParams(searchParams);
 
   return (
     <div className="mx-auto max-w-content px-4 py-6 md:px-8 md:py-8">

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { toListingQuery, type RawParams } from '@/lib/search-params';
+import { carriedParams, toListingQuery, type RawParams } from '@/lib/search-params';
 import { getListings } from '@/lib/listings-repo';
 import { categoryLabelPlural } from '@/lib/categories';
 import { cityLabel } from '@/lib/cities';
@@ -9,17 +9,6 @@ export const metadata: Metadata = {
   title: 'Buscar negocios',
   description: 'Buscá restaurantes, tiendas, servicios y profesionales en todo Paraguay.',
 };
-
-function buildBaseParams(raw: RawParams): Record<string, string> {
-  const keys = ['rubro', 'ciudad', 'zona', 'q', 'abierto', 'sort'];
-  const out: Record<string, string> = {};
-  for (const k of keys) {
-    const v = raw[k];
-    const s = Array.isArray(v) ? v[0] : v;
-    if (s) out[k] = s;
-  }
-  return out;
-}
 
 export default async function BuscarPage(props: { searchParams: Promise<RawParams> }) {
   const searchParams = await props.searchParams;
@@ -43,7 +32,7 @@ export default async function BuscarPage(props: { searchParams: Promise<RawParam
         </p>
       </header>
 
-      <ResultsSection query={query} basePath="/buscar" baseParams={buildBaseParams(searchParams)} />
+      <ResultsSection query={query} basePath="/buscar" baseParams={carriedParams(searchParams)} />
     </div>
   );
 }

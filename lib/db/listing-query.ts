@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, exists, inArray, like, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, inArray, like, ne, or, sql, type SQL } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/mysql-core';
 import type { ListingQuery } from '../types';
 import { listingHours, listings } from './schema';
 import { likePattern, sortPlan, taxonomySlugsMatching } from './query-helpers';
+import { lngScaleAt, type Point } from '../geo';
 import { previousDay, type WallClock } from './open-now';
 
 /**
@@ -66,6 +67,7 @@ export const PUBLIC_STATUS_CONDITION = () => eq(listings.status, 'published');
 export function buildListingWhere(params: ListingQuery, at: WallClock, nowSeconds: number): SQL | undefined {
   const conditions: SQL[] = [PUBLIC_STATUS_CONDITION()];
 
+  if (params.excludeId) conditions.push(ne(listings.id, params.excludeId));
   if (params.categoria) conditions.push(eq(listings.categoria, params.categoria));
   if (params.ciudad) conditions.push(eq(listings.ciudad, params.ciudad));
   if (params.zona) {
@@ -97,12 +99,42 @@ export function buildListingWhere(params: ListingQuery, at: WallClock, nowSecond
   return and(...conditions);
 }
 
+/**
+ * Squared planar distance from `near`, in squared degrees, for ORDER BY only
+ * (ROADMAP W3-1).
+ *
+ * Squared, because the square root is monotonic and ordering does not need it.
+ * `lngScaleAt` is evaluated **in the app** and bound as a plain number, so the
+ * expression mirrors `approxDistanceKm` in `lib/geo.ts` exactly and MySQL is
+ * never asked to do trigonometry — the same reason `isPremiumSql` takes the
+ * instant as a parameter instead of calling `NOW()`.
+ */
+export function distanceSql(near: Point): SQL<number> {
+  const scale = lngScaleAt(near.lat);
+  return sql<number>`(
+    (${listings.lat} - ${near.lat}) * (${listings.lat} - ${near.lat})
+    + (${listings.lng} - ${near.lng}) * (${listings.lng} - ${near.lng}) * ${scale} * ${scale}
+  )`;
+}
+
 /** Mirrors the ordering in lib/providers/query.ts so seed and DB agree. */
 export function buildListingOrderBy(params: ListingQuery, nowSeconds: number): SQL[] {
   const plan = sortPlan(params);
   const order: SQL[] = [];
   if (plan.premiumFirst) order.push(desc(isPremiumSql(nowSeconds)));
   if (plan.verifiedFirst) order.push(desc(listings.verified));
+  if (plan.ratingFirst) {
+    // Unrated is not zero-rated: NULLs go after every rated row. MySQL sorts
+    // NULLs first ascending, so the explicit `is null` key does it rather than
+    // a COALESCE that would quietly invent a rating.
+    order.push(asc(sql`(${listings.rating} is null)`));
+    order.push(desc(listings.rating));
+  }
+  if (plan.distanceFirst && params.near) {
+    // Same shape for a listing nobody has geocoded — last, not nearest.
+    order.push(asc(sql`(${listings.lat} is null or ${listings.lng} is null)`));
+    order.push(asc(distanceSql(params.near)));
+  }
   order.push(asc(listings.name));
   return order;
 }

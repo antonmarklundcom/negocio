@@ -5,7 +5,7 @@ import { getListings, getCategoryCityCombosWithListings } from '@/lib/listings-r
 import { isKnownCategory, getCategory, categoryLabelPlural } from '@/lib/categories';
 import { cityLabel } from '@/lib/cities';
 import { RESERVED_SLUGS, SITE_URL } from '@/lib/config';
-import { toListingQuery, type RawParams } from '@/lib/search-params';
+import { carriedParams, toListingQuery, type RawParams } from '@/lib/search-params';
 import { Suspense } from 'react';
 import { ResultsSection } from '@/components/ResultsSection';
 import { ResultsSkeleton } from '@/components/Skeletons';
@@ -63,12 +63,7 @@ export default async function CategoryPage(
     { label: plural },
   ];
 
-  const baseParams: Record<string, string> = {};
-  for (const k of ['ciudad', 'zona', 'q', 'abierto', 'sort']) {
-    const v = searchParams[k];
-    const s = Array.isArray(v) ? v[0] : v;
-    if (s) baseParams[k] = s;
-  }
+  const baseParams = carriedParams(searchParams);
 
   // Cities where this rubro exists, for internal links + SEO.
   const combos = await getCategoryCityCombosWithListings();

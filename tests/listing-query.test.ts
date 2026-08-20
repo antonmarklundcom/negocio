@@ -58,20 +58,36 @@ describe('pagination', () => {
 });
 
 describe('sortPlan', () => {
+  // Every plan is asserted whole rather than key-by-key: a sort that
+  // accidentally leaves another key on is exactly the bug this catches.
+  const NONE = { premiumFirst: false, verifiedFirst: false, ratingFirst: false, distanceFirst: false };
+
   it('relevancia: premium, then verified, then name', () => {
-    expect(sortPlan({})).toEqual({ premiumFirst: true, verifiedFirst: true });
+    expect(sortPlan({})).toEqual({ ...NONE, premiumFirst: true, verifiedFirst: true });
   });
 
   it('honours premiumFirst: false on relevancia', () => {
-    expect(sortPlan({ premiumFirst: false })).toEqual({ premiumFirst: false, verifiedFirst: true });
+    expect(sortPlan({ premiumFirst: false })).toEqual({ ...NONE, verifiedFirst: true });
   });
 
   it('destacados: premium then name, without the verified tiebreak', () => {
-    expect(sortPlan({ sort: 'destacados' })).toEqual({ premiumFirst: true, verifiedFirst: false });
+    expect(sortPlan({ sort: 'destacados' })).toEqual({ ...NONE, premiumFirst: true });
   });
 
   it('nombre: name only', () => {
-    expect(sortPlan({ sort: 'nombre' })).toEqual({ premiumFirst: false, verifiedFirst: false });
+    expect(sortPlan({ sort: 'nombre' })).toEqual(NONE);
+  });
+
+  it('calificacion: rating only — no premium thumb on the scale (ROADMAP W3-1)', () => {
+    expect(sortPlan({ sort: 'calificacion' })).toEqual({ ...NONE, ratingFirst: true });
+  });
+
+  it('cerca: distance only, and only with a point', () => {
+    expect(sortPlan({ sort: 'cerca', near: { lat: -25.28, lng: -57.63 } })).toEqual({
+      ...NONE,
+      distanceFirst: true,
+    });
+    expect(sortPlan({ sort: 'cerca' })).toEqual({ ...NONE, premiumFirst: true, verifiedFirst: true });
   });
 });
 
@@ -194,5 +210,48 @@ describe('buildListingOrderBy', () => {
   it('compares premium against the app clock, passed as a parameter', () => {
     const { params } = render(isPremiumSql(now));
     expect(params).toEqual([now]);
+  });
+});
+
+describe('buildListingOrderBy — the W3-1 sorts, as SQL', () => {
+  const NOW = 1_700_000_000;
+  const render_all = (order: SQL[]) => order.map((o) => render(o).sql).join(' , ');
+
+  it('sorts unrated rows after rated ones, rather than relying on the dialect', () => {
+    const sql = render_all(buildListingOrderBy({ sort: 'calificacion' }, NOW));
+    // The explicit `is null` key is the point: MySQL's own NULL placement
+    // differs between ASC and DESC, and the in-memory engine does not consult
+    // a dialect at all. Without this key the two providers agree only by luck.
+    expect(sql).toMatch(/`rating` is null/);
+    expect(sql).toMatch(/`rating` desc/);
+    expect(sql).not.toMatch(/premium_until/);
+  });
+
+  it('sorts un-geocoded rows last and the rest by distance', () => {
+    const order = buildListingOrderBy({ sort: 'cerca', near: { lat: -25.28, lng: -57.63 } }, NOW);
+    const { sql } = render(order[0]!);
+    expect(sql).toMatch(/`lat` is null or .*`lng` is null/);
+    const distance = render(order[1]!);
+    // The cos(lat) scale is bound as a parameter: the app does the trigonometry
+    // so MySQL cannot disagree with lib/geo.ts about what "near" means.
+    expect(distance.sql).toMatch(/`lat`/);
+    expect(distance.sql).toMatch(/`lng`/);
+    expect(distance.params).toContain(Math.cos((-25.28 * Math.PI) / 180));
+  });
+
+  it('ignores `cerca` entirely without a point, and orders by relevancia', () => {
+    const sql = render_all(buildListingOrderBy({ sort: 'cerca' }, NOW));
+    expect(sql).not.toMatch(/`lat`/);
+    expect(sql).toMatch(/premium_until/);
+  });
+});
+
+describe('buildListingWhere — excludeId', () => {
+  it('excludes the listing in SQL, so "Negocios similares" cannot list its own page', () => {
+    const { sql, params } = render(
+      buildListingWhere({ excludeId: 'abc' }, { day: 1, minutes: 600 }, 1_700_000_000),
+    );
+    expect(sql).toMatch(/`id` <> \?/);
+    expect(params).toContain('abc');
   });
 });
