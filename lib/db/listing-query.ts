@@ -68,6 +68,13 @@ export function buildListingWhere(params: ListingQuery, at: WallClock, nowSecond
   const conditions: SQL[] = [PUBLIC_STATUS_CONDITION()];
 
   if (params.excludeId) conditions.push(ne(listings.id, params.excludeId));
+  // An empty `slugs` array means "match nothing", not "match everything".
+  // `inArray` with no values is not reliably a false condition, and getting it
+  // wrong here turns an empty favorites list into the entire directory — so the
+  // empty case is spelled out rather than left to the query builder.
+  if (params.slugs) {
+    conditions.push(params.slugs.length > 0 ? inArray(listings.slug, params.slugs) : sql`1 = 0`);
+  }
   if (params.categoria) conditions.push(eq(listings.categoria, params.categoria));
   if (params.ciudad) conditions.push(eq(listings.ciudad, params.ciudad));
   if (params.zona) {

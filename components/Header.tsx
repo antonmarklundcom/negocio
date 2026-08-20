@@ -19,6 +19,9 @@ export function Header() {
           <Link href="/buscar" className="transition-colors hover:text-ink">
             Buscar
           </Link>
+          <Link href="/favoritos" className="transition-colors hover:text-ink">
+            Favoritos
+          </Link>
         </nav>
 
         <form action="/buscar" className="ml-auto hidden items-center md:flex">

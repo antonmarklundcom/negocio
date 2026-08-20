@@ -52,6 +52,7 @@ export const RESERVED_SLUGS = new Set([
   LISTING_PREFIX,
   'buscar',
   'rubros',
+  'favoritos',
   'precios',
   'sumar-negocio',
   'contacto',
