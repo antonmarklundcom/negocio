@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, exists, inArray, like, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, inArray, like, ne, or, sql, type SQL } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/mysql-core';
 import type { ListingQuery } from '../types';
 import { listingHours, listings } from './schema';
 import { likePattern, sortPlan, taxonomySlugsMatching } from './query-helpers';
+import { lngScaleAt, type Point } from '../geo';
 import { previousDay, type WallClock } from './open-now';
 
 /**
@@ -52,9 +53,28 @@ export function openNowSql(at: WallClock): SQL<unknown> {
   );
 }
 
-export function buildListingWhere(params: ListingQuery, at: WallClock, nowSeconds: number): SQL | undefined {
-  const conditions: SQL[] = [];
+/**
+ * Only `published` rows are ever public (ROADMAP W2-1 / D2).
+ *
+ * This lives at the top of `buildListingWhere` rather than at each call site
+ * because `buildListingWhere` IS the public read path: every listing query the
+ * site makes goes through it, so a new caller cannot forget the filter. The
+ * admin does not use this builder at all — `lib/db/listings-admin.ts` has its
+ * own, which is how staff still see drafts and archived rows.
+ */
+export const PUBLIC_STATUS_CONDITION = () => eq(listings.status, 'published');
 
+export function buildListingWhere(params: ListingQuery, at: WallClock, nowSeconds: number): SQL | undefined {
+  const conditions: SQL[] = [PUBLIC_STATUS_CONDITION()];
+
+  if (params.excludeId) conditions.push(ne(listings.id, params.excludeId));
+  // An empty `slugs` array means "match nothing", not "match everything".
+  // `inArray` with no values is not reliably a false condition, and getting it
+  // wrong here turns an empty favorites list into the entire directory — so the
+  // empty case is spelled out rather than left to the query builder.
+  if (params.slugs) {
+    conditions.push(params.slugs.length > 0 ? inArray(listings.slug, params.slugs) : sql`1 = 0`);
+  }
   if (params.categoria) conditions.push(eq(listings.categoria, params.categoria));
   if (params.ciudad) conditions.push(eq(listings.ciudad, params.ciudad));
   if (params.zona) {
@@ -81,8 +101,27 @@ export function buildListingWhere(params: ListingQuery, at: WallClock, nowSecond
     if (textMatch) conditions.push(textMatch);
   }
 
-  if (conditions.length === 0) return undefined;
+  // Never `undefined`: the status filter is always present, so a caller that
+  // passes no parameters still gets published rows only.
   return and(...conditions);
+}
+
+/**
+ * Squared planar distance from `near`, in squared degrees, for ORDER BY only
+ * (ROADMAP W3-1).
+ *
+ * Squared, because the square root is monotonic and ordering does not need it.
+ * `lngScaleAt` is evaluated **in the app** and bound as a plain number, so the
+ * expression mirrors `approxDistanceKm` in `lib/geo.ts` exactly and MySQL is
+ * never asked to do trigonometry — the same reason `isPremiumSql` takes the
+ * instant as a parameter instead of calling `NOW()`.
+ */
+export function distanceSql(near: Point): SQL<number> {
+  const scale = lngScaleAt(near.lat);
+  return sql<number>`(
+    (${listings.lat} - ${near.lat}) * (${listings.lat} - ${near.lat})
+    + (${listings.lng} - ${near.lng}) * (${listings.lng} - ${near.lng}) * ${scale} * ${scale}
+  )`;
 }
 
 /** Mirrors the ordering in lib/providers/query.ts so seed and DB agree. */
@@ -91,6 +130,18 @@ export function buildListingOrderBy(params: ListingQuery, nowSeconds: number): S
   const order: SQL[] = [];
   if (plan.premiumFirst) order.push(desc(isPremiumSql(nowSeconds)));
   if (plan.verifiedFirst) order.push(desc(listings.verified));
+  if (plan.ratingFirst) {
+    // Unrated is not zero-rated: NULLs go after every rated row. MySQL sorts
+    // NULLs first ascending, so the explicit `is null` key does it rather than
+    // a COALESCE that would quietly invent a rating.
+    order.push(asc(sql`(${listings.rating} is null)`));
+    order.push(desc(listings.rating));
+  }
+  if (plan.distanceFirst && params.near) {
+    // Same shape for a listing nobody has geocoded — last, not nearest.
+    order.push(asc(sql`(${listings.lat} is null or ${listings.lng} is null)`));
+    order.push(asc(distanceSql(params.near)));
+  }
   order.push(asc(listings.name));
   return order;
 }

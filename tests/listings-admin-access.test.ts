@@ -28,6 +28,7 @@ import {
   setListingPremiumUntil,
   setListingVerified,
   setListingHours,
+  setListingStatus,
   updateGalleryAlt,
   updateListing,
 } from '@/lib/db/listings-admin';
@@ -65,6 +66,8 @@ function recordingDb(): Recorder {
 function session(role: UserRole, id = 1): SessionUser {
   return { id, role, ownerId: null, mustChangePassword: false };
 }
+
+const SALE = { amountGs: 65_000, method: 'efectivo' as const };
 
 const ANONYMOUS = null;
 const EDITOR = session('editor', 2);
@@ -197,13 +200,13 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
   describe('extendListingPremium (manual premium sales flow)', () => {
     it('throws for an anonymous caller AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(extendListingPremium(ANONYMOUS, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      await expect(extendListingPremium(ANONYMOUS, 'x', 30, 1_700_000_000, SALE, db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
     it('rejects an editor AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(extendListingPremium(EDITOR, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      await expect(extendListingPremium(EDITOR, 'x', 30, 1_700_000_000, SALE, db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
@@ -211,7 +214,7 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
       const { db, touched } = recordingDb();
       // @ts-expect-error deliberately invalid — the guard must reject even a
       // value that only bypasses TypeScript, not just the UI's button list.
-      await expect(extendListingPremium(ADMIN, 'x', 14, 1_700_000_000, db)).rejects.toThrow(
+      await expect(extendListingPremium(ADMIN, 'x', 14, 1_700_000_000, SALE, db)).rejects.toThrow(
         /paquete de premium/,
       );
       expect(touched).toEqual([]);
@@ -223,7 +226,7 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
       const { tx, updateCalls } = fakePremiumTx({ verified: false, premiumUntil: currentExpiry });
       const db = { transaction: (cb: (tx: unknown) => unknown) => cb(tx) } as unknown as Db;
 
-      await extendListingPremium(ADMIN, 'x', 30, now, db);
+      await extendListingPremium(ADMIN, 'x', 30, now, SALE, db);
       expect(updateCalls()).toEqual([currentExpiry + 30 * 86400]);
     });
 
@@ -233,7 +236,7 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
       const { tx, updateCalls } = fakePremiumTx({ verified: false, premiumUntil: expiredAt });
       const db = { transaction: (cb: (tx: unknown) => unknown) => cb(tx) } as unknown as Db;
 
-      await extendListingPremium(ADMIN, 'x', 30, now, db);
+      await extendListingPremium(ADMIN, 'x', 30, now, SALE, db);
       expect(updateCalls()).toEqual([now + 30 * 86400]);
     });
   });
@@ -241,20 +244,20 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
   describe('extendListingFeatured / removeListingFeatured ("destacado en portada")', () => {
     it('throws for an anonymous caller AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(extendListingFeatured(ANONYMOUS, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      await expect(extendListingFeatured(ANONYMOUS, 'x', 30, 1_700_000_000, SALE, db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
     it('rejects an editor AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
-      await expect(extendListingFeatured(EDITOR, 'x', 30, 1_700_000_000, db)).rejects.toSatisfy(isAuthError);
+      await expect(extendListingFeatured(EDITOR, 'x', 30, 1_700_000_000, SALE, db)).rejects.toSatisfy(isAuthError);
       expect(touched).toEqual([]);
     });
 
     it('rejects a package outside the sold set AND never reaches the database', async () => {
       const { db, touched } = recordingDb();
       // @ts-expect-error deliberately invalid, same as the premium package test.
-      await expect(extendListingFeatured(ADMIN, 'x', 14, 1_700_000_000, db)).rejects.toThrow(/paquete de portada/);
+      await expect(extendListingFeatured(ADMIN, 'x', 14, 1_700_000_000, SALE, db)).rejects.toThrow(/paquete de portada/);
       expect(touched).toEqual([]);
     });
 
@@ -269,7 +272,7 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
       const currentExpiry = now + 5 * 86400;
       const { tx, updateCalls } = fakeFeaturedTx({ featuredUntil: currentExpiry }, MAX_FEATURED_SLOTS);
 
-      await extendListingFeatured(ADMIN, 'x', 30, now, tx.asDb());
+      await extendListingFeatured(ADMIN, 'x', 30, now, SALE, tx.asDb());
       expect(updateCalls()).toEqual([currentExpiry + 30 * 86400]);
     });
 
@@ -277,7 +280,7 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
       const now = 1_700_000_000;
       const { tx, updateCalls } = fakeFeaturedTx({ featuredUntil: null }, MAX_FEATURED_SLOTS);
 
-      await expect(extendListingFeatured(ADMIN, 'x', 30, now, tx.asDb())).rejects.toThrow(
+      await expect(extendListingFeatured(ADMIN, 'x', 30, now, SALE, tx.asDb())).rejects.toThrow(
         new RegExp(`${MAX_FEATURED_SLOTS} negocios destacados`),
       );
       expect(updateCalls()).toEqual([]);
@@ -287,7 +290,7 @@ describe('lib/db/listings-admin — the authorization boundary', () => {
       const now = 1_700_000_000;
       const { tx, updateCalls } = fakeFeaturedTx({ featuredUntil: null }, MAX_FEATURED_SLOTS - 1);
 
-      await extendListingFeatured(ADMIN, 'x', 30, now, tx.asDb());
+      await extendListingFeatured(ADMIN, 'x', 30, now, SALE, tx.asDb());
       expect(updateCalls()).toEqual([now + 30 * 86400]);
     });
   });
@@ -444,6 +447,84 @@ describe('lib/db/listings-admin — listExpiringSoon (W2-4)', () => {
 /**
  * ROADMAP W2-6 — the duplicate warning and the bulk re-categorisation.
  */
+describe('lib/db/listings-admin — the sale recorded with a package (W2-3)', () => {
+  it('refuses a negative amount AND never reaches the database', async () => {
+    const { db, touched } = recordingDb();
+    await expect(
+      extendListingPremium(ADMIN, 'x', 30, 1_700_000_000, { amountGs: -1, method: 'efectivo' }, db),
+    ).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('refuses a non-integer amount AND never reaches the database', async () => {
+    // The guaraní has no subunit, so a decimal is a typo, not a price.
+    const { db, touched } = recordingDb();
+    await expect(
+      extendListingPremium(ADMIN, 'x', 30, 1_700_000_000, { amountGs: 65_000.5, method: 'efectivo' }, db),
+    ).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('refuses an unknown payment method AND never reaches the database', async () => {
+    // Re-checked here and not only in the form, because the form is not the
+    // only caller of this module.
+    const { db, touched } = recordingDb();
+    await expect(
+      extendListingFeatured(ADMIN, 'x', 30, 1_700_000_000, {
+        amountGs: 65_000,
+        method: 'bitcoin' as never,
+      }, db),
+    ).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('accepts an explicit zero — a giveaway is a real event, an empty field is not', async () => {
+    const { db, touched } = recordingDb();
+    await expect(
+      extendListingPremium(ADMIN, 'x', 30, 1_700_000_000, { amountGs: 0, method: 'otro' }, db),
+    ).rejects.toThrow(/the database was reached/);
+    expect(touched.length).toBeGreaterThan(0);
+  });
+});
+
+describe('lib/db/listings-admin — lifecycle (W2-1)', () => {
+  it('throws for an anonymous caller AND never reaches the database', async () => {
+    const { db, touched } = recordingDb();
+    await expect(setListingStatus(ANONYMOUS, 'x', 'archived', db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('is reachable by an editor — a closed business must not wait for an admin', async () => {
+    const { db, touched } = recordingDb();
+    await expect(setListingStatus(EDITOR, 'x', 'archived', db)).rejects.toThrow(
+      /the database was reached/,
+    );
+    expect(touched.length).toBeGreaterThan(0);
+  });
+
+  it('rejects an owner_admin actor AND never reaches the database', async () => {
+    const { db, touched } = recordingDb();
+    await expect(setListingStatus(OWNER_ADMIN, 'x', 'draft', db)).rejects.toSatisfy(isAuthError);
+    expect(touched).toEqual([]);
+  });
+
+  it('refuses a listing that does not exist AND writes nothing', async () => {
+    const { tx, writesRecorded } = fakeSequencedTx([[]]);
+    const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+    await expect(setListingStatus(ADMIN, 'x', 'archived', db)).rejects.toSatisfy(isAuthError);
+    expect(writesRecorded()).toBe(false);
+  });
+
+  it('writes the new status', async () => {
+    const { tx, writesRecorded } = fakeSequencedTx([[{ status: 'published' }]]);
+    const db = { transaction: (cb: (t: unknown) => unknown) => cb(tx) } as unknown as Db;
+
+    await expect(setListingStatus(ADMIN, 'x', 'archived', db)).resolves.toBeUndefined();
+    expect(writesRecorded()).toBe(true);
+  });
+});
+
 describe('lib/db/listings-admin — data quality (W2-6)', () => {
   describe('findDuplicateListings', () => {
     it('throws for an anonymous caller AND never reaches the database', async () => {

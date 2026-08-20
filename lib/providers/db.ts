@@ -1,5 +1,5 @@
 import 'server-only';
-import { asc, count, eq, exists, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, count, eq, exists, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { ListingsProvider } from './types';
 import type {
   Category,
@@ -102,7 +102,14 @@ export const dbProvider: ListingsProvider = {
 
   async getListingBySlug(slug: string): Promise<Listing | null> {
     const db = getDb();
-    const [row] = await db.select().from(listings).where(eq(listings.slug, slug)).limit(1);
+    // Published only (ROADMAP W2-1). A draft or archived listing must 404 for
+    // the public exactly like a slug that never existed — returning it with a
+    // banner would leave it indexable and linkable.
+    const [row] = await db
+      .select()
+      .from(listings)
+      .where(and(eq(listings.slug, slug), eq(listings.status, 'published')))
+      .limit(1);
     if (!row) return null;
 
     const children = await loadChildren([row.id]);
@@ -123,7 +130,7 @@ export const dbProvider: ListingsProvider = {
           db
             .select({ one: sql`1` })
             .from(listings)
-            .where(eq(listings.categoria, categories.slug)),
+            .where(and(eq(listings.categoria, categories.slug), eq(listings.status, 'published'))),
         ),
       )
       .orderBy(asc(categories.sortOrder), asc(categories.label));
@@ -140,7 +147,7 @@ export const dbProvider: ListingsProvider = {
           db
             .select({ one: sql`1` })
             .from(listings)
-            .where(eq(listings.ciudad, cities.slug)),
+            .where(and(eq(listings.ciudad, cities.slug), eq(listings.status, 'published'))),
         ),
       )
       .orderBy(asc(cities.sortOrder), asc(cities.label));
@@ -152,6 +159,7 @@ export const dbProvider: ListingsProvider = {
     const rows = await db
       .select({ categoria: listings.categoria, ciudad: listings.ciudad, count: count() })
       .from(listings)
+      .where(eq(listings.status, 'published'))
       .groupBy(listings.categoria, listings.ciudad);
 
     return rows.map((r) => ({ categoria: r.categoria, ciudad: r.ciudad, count: r.count }));
@@ -163,7 +171,7 @@ export const dbProvider: ListingsProvider = {
     const rows = await db
       .select({ categoria: listings.categoria, ciudad: listings.ciudad, zona: listings.zona, count: count() })
       .from(listings)
-      .where(isNotNull(listings.zona))
+      .where(and(isNotNull(listings.zona), eq(listings.status, 'published')))
       .groupBy(listings.categoria, listings.ciudad, listings.zona);
 
     return rows

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { SessionUser } from '@/lib/auth/session';
 import { hasRole } from '@/lib/auth/roles';
-import { logoutAction } from '@/app/admin/actions';
+import { logoutAction } from '@/app/(panel)/admin/actions';
 
 /**
  * A plain `<ul>` of `<a>`. No active-state JS, no client component — the cost of
@@ -61,6 +61,13 @@ export function AdminNav({ user }: { user: SessionUser }) {
               <li>
                 <Link href="/admin/usuarios" className="hover:text-blue">
                   Usuarios
+                </Link>
+              </li>
+            )}
+            {isAdmin && (
+              <li>
+                <Link href="/admin/ventas" className="hover:text-blue">
+                  Ventas
                 </Link>
               </li>
             )}

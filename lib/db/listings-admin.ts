@@ -6,7 +6,17 @@ import type { Db } from './connection';
 import { requireRole, AuthError } from '@/lib/auth/roles';
 import type { SessionUser } from '@/lib/auth/session';
 import { logActivity } from './activity-log';
-import { categories, cities, listingGallery, listingHours, listings } from './schema';
+import {
+  categories,
+  cities,
+  listingGallery,
+  listingHours,
+  listings,
+  sales,
+  SALE_METHODS,
+  type ListingStatus,
+  type SaleMethod,
+} from './schema';
 import { serialiseLines, serialisePiped } from '@/lib/admin/blocks';
 import { dayHoursToRows, rowsToDayHours } from './mappers';
 import type { DayHours } from '../types';
@@ -29,6 +39,7 @@ export interface AdminListingRow {
   id: string;
   slug: string;
   name: string;
+  status: ListingStatus;
   categoria: string;
   categoriaLabel: string;
   ciudad: string;
@@ -64,6 +75,7 @@ export interface AdminListingForm {
   id: string;
   slug: string;
   name: string;
+  status: ListingStatus;
   categoria: string;
   ciudad: string;
   subtitle: string | null;
@@ -96,6 +108,7 @@ const LIST_COLUMNS = {
   id: listings.id,
   slug: listings.slug,
   name: listings.name,
+  status: listings.status,
   categoria: listings.categoria,
   categoriaLabel: categories.label,
   ciudad: listings.ciudad,
@@ -133,6 +146,13 @@ export async function listListings(
     categoria?: string;
     ciudad?: string;
     estado?: ListingEstadoFilter;
+    /**
+     * Lifecycle filter (ROADMAP W2-1). Absent = every status, because the
+     * admin's default question is "show me everything we have", and hiding
+     * archived rows by default is how they become invisible rubbish nobody
+     * ever cleans up.
+     */
+    status?: ListingStatus;
     nowSeconds?: number;
     page?: number;
   } = {},
@@ -148,6 +168,7 @@ export async function listListings(
   if (q) conditions.push(or(like(listings.name, `%${q}%`), like(listings.slug, `%${q}%`)));
   if (params.categoria) conditions.push(eq(listings.categoria, params.categoria));
   if (params.ciudad) conditions.push(eq(listings.ciudad, params.ciudad));
+  if (params.status) conditions.push(eq(listings.status, params.status));
   const estadoWhere = estadoCondition(params.estado, nowSeconds);
   if (estadoWhere) conditions.push(estadoWhere);
   const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -191,6 +212,7 @@ export async function getListingForEdit(
     id: row.id,
     slug: row.slug,
     name: row.name,
+    status: row.status,
     categoria: row.categoria,
     ciudad: row.ciudad,
     subtitle: row.subtitle,
@@ -302,6 +324,10 @@ export async function createListing(
       id,
       slug: input.slug!,
       name: input.name,
+      // Explicit rather than relying on the column default, so the form's
+      // choice is what lands (ROADMAP W2-1). Absent means `draft`: a listing
+      // created by a caller that does not know about status must not go live.
+      status: input.status ?? 'draft',
       categoria: input.categoria,
       ciudad: input.ciudad,
       subtitle: input.subtitle,
@@ -562,6 +588,34 @@ export async function setListingPremiumUntil(
  * what was already paid for. Only falls back to "from today" when the
  * listing is not currently premium (expired or never was).
  */
+/**
+ * What a package sale records (ROADMAP W2-3 / D5).
+ *
+ * Amount and method are REQUIRED, not optional-with-a-default. A revenue table
+ * with half its rows at ₲0 "because the form let me skip it" is worse than no
+ * revenue table: it looks like data and reports nonsense. If a package is
+ * genuinely given away, that is `amountGs: 0` typed deliberately.
+ */
+export interface SaleInput {
+  /** Whole guaraníes. The currency has no subunit, so this is never a decimal. */
+  amountGs: number;
+  method: SaleMethod;
+}
+
+/**
+ * Re-checked in the query module even though the form validates it, because
+ * the form is not the only caller — same reason `assertAssignableRole` exists
+ * in `lib/db/users.ts`.
+ */
+function assertSaleInput(sale: SaleInput): void {
+  if (!Number.isInteger(sale.amountGs) || sale.amountGs < 0) {
+    throw new AuthError('El monto de la venta tiene que ser un número entero de guaraníes.', 'forbidden');
+  }
+  if (!SALE_METHODS.includes(sale.method)) {
+    throw new AuthError('Ese medio de pago no existe.', 'forbidden');
+  }
+}
+
 export const PREMIUM_PACKAGE_DAYS = [30, 90, 365] as const;
 export type PremiumPackageDays = (typeof PREMIUM_PACKAGE_DAYS)[number];
 
@@ -570,16 +624,18 @@ export async function extendListingPremium(
   id: string,
   days: PremiumPackageDays,
   nowSeconds: number,
+  sale: SaleInput,
   database: Db = getDb(),
 ): Promise<void> {
   const user = requireRole(actor, ['admin']);
   if (!PREMIUM_PACKAGE_DAYS.includes(days)) {
     throw new AuthError('Ese paquete de premium no existe.', 'forbidden');
   }
+  assertSaleInput(sale);
 
   await database.transaction(async (tx) => {
     const [before] = await tx
-      .select({ verified: listings.verified, premiumUntil: listings.premiumUntil })
+      .select({ name: listings.name, verified: listings.verified, premiumUntil: listings.premiumUntil })
       .from(listings)
       .where(eq(listings.id, id))
       .limit(1);
@@ -589,6 +645,19 @@ export async function extendListingPremium(
     const premiumUntil = base + days * 86400;
 
     await tx.update(listings).set({ premiumUntil }).where(eq(listings.id, id));
+
+    // Same transaction as the thing the money bought (ROADMAP W2-3 / D5). A
+    // sale recorded afterwards from the route could be lost while the premium
+    // still landed, and the books would quietly under-report.
+    await tx.insert(sales).values({
+      listingId: id,
+      listingName: before.name,
+      packageKind: 'premium',
+      days,
+      amountGs: sale.amountGs,
+      method: sale.method,
+      soldBy: user.id,
+    });
 
     await logActivity(tx, {
       userId: user.id,
@@ -623,16 +692,18 @@ export async function extendListingFeatured(
   id: string,
   days: FeaturedPackageDays,
   nowSeconds: number,
+  sale: SaleInput,
   database: Db = getDb(),
 ): Promise<void> {
   const user = requireRole(actor, ['admin']);
   if (!FEATURED_PACKAGE_DAYS.includes(days)) {
     throw new AuthError('Ese paquete de portada no existe.', 'forbidden');
   }
+  assertSaleInput(sale);
 
   await database.transaction(async (tx) => {
     const [before] = await tx
-      .select({ featuredUntil: listings.featuredUntil })
+      .select({ name: listings.name, featuredUntil: listings.featuredUntil })
       .from(listings)
       .where(eq(listings.id, id))
       .limit(1);
@@ -658,6 +729,16 @@ export async function extendListingFeatured(
     const featuredUntil = base + days * 86400;
 
     await tx.update(listings).set({ featuredUntil }).where(eq(listings.id, id));
+
+    await tx.insert(sales).values({
+      listingId: id,
+      listingName: before.name,
+      packageKind: 'featured',
+      days,
+      amountGs: sale.amountGs,
+      method: sale.method,
+      soldBy: user.id,
+    });
 
     await logActivity(tx, {
       userId: user.id,
@@ -1044,6 +1125,59 @@ export async function recategoriseListings(
     }
 
     return moving.length;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// lifecycle (ROADMAP W2-1 / D2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Move a listing between `draft`, `published` and `archived`.
+ *
+ * Archiving REPLACES hard deletion for the ordinary case. "This business
+ * closed" used to mean losing the row, its hours, its gallery — and, because
+ * the audit trail keys on the id, an entity_id nobody can look up any more.
+ * An archived listing keeps all of it, disappears from the public site and the
+ * sitemap immediately, and can come back with one click if the business
+ * reopens or somebody archived the wrong row.
+ *
+ * `deleteListing` stays (admin-only, typed-slug confirmation) for the case
+ * archiving cannot serve: a test row or a duplicate, where leaving it in the
+ * admin forever is the wrong answer.
+ *
+ * Editors may archive and publish. That is the same standing they already have
+ * over a listing's content, and withholding it would mean every closed
+ * business waits for an admin.
+ */
+export async function setListingStatus(
+  actor: SessionUser | null,
+  id: string,
+  status: ListingStatus,
+  database: Db = getDb(),
+): Promise<void> {
+  const user = requireRole(actor, ['admin', 'editor']);
+
+  await database.transaction(async (tx) => {
+    const [before] = await tx
+      .select({ status: listings.status })
+      .from(listings)
+      .where(eq(listings.id, id))
+      .limit(1);
+    if (!before) throw new AuthError('No encontramos ese negocio.', 'forbidden');
+
+    await tx.update(listings).set({ status }).where(eq(listings.id, id));
+
+    await logActivity(tx, {
+      userId: user.id,
+      entityType: 'listing',
+      entityId: id,
+      // `archive` is its own action in the enum, so the audit trail
+      // distinguishes "took this off the site" from "edited a field".
+      action: status === 'archived' ? 'archive' : 'update',
+      before,
+      after: { status },
+    });
   });
 }
 

@@ -1,4 +1,13 @@
-import type { ActivityAction, BlockKind, LeadSource, ReviewStatus, UserStatus } from '@/lib/db/schema';
+import type {
+  ActivityAction,
+  BlockKind,
+  LeadSource,
+  ListingStatus,
+  ReviewStatus,
+  SaleMethod,
+  SalePackage,
+  UserStatus,
+} from '@/lib/db/schema';
 
 /**
  * User-facing labels for enum values. Kept apart from the schema so the
@@ -10,6 +19,27 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   update: 'modificó',
   delete: 'eliminó',
   archive: 'archivó',
+};
+
+/** Listing lifecycle (ROADMAP W2-1 / D2). */
+export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
+  draft: 'Borrador',
+  published: 'Publicado',
+  archived: 'Archivado',
+};
+
+/** Payment methods a Paraguayan business actually uses (ROADMAP W2-3 / D5). */
+export const SALE_METHOD_LABELS: Record<SaleMethod, string> = {
+  pagopar: 'Pagopar',
+  bancard: 'Bancard',
+  tigo: 'Tigo Money',
+  efectivo: 'Efectivo',
+  otro: 'Otro',
+};
+
+export const SALE_PACKAGE_LABELS: Record<SalePackage, string> = {
+  premium: 'Premium',
+  featured: 'Destacado en portada',
 };
 
 export const STATUS_LABELS: Record<UserStatus, string> = {
@@ -35,6 +65,7 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   listing_whatsapp: 'WhatsApp desde ficha',
   sumate: 'Sumate (alta de negocio)',
   contacto: 'Contacto',
+  listing_report: 'Reporte de datos incorrectos',
 };
 
 /**

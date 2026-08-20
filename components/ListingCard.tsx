@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '@/lib/i18n/link';
 import Image from 'next/image';
 import type { Listing } from '@/lib/types';
 import { isPremium } from '@/lib/listing';
@@ -8,6 +8,7 @@ import { PhotoFallback } from './PhotoFallback';
 import { VerifiedPill, CategoryChip, DestacadoPill } from './Pills';
 import { Pin } from './icons';
 import { WhatsAppQuickButton } from './WhatsAppQuickButton';
+import { FavoriteButton } from './FavoriteButton';
 
 /**
  * Result card. Standard = white + photo-or-fallback + category chip + name +
@@ -20,7 +21,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <article
-      className={`group flex h-full flex-col overflow-hidden rounded-card bg-paper transition-shadow ${
+      className={`group relative flex h-full flex-col overflow-hidden rounded-card bg-paper transition-shadow ${
         premium
           ? 'border border-terra2 border-t-[2.5px] border-t-terra shadow-premium'
           : 'border border-line shadow-card hover:shadow-cardhover'
@@ -52,6 +53,14 @@ export function ListingCard({ listing }: { listing: Listing }) {
           )}
         </div>
       </Link>
+      {/*
+        Outside the <Link>, not inside it. A button nested in an anchor is
+        invalid HTML and, more practically, a middle-click or a long-press on
+        the heart would open the listing instead of saving it.
+      */}
+      <div className="absolute right-2.5 top-2.5">
+        <FavoriteButton slug={listing.slug} name={listing.name} />
+      </div>
 
       <div className="flex flex-1 flex-col p-3.5">
         <div className="mb-1.5 flex items-center gap-2">

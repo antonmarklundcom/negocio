@@ -65,6 +65,21 @@ export const cities = mysqlTable('cities', {
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
 });
 
+/**
+ * Listing lifecycle (ROADMAP W2-1 / D2).
+ *
+ *   draft     — being written. Invisible to the public and to the sitemap.
+ *   published — live. The default, and what every existing row becomes.
+ *   archived  — was live, is not any more. Replaces hard deletion for the
+ *               ordinary "this business closed" case: the row, its leads, its
+ *               reviews and its audit trail survive, and it can come back.
+ *
+ * Hard `deleteListing` stays admin-only, for true mistakes (a test row, a
+ * duplicate) — archiving those would leave rubbish in the admin forever.
+ */
+export const LISTING_STATUSES = ['draft', 'published', 'archived'] as const;
+export type ListingStatus = (typeof LISTING_STATUSES)[number];
+
 export const listings = mysqlTable(
   'listings',
   {
@@ -104,6 +119,13 @@ export const listings = mysqlTable(
     productos: json('productos').$type<Producto[]>(),
     servicios: json('servicios').$type<Servicio[]>(),
 
+    /**
+     * Lifecycle (ROADMAP W2-1 / D2). `published` is the default so every
+     * existing row keeps behaving exactly as it did — the migration must not
+     * silently unpublish the whole directory.
+     */
+    status: mysqlEnum('status', LISTING_STATUSES).notNull().default('published'),
+
     /** Never set from a form; a dated human assertion (PR-5). */
     verified: boolean('verified').notNull().default(false),
     /** Unix seconds. Premium while it is in the future. */
@@ -132,6 +154,10 @@ export const listings = mysqlTable(
     ciudadIdx: index('listings_ciudad_idx').on(t.ciudad),
     categoriaCiudadIdx: index('listings_categoria_ciudad_idx').on(t.categoria, t.ciudad),
     zonaIdx: index('listings_zona_idx').on(t.zona),
+    // Every public read filters on status, so it leads the composite indexes
+    // the landing pages use.
+    statusIdx: index('listings_status_idx').on(t.status),
+    statusCategoriaCiudadIdx: index('listings_status_categoria_ciudad_idx').on(t.status, t.categoria, t.ciudad),
     premiumIdx: index('listings_premium_until_idx').on(t.premiumUntil),
     featuredIdx: index('listings_featured_until_idx').on(t.featuredUntil),
   }),
@@ -183,6 +209,18 @@ export const LEAD_SOURCES = [
   'listing_whatsapp',
   'sumate',
   'contacto',
+  /**
+   * "Reportar información incorrecta" on a listing page (ROADMAP W1-1b).
+   *
+   * A lead source, not a table of its own: a report is a member of the public
+   * telling us something, which is what this table already models — same
+   * honeypot, same rate limit, same webhook fan-out, same admin screen. A
+   * `reports` table would have duplicated all of it to gain a column.
+   *
+   * Adding a value to a MySQL ENUM is an ALTER, which is why this is a
+   * migration PR and why it was split out of W1-1.
+   */
+  'listing_report',
 ] as const;
 
 /**
@@ -300,6 +338,17 @@ export const users = mysqlTable(
     role: mysqlEnum('role', USER_ROLES).notNull(),
     status: mysqlEnum('status', USER_STATUSES).notNull().default('active'),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
+    /**
+     * When the credential last changed (ROADMAP W1-2). Sessions issued BEFORE
+     * this instant are refused, which is what makes changing a password
+     * actually revoke the stolen laptop still holding a valid cookie.
+     *
+     * Nullable, and null means "never changed since this column existed" —
+     * every session then passes, which is the correct answer for accounts
+     * that predate the migration. Backfilling it with `now()` would sign out
+     * every logged-in member of staff at deploy time for no security gain.
+     */
+    passwordChangedAt: timestamp('password_changed_at'),
     lastLoginAt: timestamp('last_login_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
@@ -365,3 +414,50 @@ export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 // Re-exported so the mapper's intent is readable next to the table it maps.
 export type { DayHours, Listing, Review };
+
+/**
+ * Revenue (ROADMAP W2-3 / D5). One row per package sold, written INSIDE the
+ * same transaction as the package it pays for, so the money and the thing the
+ * money bought cannot disagree.
+ *
+ * `amount_gs` is an integer of guaraníes, not a decimal. The guaraní has no
+ * subunit — there are no céntimos — so a decimal type would model a precision
+ * that does not exist and invite rounding where none is possible. `bigint`
+ * because ₲ figures are large: a year of premium is already eight digits.
+ *
+ * `listing_id` is deliberately NOT a foreign key, for the same reason `leads`
+ * is not: a sale is history and must outlive the listing it was made against.
+ * A business that closes and gets hard-deleted must not silently erase the
+ * revenue it produced.
+ *
+ * `sold_by` is nullable with `onDelete: 'set null'` — the sale outlives the
+ * seller's account, and the actor is in `activity_log` anyway.
+ */
+export const SALE_PACKAGES = ['premium', 'featured'] as const;
+export type SalePackage = (typeof SALE_PACKAGES)[number];
+
+export const SALE_METHODS = ['pagopar', 'bancard', 'tigo', 'efectivo', 'otro'] as const;
+export type SaleMethod = (typeof SALE_METHODS)[number];
+
+export const sales = mysqlTable(
+  'sales',
+  {
+    id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+    listingId: varchar('listing_id', { length: 64 }).notNull(),
+    /** Denormalised on purpose: the report must still name the business after a hard delete. */
+    listingName: varchar('listing_name', { length: 200 }).notNull(),
+    packageKind: mysqlEnum('package_kind', SALE_PACKAGES).notNull(),
+    days: int('days').notNull(),
+    /** Whole guaraníes. The currency has no subunit. */
+    amountGs: bigint('amount_gs', { mode: 'number' }).notNull(),
+    method: mysqlEnum('method', SALE_METHODS).notNull(),
+    soldBy: int('sold_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    listingIdx: index('sales_listing_idx').on(t.listingId),
+    createdIdx: index('sales_created_idx').on(t.createdAt),
+  }),
+);
+
+export type SaleRow = typeof sales.$inferSelect;

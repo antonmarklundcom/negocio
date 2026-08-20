@@ -524,12 +524,25 @@ Repo, docs and comments in English.
       source is an `ALTER TABLE` — see **W1-1b** below, which carries it as a
       migration PR. Bundling it here would have made a "no migration" PR
       unmergeable until the database was touched by hand.
-- [ ] **W1-1b — "Reportar información incorrecta". MIGRATION.** Split out of
-      W1-1 (see above). New `listing_report` value in the `leads.source` enum,
-      a `listing_report` variant on the zod union in `lib/leads.ts`, and a
-      report affordance on `lugar/[slug]` that goes through the same lead
-      orchestrator, honeypot and rate limit as every other public write.
-- [ ] **W1-2 — Session correctness (S1 + S2).** `requireRole`/`currentUser`
+- [x] **W1-1b — "Reportar información incorrecta". MIGRATION (`drizzle/0007_*`).**
+      Split out of W1-1 (see above). New `listing_report` value in the
+      `leads.source` enum, a `listing_report` variant on the zod union in
+      `lib/leads.ts`, and a report affordance on `lugar/[slug]` that goes
+      through the same lead orchestrator, honeypot and rate limit as every
+      other public write.
+      *Shipped exactly that: a lead source, not a table of its own — a report
+      IS a member of the public telling us something, so it reuses the
+      honeypot, the per-IP rate limit, the webhook fan-out, the `leads` table
+      and `/admin/leads`. A `reports` table would have duplicated all of it to
+      gain one column. `components/detail/ReportForm.tsx` sits collapsed behind
+      a `<details>` on both detail layouts: a report link is a footnote on a
+      business's page, not something competing with "Llamar". The contact field
+      is **optional** — somebody telling us a phone number is wrong is doing us
+      a favour, and demanding their email first is how the report does not get
+      sent. Verified end to end against MySQL: a POST to `/api/v1/leads` with
+      `source: listing_report` lands the row with its slug, message and
+      contact.*
+- [x] **W1-2 — Session correctness (S1 + S2). MIGRATION (`drizzle/0004_*`).** `requireRole`/`currentUser`
       must re-read `role` and `status` from the DB per request — today a
       suspended or demoted admin keeps access for the cookie's 8-hour TTL,
       while README/ROADMAP claim otherwise; fix the code **and** the docs.
@@ -537,6 +550,23 @@ Repo, docs and comments in English.
       `users.password_changed_at` checked against a cookie-issued-at claim —
       if a column is added this is a **MIGRATION** PR). Re-read must live where
       rule 1 lives: covering server actions, not just the layout.
+      *Shipped: `users.password_changed_at` (`drizzle/0004_*`), an `issuedAt`
+      claim on the cookie stamped by `startSession` and never by a caller, and
+      `currentUser()` rewritten to re-read the row on every request — wrapped
+      in React `cache()` so one admin render is one query. `role` and
+      `mustChangePassword` now come from the ROW, so a demotion applies inside
+      server actions too, which is where rule 1 lives. The unverified cookie
+      payload is now `sessionClaims()`, with exactly two legitimate callers.
+      The decision itself is pure (`lib/auth/session-check.ts`) and has 11
+      tests. Both password write paths — the self-service change and the
+      admin-issued reset — stamp `password_changed_at`, so a reset signs the
+      account out everywhere; the tab doing the change re-issues its own cookie
+      and survives. Docs fixed in README and in the Decisions block above, both
+      of which claimed this behaviour before the code did it.*
+      **Deliberate trade:** a database blip now signs staff out instead of
+      serving the admin from an unverified cookie. The public site never calls
+      `currentUser()`, so a blip cannot take the site down, and fail-closed is
+      the only defensible default for the thing that decides who may write.
 - [x] **W1-3 — Caching + perceived performance.** `lugar/[slug]` currently
       hits MySQL on every request while home/sitemap are ISR'd — add
       `export const revalidate` (and `generateStaticParams` if sensible);
@@ -665,13 +695,35 @@ Repo, docs and comments in English.
 
 ### Wave 2 — Structure & revenue *(W2-1 first; W2-2 before W2-3; rest parallel)*
 
-- [ ] **W2-1 — Listing status. MIGRATION. (Opus)** `listings.status`
+- [x] **W2-1 — Listing status. MIGRATION (`drizzle/0005_*`). (Opus)** `listings.status`
       enum `draft | published | archived` (default `published` for existing
       rows). Public providers (`db.ts` **and** `seed.ts`), sitemap and SEO
       combos serve only `published`. Admin: status field + filter, "Archivar"
       replaces hard delete in the UI (hard `deleteListing` stays admin-only
       for true mistakes). New listings can be saved as `draft`. Follow the
       PR-4 slice pattern; access tests + canary run as always.
+      *Shipped: `listings.status` enum defaulting to `published` (`drizzle/0005_*`,
+      plus a `status` index and a `(status, categoria, ciudad)` composite,
+      since every public read now leads with it). The public filter lives at
+      the top of **`buildListingWhere`** rather than at each call site — that
+      function IS the public read path, so a new caller cannot forget it;
+      `buildListingWhere` can therefore no longer return `undefined`, and its
+      test says so. `db.ts`'s five other reads (by-slug, categories, cities,
+      both combo lists) filter explicitly, and `seed.ts` filters too so the two
+      providers cannot drift — the seam's whole promise is that a page renders
+      the same either way. Sitemap and SEO combos follow automatically, since
+      they read through the repo. Admin: a status badge and filter on the list,
+      a lifecycle panel on the edit page, `status` on the create form only.
+      `setListingStatus` logs `archive` as its own action, so the audit trail
+      separates "took this off the site" from "edited a field". 14 new tests
+      (424 total); canary → 37 of 78 tests red, guard restored. The admin e2e
+      suite gained an archive → 404 → republish → 200 round-trip: 7/7 green.*
+      **Two decisions:** status is on the create form and **not** the edit
+      form — it moves through its own buttons, so saving a phone number can
+      never publish a draft or un-archive a business that closed. And an
+      unrecognised `status` value falls back to `draft`, never `published`: a
+      typo, a stale cached form or a hand-rolled POST must not be able to put
+      something on the public site.
 - [x] **W2-2 — Split `verified` out of `setListingFlags`.** Own admin-only
       query-module function + own form section, so `verified` (a human
       assertion) and `premiumUntil` (a sale) stop sharing a write path.
@@ -690,12 +742,33 @@ Repo, docs and comments in English.
       parser's suite. 14 new tests (362 total); canary run: `requireRole`
       deleted from every guard in `lib/db/listings-admin.ts` → 33 of 64 tests
       went red, guard restored.*
-- [ ] **W2-3 — Revenue record. MIGRATION.** `sales` table (listing_id, package
+- [x] **W2-3 — Revenue record. MIGRATION (`drizzle/0006_*`).** `sales` table (listing_id, package
       kind premium/featured, days, amount ₲, method Pagopar/Bancard/Tigo/efectivo/otro,
       sold_by from session, created_at). Written **in the same transaction** as
       `extendListingPremium`/`extendListingFeatured` (amount/method become
       required inputs on those forms). `/admin/ventas`: list + month/year
       totals, CSV export. Activity-logged like every mutation.
+      *Shipped: the `sales` table (`drizzle/0006_*`), written **inside the same
+      transaction** as `extendListingPremium` / `extendListingFeatured`, which
+      now take a required `SaleInput`. There is deliberately **no
+      `createSale`** anywhere — a sale that can be recorded on its own is a
+      sale that can disagree with the thing the money bought, and a test
+      asserts the module never grows one. `/admin/ventas` (admin-only): month
+      total, a six-month bar list, the ledger and a CSV export reusing
+      `lib/admin/csv.ts`. 22 new tests (446 total); canary on the new module →
+      6 of 11 red, guard restored. Admin e2e now 9/9, including
+      sell-a-package → the row appears in `/admin/ventas`, and
+      package-without-an-amount → refused by the server, not just the browser.*
+      **Four modelling decisions:** `amount_gs` is an integer, not a decimal —
+      the guaraní has no subunit, so a decimal models a precision that does not
+      exist. The form accepts `65.000`, `65 000` and `Gs. 65.000`, because that
+      is how the number is typed here and rejecting it just means retyping
+      until ₲65 gets recorded instead of ₲65.000. `listing_id` is **not** a
+      foreign key (same reason as `leads`): a sale is history and must outlive
+      a hard-deleted listing, so the business name is denormalised onto the
+      row. And amount and method are **required**, never defaulted — a revenue
+      table with half its rows at ₲0 because the form allowed a skip looks like
+      data and reports nonsense. A real giveaway is `0`, typed.
 - [x] **W2-4 — Mail + expiry digest.** Env-gated SMTP (nodemailer,
       `SMTP_*` unset → feature off, app boots fine — same pattern as Sentry/R2).
       Weekly "expiring in ≤14 days" digest (premium + featured) to staff:
@@ -780,19 +853,175 @@ Repo, docs and comments in English.
 
 ### Wave 3 — Growth *(after Waves 1–2; i18n scaffold on Opus, rest Sonnet)*
 
-- [ ] **W3-1 — Discovery UX.** "Negocios similares" on `lugar/[slug]` (same
+- [x] **W3-1 — Discovery UX.** "Negocios similares" on `lugar/[slug]` (same
       rubro + ciudad/zona — conversion + internal-linking SEO, absent today).
       "Cerca de mí" geolocation sort on `/buscar` (lat/lng already modeled
       end-to-end). Search fixes: visible free-text `q` input in `FilterBar`,
       rating sort, pagination windowing. No migration.
-- [ ] **W3-2 — Favorites (localStorage).** Save/unsave on cards + detail, a
+      *Shipped: `lib/geo.ts` (pure), `lib/similar.ts` (pure),
+      `lib/pagination-window.ts` (pure), `components/detail/SimilarListings.tsx`,
+      a visible search field and a "Cerca de mí" button in `FilterBar`, two new
+      sorts (`calificacion`, `cerca`) implemented **twice** — once in
+      `lib/providers/query.ts` for seed and once in `lib/db/listing-query.ts`
+      for MySQL — and a windowed pager. 31 new tests (413 total).*
+      **Four decisions worth keeping:**
+      - **Coordinates are rounded to three places (~110 m) before they enter
+        the URL.** The sort has to live in the query string to stay shareable
+        and pageable, which means it also lands in `document.referrer` on every
+        outbound link. Three places ranks a city correctly and cannot say which
+        building someone is in.
+      - **The distance formula lives in `lib/geo.ts` and the SQL mirrors it**,
+        with `cos(lat)` computed in the app and bound as a parameter. MySQL
+        never does trigonometry, for the same reason `isPremiumSql` takes the
+        instant instead of calling `NOW()`: two providers that each derive
+        "near" separately will disagree.
+      - **Unrated is not zero-rated and un-geocoded is not nearest.** Both sorts
+        carry an explicit "is null" key rather than a `COALESCE`, in SQL *and*
+        in memory — MySQL's own NULL placement differs between ASC and DESC, so
+        the two engines would otherwise agree only by accident.
+      - **`sort=cerca` with no point is `relevancia`**, not an empty page. A
+        declined location prompt is an answer.
+      **A latent bug found on the way:** the four routes that render
+      `<Pagination>` each carried their own hand-written list of which query
+      params survive a page link. `lat`/`lng` would have been missing from all
+      four, and the failure was silent — page 2 would keep `sort=cerca`, drop
+      the position, and render an ordinary alphabetical page that looked fine.
+      Replaced by one `carriedParams()` in `lib/search-params.ts`.
+      **Also fixed, one line:** the desktop header's "Categorías" link still
+      pointed at `/buscar`. W1-1 fixed the mobile tab and missed its twin.
+      **Canary run twice.** The first run left two guards undetected: the
+      "unrated is not zero" and "blank barrio is not a barrio" tests both
+      passed against deliberately broken code. Rewritten (the blank-barrio
+      candidate is now listed *second*, so a wrong preference reorders it) plus
+      five SQL-shape assertions on `buildListingOrderBy`/`buildListingWhere`.
+      Second run: 10 of 482 tests red across four query modules, guards
+      restored. **One canary is still uncaught and deliberately so** — scoring
+      an unrated listing as `0` in the in-memory engine is indistinguishable
+      from the correct behaviour while ratings are 1–5. The explicit key stays
+      as defence against a future 0, and no test claims to cover it.
+- [x] **W3-2 — Favorites (localStorage).** Save/unsave on cards + detail, a
       `/favoritos` page reading localStorage. No accounts, no DB, no migration.
-- [ ] **W3-3 — i18n scaffold. (Opus)** `next-intl`, `/en` route prefix
+      *Shipped: `lib/favorites.ts` (pure — storage shape, validation, cap, URL
+      encoding), `components/FavoriteButton.tsx` (the only file in the app that
+      touches `localStorage`), `components/FavoritesSync.tsx`,
+      `/favoritos`, a `slugs` filter on `ListingQuery` implemented in both
+      providers, and links in the header and footer. 33 new tests (446 total).*
+      **The one real design problem, and how it was solved.** README's rendering
+      rule is absolute — listing data is server-rendered, *never* fetched from
+      the client — and `localStorage` is invisible to the server. So the saved
+      list is written into `?ids=` by a small client component and the page is
+      rendered by a **server** component from the repo. A saved card therefore
+      shows today's phone number and today's premium state, not a snapshot from
+      when it was saved, and the favorites page needs no new API surface.
+      Shareability falls out for free, which is why the route is `noindex` and
+      absent from the sitemap: it is a personal URL, not a page for the index.
+      **Slugs, not row ids** — a shareable URL should not carry internal ids.
+      **An empty `slugs` array means "no listings", never "no filter".** Spelled
+      out explicitly in both providers rather than left to `inArray`, because
+      getting it wrong renders the entire directory on an empty favorites page.
+      **Storage is treated as untrusted input.** Any script on the origin can
+      write `localStorage`, and these values reach a URL and a SQL query, so
+      slugs are validated against a narrow pattern on the way in *and* on the
+      way out, de-duplicated, and capped at `MAX_PAGE_SIZE` — which also stops a
+      hand-written `?ids=` being used to scan the table.
+      Canary run: validation loosened to "any non-empty string", the cap
+      removed, and the empty-list condition dropped in both providers → 7 of 504
+      tests red, guards restored. Smoke-tested against the production build:
+      `?ids=<script>` and `?ids=' OR 1=1 --` render zero cards and 200, two real
+      slugs render two cards.
+- [x] **W3-3 — i18n scaffold. (Opus)** `next-intl`, `/en` route prefix
       (default `/` stays es-PY), locale-aware `generateMetadata` with
       `alternates.languages` + hreflang, locale-aware sitemap, language
       switcher in header/footer. Category/city **labels** become locale-keyed
       lookups; **slugs stay Spanish and canonical**. Ships with only nav/chrome
       translated — the site remains fully Spanish-complete at every step.
+      *Shipped: `next-intl` 4.13, `lib/i18n/{routing,request,alternates,metadata,navigation,link}.ts`,
+      `messages/{es,en}.json`, `middleware.ts`, `components/LanguageSwitcher.tsx`,
+      a locale-aware sitemap, and `lib/fonts.ts`. 21 new tests (503 total).
+      **Every Spanish URL is byte-identical to before** — the ten Playwright
+      smoke tests pass unmodified, which is the check that mattered.*
+
+      **The app now has TWO root layouts, and that is the load-bearing
+      decision.** `app/(site)/[locale]/layout.tsx` for the public site and
+      `app/(panel)/layout.tsx` for `/admin` + `/ingresar`; `app/layout.tsx` is
+      gone. The obvious shape — one shared root that reads the locale with
+      `getLocale()` — was built first and **measurably destroyed W1-3's
+      caching**: `getLocale()` is a dynamic request API, so every public page
+      went from `●` (ISR, 1h) to `ƒ`, turning every listing view back into a
+      MySQL round-trip against an 8-connection pool. Reading the locale from
+      the route *segment* keeps it static. Route groups are not part of any
+      URL, so no admin path changed.
+
+      **TWO revalidation paths were broken by the move. The W1-6 admin suite
+      found both; nothing else could have.** The user flagged this exact risk.
+      1. `revalidatePath('/', 'layout')` matched nothing once the public site
+         moved under `[locale]` — there is no route at `/` any more — so it
+         became a silent no-op with precisely the W1-3 failure signature. The
+         first guess, one concrete call per locale (`'/es'`, `'/en'`), **also
+         did not work**: a concrete instance of a dynamic segment is not the
+         route. Neither is `'/[locale]'` without its route group. The form that
+         works is `revalidatePath('/(site)/[locale]', 'layout')` — the
+         app-directory path, group and all, exactly the lesson W1-3 already
+         recorded one line above it in the same file.
+      2. `/admin/resenas` invalidated the public page with its own
+         `revalidatePath(listingPath(slug))`, which for the same reason stopped
+         matching — an **approved review never appeared on the listing**. That
+         call site now goes through `revalidatePublic()` like every other admin
+         write; there is one place that knows how public caching works, and
+         hand-rolled public paths have now rotted twice.
+      All three candidate forms were tried against a **real MySQL and a real
+      production build**, because every wrong one fails silently and looks
+      identical to working code. Final result: admin e2e **9/9**.
+
+      **The social card was broken too, and is fixed.** `app/opengraph-image.tsx`
+      sat at the app root, which no longer has a layout, so it emitted no
+      `og:image` at all. Moved under `[locale]`, it then emitted
+      `/es/opengraph-image-…`, which the `as-needed` rule **307-redirected** —
+      and some social scrapers do not follow redirects for images, on a site
+      whose links are shared on WhatsApp. `opengraph-image` is now excluded
+      from the middleware at any depth; both cards serve 200, 81 kB, directly.
+
+      **next-intl's ambient request locale does not work in this app, and the
+      code says so.** `setRequestLocale` did not propagate to `getTranslations`
+      or to the server build of `Link` (measured: `/en` rendered `<html
+      lang="en">` and English metadata — both read from `params` — while the
+      header, footer and every link fell back to Spanish and to unprefixed
+      hrefs). `next/root-params`, the replacement next-intl now points at,
+      needs `[locale]` to be a root param of *every* root layout, which it
+      cannot be while the panel has a root layout of its own. So the locale is
+      threaded **explicitly**: `NextIntlClientProvider` gets an explicit
+      `locale` + `messages`, `getTranslations({ locale, namespace })` is used
+      instead of the ambient form, and `Link`/`usePathname`/`useRouter` come
+      from a `'use client'` module (`lib/i18n/link.tsx`) so they read the
+      provider rather than ambient state. **This costs no extra client
+      JavaScript** — `next/link` is itself a client component, so those links
+      already crossed that boundary.
+
+      **`useSearchParams` in the switcher briefly cost the whole site its ISR
+      too.** It sits in the header, i.e. in every public page's layout; a
+      dynamic API there opts every page out of static rendering. It is behind
+      a `<Suspense>` with a same-size placeholder.
+
+      **A 404 oracle was introduced and closed.** Two root layouts meant two
+      `not-found.tsx` files and two sets of default metadata, so `curl /admin`
+      answered 404 with `<title>Panel</title>` while every other missing page
+      carried the site's title — which defeats "/admin 404s for the
+      unauthorised, not 403". The 404 body is now one shared component and the
+      defaults one shared `defaultMetadata()`, asserted equal by a test. The
+      panel's real routes still set `noindex` in their own layouts. *Residual,
+      pre-existing:* `/admin`'s 404 still carries `noindex, nofollow` from the
+      admin layout where a normal 404 carries `index, follow` — this predates
+      W3-3 and `robots.txt` already lists `/admin` by name.
+
+      **Guaraní stays out (D1)** and is now one `locales` entry plus one
+      messages file. The key-parity test is what will fail first.
+      Canary run: canonical pointed at the default locale instead of self, the
+      panel got its own title back, a category lost its English entry, a
+      message key went missing, and the default locale gained a prefix → 6 of
+      503 tests red across five modules, all restored. The first attempt left
+      the category canary undetected — the silent Spanish fallback satisfied a
+      test that only checked "not the raw slug" — so the lookup now exposes
+      `untranslatedCategories()` and the test asserts against that.
 - [ ] **W3-4 — i18n extraction (batch).** Sonnet grind in slices, each PR
       shippable: (a) home + category/city/barrio landing templates,
       (b) listing detail + cards/pills, (c) buscar + forms + reviews,

@@ -58,20 +58,36 @@ describe('pagination', () => {
 });
 
 describe('sortPlan', () => {
+  // Every plan is asserted whole rather than key-by-key: a sort that
+  // accidentally leaves another key on is exactly the bug this catches.
+  const NONE = { premiumFirst: false, verifiedFirst: false, ratingFirst: false, distanceFirst: false };
+
   it('relevancia: premium, then verified, then name', () => {
-    expect(sortPlan({})).toEqual({ premiumFirst: true, verifiedFirst: true });
+    expect(sortPlan({})).toEqual({ ...NONE, premiumFirst: true, verifiedFirst: true });
   });
 
   it('honours premiumFirst: false on relevancia', () => {
-    expect(sortPlan({ premiumFirst: false })).toEqual({ premiumFirst: false, verifiedFirst: true });
+    expect(sortPlan({ premiumFirst: false })).toEqual({ ...NONE, verifiedFirst: true });
   });
 
   it('destacados: premium then name, without the verified tiebreak', () => {
-    expect(sortPlan({ sort: 'destacados' })).toEqual({ premiumFirst: true, verifiedFirst: false });
+    expect(sortPlan({ sort: 'destacados' })).toEqual({ ...NONE, premiumFirst: true });
   });
 
   it('nombre: name only', () => {
-    expect(sortPlan({ sort: 'nombre' })).toEqual({ premiumFirst: false, verifiedFirst: false });
+    expect(sortPlan({ sort: 'nombre' })).toEqual(NONE);
+  });
+
+  it('calificacion: rating only — no premium thumb on the scale (ROADMAP W3-1)', () => {
+    expect(sortPlan({ sort: 'calificacion' })).toEqual({ ...NONE, ratingFirst: true });
+  });
+
+  it('cerca: distance only, and only with a point', () => {
+    expect(sortPlan({ sort: 'cerca', near: { lat: -25.28, lng: -57.63 } })).toEqual({
+      ...NONE,
+      distanceFirst: true,
+    });
+    expect(sortPlan({ sort: 'cerca' })).toEqual({ ...NONE, premiumFirst: true, verifiedFirst: true });
   });
 });
 
@@ -95,21 +111,27 @@ describe('buildListingWhere', () => {
   const at = { day: 3, minutes: 690 }; // Wednesday 11:30
   const NOW = 1_700_000_000;
 
-  it('is undefined when nothing is filtered, so the query has no WHERE', () => {
-    expect(buildListingWhere({}, at, NOW)).toBeUndefined();
+  it('always filters to published, even with no parameters at all (ROADMAP W2-1)', () => {
+    // This used to return `undefined` — no WHERE clause. It cannot any more:
+    // `buildListingWhere` IS the public read path, so the status filter lives
+    // at the top of it rather than at each call site, and a new caller that
+    // passes nothing still gets published rows only.
+    const { sql, params } = render(buildListingWhere({}, at, NOW));
+    expect(sql).toContain('`status`');
+    expect(params).toEqual(['published']);
   });
 
   it('binds the filters as parameters, never as inlined strings', () => {
     const { sql, params } = render(buildListingWhere({ categoria: 'restaurantes', ciudad: 'asuncion' }, at, NOW));
     expect(sql).toContain('`categoria`');
     expect(sql).toContain('`ciudad`');
-    expect(params).toEqual(['restaurantes', 'asuncion']);
+    expect(params).toEqual(['published', 'restaurantes', 'asuncion']);
   });
 
   it('compares zona case-insensitively', () => {
     const { sql, params } = render(buildListingWhere({ zona: '  Villa Morra ' }, at, NOW));
     expect(sql).toContain('lower(');
-    expect(params).toEqual(['villa morra']);
+    expect(params).toEqual(['published', 'villa morra']);
   });
 
   it('searches the text columns with an escaped pattern and the matching taxonomy slugs', () => {
@@ -188,5 +210,67 @@ describe('buildListingOrderBy', () => {
   it('compares premium against the app clock, passed as a parameter', () => {
     const { params } = render(isPremiumSql(now));
     expect(params).toEqual([now]);
+  });
+});
+
+describe('buildListingOrderBy — the W3-1 sorts, as SQL', () => {
+  const NOW = 1_700_000_000;
+  const render_all = (order: SQL[]) => order.map((o) => render(o).sql).join(' , ');
+
+  it('sorts unrated rows after rated ones, rather than relying on the dialect', () => {
+    const sql = render_all(buildListingOrderBy({ sort: 'calificacion' }, NOW));
+    // The explicit `is null` key is the point: MySQL's own NULL placement
+    // differs between ASC and DESC, and the in-memory engine does not consult
+    // a dialect at all. Without this key the two providers agree only by luck.
+    expect(sql).toMatch(/`rating` is null/);
+    expect(sql).toMatch(/`rating` desc/);
+    expect(sql).not.toMatch(/premium_until/);
+  });
+
+  it('sorts un-geocoded rows last and the rest by distance', () => {
+    const order = buildListingOrderBy({ sort: 'cerca', near: { lat: -25.28, lng: -57.63 } }, NOW);
+    const { sql } = render(order[0]!);
+    expect(sql).toMatch(/`lat` is null or .*`lng` is null/);
+    const distance = render(order[1]!);
+    // The cos(lat) scale is bound as a parameter: the app does the trigonometry
+    // so MySQL cannot disagree with lib/geo.ts about what "near" means.
+    expect(distance.sql).toMatch(/`lat`/);
+    expect(distance.sql).toMatch(/`lng`/);
+    expect(distance.params).toContain(Math.cos((-25.28 * Math.PI) / 180));
+  });
+
+  it('ignores `cerca` entirely without a point, and orders by relevancia', () => {
+    const sql = render_all(buildListingOrderBy({ sort: 'cerca' }, NOW));
+    expect(sql).not.toMatch(/`lat`/);
+    expect(sql).toMatch(/premium_until/);
+  });
+});
+
+describe('buildListingWhere — excludeId', () => {
+  it('excludes the listing in SQL, so "Negocios similares" cannot list its own page', () => {
+    const { sql, params } = render(
+      buildListingWhere({ excludeId: 'abc' }, { day: 1, minutes: 600 }, 1_700_000_000),
+    );
+    expect(sql).toMatch(/`id` <> \?/);
+    expect(params).toContain('abc');
+  });
+});
+
+describe('buildListingWhere — slugs filter (ROADMAP W3-2)', () => {
+  const AT = { day: 1, minutes: 600 };
+  const NOW = 1_700_000_000;
+
+  it('binds the slugs rather than interpolating them', () => {
+    const { sql, params } = render(buildListingWhere({ slugs: ['uno', 'dos'] }, AT, NOW));
+    expect(sql).toMatch(/`slug` in/);
+    expect(params).toContain('uno');
+    expect(params).toContain('dos');
+  });
+
+  it('an empty list is a false condition, not an absent one', () => {
+    // Without this, /favoritos with nothing saved would render the whole
+    // directory. `inArray` with no values does not reliably produce false.
+    const { sql } = render(buildListingWhere({ slugs: [] }, AT, NOW));
+    expect(sql).toMatch(/1 = 0/);
   });
 });

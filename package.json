@@ -35,6 +35,7 @@
     "maplibre-gl": "^4.7.1",
     "mysql2": "^3.23.3",
     "next": "^16.3.0",
+    "next-intl": "^4.13.7",
     "nodemailer": "^9.0.5",
     "postcss": "^8.4.47",
     "qrcode": "^1.5.4",

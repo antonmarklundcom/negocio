@@ -1,6 +1,7 @@
 import type { CategoryCityCombo, CategoryCityZonaCombo, Listing, ListingQuery, ListingResult } from '../types';
 import { isFeatured, isPremium } from '../listing';
 import { computeOpenState } from '../hours';
+import { approxDistanceKm, isValidPoint, type Point } from '../geo';
 import { DEFAULT_PAGE_SIZE } from '../config';
 
 /**
@@ -11,6 +12,8 @@ import { DEFAULT_PAGE_SIZE } from '../config';
 export function applyQuery(all: Listing[], params: ListingQuery): ListingResult {
   const q = params.q?.trim().toLowerCase();
   let items = all.filter((l) => {
+    if (params.excludeId && l.id === params.excludeId) return false;
+    if (params.slugs && !params.slugs.includes(l.slug)) return false;
     if (params.categoria && l.categoria !== params.categoria) return false;
     if (params.ciudad && l.ciudad !== params.ciudad) return false;
     if (params.zona && (l.zona ?? '').toLowerCase() !== params.zona.toLowerCase()) return false;
@@ -28,7 +31,7 @@ export function applyQuery(all: Listing[], params: ListingQuery): ListingResult 
     return true;
   });
 
-  items = sortListings(items, params.sort ?? 'relevancia', params.premiumFirst ?? true);
+  items = sortListings(items, params.sort ?? 'relevancia', params.premiumFirst ?? true, params.near);
 
   const total = items.length;
   const page = Math.max(1, params.page ?? 1);
@@ -37,7 +40,12 @@ export function applyQuery(all: Listing[], params: ListingQuery): ListingResult 
   return { items: items.slice(start, start + pageSize), total };
 }
 
-function sortListings(items: Listing[], sort: NonNullable<ListingQuery['sort']>, premiumFirst: boolean): Listing[] {
+function sortListings(
+  items: Listing[],
+  sort: NonNullable<ListingQuery['sort']>,
+  premiumFirst: boolean,
+  near?: Point,
+): Listing[] {
   const byName = (a: Listing, b: Listing) => a.name.localeCompare(b.name, 'es');
   const premiumRank = (l: Listing) => (isPremium(l) ? 0 : 1);
 
@@ -46,6 +54,23 @@ function sortListings(items: Listing[], sort: NonNullable<ListingQuery['sort']>,
     sorted.sort(byName);
   } else if (sort === 'destacados') {
     sorted.sort((a, b) => premiumRank(a) - premiumRank(b) || byName(a, b));
+  } else if (sort === 'calificacion') {
+    // A listing with no rating is not "worst rated", it is unrated — it sorts
+    // after every rated one instead of being scored as a zero.
+    const rank = (l: Listing) => (typeof l.rating === 'number' ? 0 : 1);
+    sorted.sort(
+      (a, b) => rank(a) - rank(b) || (b.rating ?? 0) - (a.rating ?? 0) || byName(a, b),
+    );
+  } else if (sort === 'cerca' && near) {
+    // Same treatment: a listing nobody has geocoded is unknown-distance, not
+    // infinitely far, but it still cannot be ranked, so it goes last by name.
+    const distance = (l: Listing) =>
+      isValidPoint(l) ? approxDistanceKm(near, { lat: l.lat, lng: l.lng }) : Number.POSITIVE_INFINITY;
+    sorted.sort((a, b) => {
+      const d = distance(a) - distance(b);
+      if (Number.isNaN(d) || d === 0) return byName(a, b);
+      return d;
+    });
   } else {
     // relevancia: premium first (when requested), then verified, then name.
     sorted.sort((a, b) => {

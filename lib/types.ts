@@ -23,6 +23,17 @@ export type Listing = {
   slug: string;
   name: string;
 
+  /**
+   * Lifecycle (ROADMAP W2-1 / D2). Optional so the seed dataset — where every
+   * listing is live by construction — does not have to repeat it 33 times;
+   * absent means `published`.
+   *
+   * Both providers filter on it, so a component never has to. It is on the
+   * public shape anyway so the two providers return the SAME object for the
+   * same row, which is the entire promise of the seam in `lib/listings-repo.ts`.
+   */
+  status?: 'draft' | 'published' | 'archived';
+
   categoria: string; // taxonomy slug (rubro)
   categoriaLabel: string;
   subtitle?: string; // e.g. "Cocina paraguaya"
@@ -90,7 +101,22 @@ export type ListingQuery = {
   abierto?: boolean;
   /** Only listings with an active "destacado en portada" slot (ROADMAP Phase D item 3). */
   destacado?: boolean;
-  sort?: 'relevancia' | 'destacados' | 'nombre';
+  sort?: 'relevancia' | 'destacados' | 'nombre' | 'calificacion' | 'cerca';
+  /**
+   * The visitor's own position, for `sort: 'cerca'` (ROADMAP W3-1). Rounded to
+   * `COORD_PRECISION` before it ever reaches here. `sort: 'cerca'` with no
+   * point falls back to `relevancia` rather than returning nothing.
+   */
+  near?: { lat: number; lng: number };
+  /** Exclude one listing by id — "Negocios similares" must not list the page it is on. */
+  excludeId?: string;
+  /**
+   * Restrict to an explicit set of slugs (ROADMAP W3-2). `/favoritos` renders
+   * from this: the saved list arrives as slugs in the URL and is read by a
+   * server component, so favorites never become client-side listing fetching.
+   * An empty array means "no listings", never "no filter".
+   */
+  slugs?: string[];
   premiumFirst?: boolean;
   page?: number;
   pageSize?: number;

@@ -37,7 +37,9 @@ const config = [
     // clock is how "is this listing's premium still active right now" is
     // answered. Scoped to the admin pages that actually need it rather than
     // switched off repo-wide, so the rule still guards every client component.
-    files: ['app/admin/**/page.tsx'],
+    // The panel moved under the `(panel)` route group in W3-3; the group is
+    // not part of any URL but it IS part of the path this glob matches.
+    files: ['app/(panel)/admin/**/page.tsx'],
     rules: { 'react-hooks/purity': 'off' },
   },
   {
