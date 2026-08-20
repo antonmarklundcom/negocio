@@ -1,10 +1,14 @@
 'use client';
 
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from '@/lib/i18n/link';
 import { useCallback, useState } from 'react';
 import type { Category, City } from '@/lib/types';
 import { REVIEWS_ENABLED } from '@/lib/config';
 import { roundCoord } from '@/lib/geo';
+import { getPathname } from '@/lib/i18n/navigation';
+import { useLocale } from 'next-intl';
+import type { Locale } from '@/lib/i18n/routing';
 import { ChevronDown, Pin, Search } from './icons';
 
 /** Params the filter row owns; anything else in the URL is preserved untouched. */
@@ -14,6 +18,12 @@ const CARRIED = ['rubro', 'ciudad', 'zona', 'q', 'abierto', 'sort', 'lat', 'lng'
  * Compact, URL-driven filter row (§6.2). Not a big coloured block — styled as
  * the reference's white pill controls. Every change updates the query string so
  * the view stays shareable and indexable.
+ *
+ * `useRouter`/`usePathname` come from the locale-aware navigation module
+ * (ROADMAP W3-3): the plain ones would push `/buscar?...` from `/en/buscar`,
+ * dropping an English visitor into Spanish the first time they touched a filter.
+ * The `<form action>` needs the *prefixed* path, though — a browser GET submit
+ * does not go through the router — so it is built with `getPathname`.
  */
 export function FilterBar({
   categories,
@@ -31,6 +41,9 @@ export function FilterBar({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const locale = useLocale() as Locale;
+  // The real, locale-prefixed URL, because a plain GET submit bypasses the router.
+  const formAction = getPathname({ href: pathname, locale });
   const [geo, setGeo] = useState<'idle' | 'locating' | 'denied'>('idle');
 
   const setParam = useCallback(
@@ -95,7 +108,7 @@ export function FilterBar({
         as hidden fields — a GET submit replaces the whole query string, so
         anything not named here would be silently dropped on search.
       */}
-      <form action={pathname} method="GET" className="flex items-center gap-2">
+      <form action={formAction} method="GET" className="flex items-center gap-2">
         {CARRIED.filter((k) => k !== 'q').map((k) => {
           const v = params.get(k);
           return v ? <input key={k} type="hidden" name={k} value={v} /> : null;

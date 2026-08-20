@@ -908,12 +908,99 @@ Repo, docs and comments in English.
       tests red, guards restored. Smoke-tested against the production build:
       `?ids=<script>` and `?ids=' OR 1=1 --` render zero cards and 200, two real
       slugs render two cards.
-- [ ] **W3-3 — i18n scaffold. (Opus)** `next-intl`, `/en` route prefix
+- [x] **W3-3 — i18n scaffold. (Opus)** `next-intl`, `/en` route prefix
       (default `/` stays es-PY), locale-aware `generateMetadata` with
       `alternates.languages` + hreflang, locale-aware sitemap, language
       switcher in header/footer. Category/city **labels** become locale-keyed
       lookups; **slugs stay Spanish and canonical**. Ships with only nav/chrome
       translated — the site remains fully Spanish-complete at every step.
+      *Shipped: `next-intl` 4.13, `lib/i18n/{routing,request,alternates,metadata,navigation,link}.ts`,
+      `messages/{es,en}.json`, `middleware.ts`, `components/LanguageSwitcher.tsx`,
+      a locale-aware sitemap, and `lib/fonts.ts`. 21 new tests (503 total).
+      **Every Spanish URL is byte-identical to before** — the ten Playwright
+      smoke tests pass unmodified, which is the check that mattered.*
+
+      **The app now has TWO root layouts, and that is the load-bearing
+      decision.** `app/(site)/[locale]/layout.tsx` for the public site and
+      `app/(panel)/layout.tsx` for `/admin` + `/ingresar`; `app/layout.tsx` is
+      gone. The obvious shape — one shared root that reads the locale with
+      `getLocale()` — was built first and **measurably destroyed W1-3's
+      caching**: `getLocale()` is a dynamic request API, so every public page
+      went from `●` (ISR, 1h) to `ƒ`, turning every listing view back into a
+      MySQL round-trip against an 8-connection pool. Reading the locale from
+      the route *segment* keeps it static. Route groups are not part of any
+      URL, so no admin path changed.
+
+      **TWO revalidation paths were broken by the move. The W1-6 admin suite
+      found both; nothing else could have.** The user flagged this exact risk.
+      1. `revalidatePath('/', 'layout')` matched nothing once the public site
+         moved under `[locale]` — there is no route at `/` any more — so it
+         became a silent no-op with precisely the W1-3 failure signature. The
+         first guess, one concrete call per locale (`'/es'`, `'/en'`), **also
+         did not work**: a concrete instance of a dynamic segment is not the
+         route. Neither is `'/[locale]'` without its route group. The form that
+         works is `revalidatePath('/(site)/[locale]', 'layout')` — the
+         app-directory path, group and all, exactly the lesson W1-3 already
+         recorded one line above it in the same file.
+      2. `/admin/resenas` invalidated the public page with its own
+         `revalidatePath(listingPath(slug))`, which for the same reason stopped
+         matching — an **approved review never appeared on the listing**. That
+         call site now goes through `revalidatePublic()` like every other admin
+         write; there is one place that knows how public caching works, and
+         hand-rolled public paths have now rotted twice.
+      All three candidate forms were tried against a **real MySQL and a real
+      production build**, because every wrong one fails silently and looks
+      identical to working code. Final result: admin e2e **9/9**.
+
+      **The social card was broken too, and is fixed.** `app/opengraph-image.tsx`
+      sat at the app root, which no longer has a layout, so it emitted no
+      `og:image` at all. Moved under `[locale]`, it then emitted
+      `/es/opengraph-image-…`, which the `as-needed` rule **307-redirected** —
+      and some social scrapers do not follow redirects for images, on a site
+      whose links are shared on WhatsApp. `opengraph-image` is now excluded
+      from the middleware at any depth; both cards serve 200, 81 kB, directly.
+
+      **next-intl's ambient request locale does not work in this app, and the
+      code says so.** `setRequestLocale` did not propagate to `getTranslations`
+      or to the server build of `Link` (measured: `/en` rendered `<html
+      lang="en">` and English metadata — both read from `params` — while the
+      header, footer and every link fell back to Spanish and to unprefixed
+      hrefs). `next/root-params`, the replacement next-intl now points at,
+      needs `[locale]` to be a root param of *every* root layout, which it
+      cannot be while the panel has a root layout of its own. So the locale is
+      threaded **explicitly**: `NextIntlClientProvider` gets an explicit
+      `locale` + `messages`, `getTranslations({ locale, namespace })` is used
+      instead of the ambient form, and `Link`/`usePathname`/`useRouter` come
+      from a `'use client'` module (`lib/i18n/link.tsx`) so they read the
+      provider rather than ambient state. **This costs no extra client
+      JavaScript** — `next/link` is itself a client component, so those links
+      already crossed that boundary.
+
+      **`useSearchParams` in the switcher briefly cost the whole site its ISR
+      too.** It sits in the header, i.e. in every public page's layout; a
+      dynamic API there opts every page out of static rendering. It is behind
+      a `<Suspense>` with a same-size placeholder.
+
+      **A 404 oracle was introduced and closed.** Two root layouts meant two
+      `not-found.tsx` files and two sets of default metadata, so `curl /admin`
+      answered 404 with `<title>Panel</title>` while every other missing page
+      carried the site's title — which defeats "/admin 404s for the
+      unauthorised, not 403". The 404 body is now one shared component and the
+      defaults one shared `defaultMetadata()`, asserted equal by a test. The
+      panel's real routes still set `noindex` in their own layouts. *Residual,
+      pre-existing:* `/admin`'s 404 still carries `noindex, nofollow` from the
+      admin layout where a normal 404 carries `index, follow` — this predates
+      W3-3 and `robots.txt` already lists `/admin` by name.
+
+      **Guaraní stays out (D1)** and is now one `locales` entry plus one
+      messages file. The key-parity test is what will fail first.
+      Canary run: canonical pointed at the default locale instead of self, the
+      panel got its own title back, a category lost its English entry, a
+      message key went missing, and the default locale gained a prefix → 6 of
+      503 tests red across five modules, all restored. The first attempt left
+      the category canary undetected — the silent Spanish fallback satisfied a
+      test that only checked "not the raw slug" — so the lookup now exposes
+      `untranslatedCategories()` and the test asserts against that.
 - [ ] **W3-4 — i18n extraction (batch).** Sonnet grind in slices, each PR
       shippable: (a) home + category/city/barrio landing templates,
       (b) listing detail + cards/pills, (c) buscar + forms + reviews,

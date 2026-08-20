@@ -33,3 +33,15 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   lambare: { lat: -25.35, lng: -57.6167 },
   'fernando-de-la-mora': { lat: -25.3333, lng: -57.5333 },
 };
+
+/**
+ * City labels do **not** vary by locale (ROADMAP D1 / W3-3).
+ *
+ * "Asunción" is Asunción in English. Providing an English lookup here would be
+ * an invitation to fill it with mistranslations of proper nouns, so the
+ * locale-aware accessor exists — so callers do not have to special-case the
+ * taxonomy — and deliberately ignores its argument.
+ */
+export function cityLabelFor(slug: string, _locale: unknown): string {
+  return cityLabel(slug);
+}

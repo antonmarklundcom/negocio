@@ -1,4 +1,10 @@
 import { withSentryConfig } from '@sentry/nextjs';
+import createNextIntlPlugin from 'next-intl/plugin';
+
+// ROADMAP W3-3. Points next-intl at lib/i18n/request.ts and enables the
+// `[locale]` segment's message loading. It wraps the config; Sentry wraps the
+// result, so both plugins apply and neither has to know about the other.
+const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts');
 
 // This app deliberately ships no `sentry.client.config.ts` / global-error.js
 // (README → Monitoring: the client SDK roughly doubled the shared JS bundle,
@@ -42,7 +48,7 @@ const nextConfig = {
 // maps for readable stack traces. Unset — the default until someone creates a
 // Sentry project — the plugin logs one line and skips the upload; it does not
 // fail the build. `silent: true` keeps that line out of normal CI output.
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withNextIntl(nextConfig), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,

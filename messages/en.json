@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "brandSuffix": ".com.py",
+    "categories": "Categories",
+    "search": "Search",
+    "favorites": "Favorites",
+    "addBusiness": "List your business",
+    "searchPlaceholder": "Search businesses…",
+    "searchLabel": "Search businesses"
+  },
+  "bottomNav": {
+    "home": "Home",
+    "search": "Search",
+    "categories": "Categories",
+    "add": "Join"
+  },
+  "footer": {
+    "tagline": "Paraguay's business directory. Find and contact local businesses, for free.",
+    "sections": {
+      "rubros": "Categories",
+      "business": "Business",
+      "search": "Search"
+    },
+    "myFavorites": "My favorites",
+    "prices": "Pricing",
+    "addBusiness": "List your business",
+    "about": "About us",
+    "contact": "Contact"
+  },
+  "language": {
+    "label": "Language",
+    "switchTo": "View in {language}"
+  }
+}

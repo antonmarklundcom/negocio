@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "brandSuffix": ".com.py",
+    "categories": "Categorías",
+    "search": "Buscar",
+    "favorites": "Favoritos",
+    "addBusiness": "Sumá tu negocio",
+    "searchPlaceholder": "Buscar negocios…",
+    "searchLabel": "Buscar negocios"
+  },
+  "bottomNav": {
+    "home": "Inicio",
+    "search": "Buscar",
+    "categories": "Categorías",
+    "add": "Sumate"
+  },
+  "footer": {
+    "tagline": "El directorio de negocios de Paraguay. Encontrá y contactá negocios locales, gratis.",
+    "sections": {
+      "rubros": "Rubros",
+      "business": "Negocio",
+      "search": "Buscar"
+    },
+    "myFavorites": "Mis favoritos",
+    "prices": "Precios",
+    "addBusiness": "Sumá tu negocio",
+    "about": "Nosotros",
+    "contact": "Contacto"
+  },
+  "language": {
+    "label": "Idioma",
+    "switchTo": "Ver en {language}"
+  }
+}

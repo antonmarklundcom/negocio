@@ -33,20 +33,25 @@ npm run test                    # vitest — pure tests, no MySQL needed
 ## Project layout
 
 ```
-app/                       Routes (App Router)
-  layout.tsx               <html>, fonts, analytics — nothing route-specific
-  (public)/                The consumer site; the group is NOT part of any URL
-    layout.tsx             Header / footer / bottom nav / promo banner
-    page.tsx               Home
-    buscar/                Search results (filters, list/map)
-    [categoria]/           Category landing (all cities)
-    [categoria]/[ciudad]/  Programmatic SEO landing
-    lugar/[slug]/          Business detail (Free & Premium = one template)
-    favoritos/               Saved businesses — localStorage, rendered server-side
-                             from ?ids= (see lib/favorites.ts), noindex
-    precios, sumar-negocio, contacto, nosotros
-  (auth)/                  ingresar · cambiar-contrasena (bare chrome)
-  admin/                   First-party staff panel (see "Admin & auth")
+app/                       Routes (App Router) — TWO root layouts, see below
+  (site)/                  The public site. Group is NOT part of any URL.
+    [locale]/              es (unprefixed) | en → /en/…  (see "Languages")
+      layout.tsx           <html lang>, fonts, analytics, NextIntlClientProvider
+      (public)/            Header / footer / bottom nav / promo banner
+        page.tsx           Home
+        buscar/            Search results (filters, list/map)
+        [categoria]/       Category landing (all cities)
+        [categoria]/[ciudad]/  Programmatic SEO landing
+        lugar/[slug]/      Business detail (Free & Premium = one template)
+        favoritos/         Saved businesses — localStorage, rendered server-side
+                           from ?ids= (see lib/favorites.ts), noindex
+        precios, sumar-negocio, contacto, nosotros
+    not-found.tsx          The 404 (shares its body with the panel's — see below)
+  (panel)/                 Staff only, Spanish only, OUTSIDE the locale segment
+    layout.tsx             <html lang="es-PY">, fonts, no analytics
+    (auth)/                ingresar · cambiar-contrasena (bare chrome)
+    admin/                 First-party staff panel (see "Admin & auth")
+    not-found.tsx          Byte-identical head+body to the site's 404
   api/v1/listings          GET list (zod-validated)
   api/v1/listings/[slug]   GET one
   api/v1/leads             POST single lead orchestrator
@@ -65,9 +70,14 @@ lib/                       Domain logic
   rate-limit.ts            In-memory per-IP limiter — SINGLE PROCESS (see below)
   auth/                    session.ts · roles.ts · password.ts · login.ts
   admin/                   validation.ts (pure) · labels.ts
-  types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts
+  i18n/                    routing.ts (locales, prefix policy) · request.ts ·
+                           alternates.ts (canonical + hreflang) · metadata.ts ·
+                           navigation.ts (server-safe) · link.tsx ('use client')
+  types.ts, config.ts, categories.ts, cities.ts, hours.ts, format.ts, fonts.ts
   leads.ts                 Lead orchestrator (zod + fan-out)
   jsonld.tsx               schema.org builders
+messages/                  es.json · en.json — nav/chrome strings only (W3-3)
+middleware.ts              Locale routing for the public site only
 drizzle/                   Generated SQL migrations (applied from a local machine)
 scripts/import-seed.ts     Idempotent seed → MySQL import (tsx)
 scripts/bootstrap-admin.ts Creates the first administrator, once (tsx)
@@ -112,6 +122,56 @@ wrong is loud; a page that quietly renders stale data is not.
 1. Add a provider under `lib/providers/` implementing `ListingsProvider`.
 2. Change the **one** `selectPrimary()` line in `listings-repo.ts`.
    Nothing else in the app changes.
+
+---
+
+## Languages (es-PY default, /en)
+
+Spanish is the default and carries **no prefix**: `/`, `/buscar`,
+`/restaurantes/asuncion` are exactly the URLs they always were. English is
+additive at `/en/…`, and **slugs stay Spanish** — `/en/restaurantes/asuncion`,
+never `/en/restaurants/asuncion` (ROADMAP D1).
+
+Three things are worth knowing before touching this:
+
+**1. There are two root layouts, and it is deliberate.** `app/(site)/[locale]/`
+owns `<html lang>` for the public site; `app/(panel)/` owns it for `/admin` and
+`/ingresar`, which are Spanish-only and live outside the locale segment. The
+obvious alternative — one shared root reading `getLocale()` — was built, and it
+turned every ISR'd public page dynamic, because `getLocale()` is a dynamic
+request API. Reading the locale from the route *segment* keeps the pages static.
+Both roots must keep rendering the **same** default metadata
+(`lib/i18n/metadata.ts`): the panel's only anonymous-reachable page is its 404,
+and a different `<title>` there would confirm `/admin` exists to anyone who
+asked.
+
+**2. The locale is threaded explicitly. Do not rely on the ambient one.**
+next-intl's request-scoped locale (`setRequestLocale` / bare
+`getTranslations()` / the server build of `Link`) does not propagate reliably in
+this app, and `next/root-params` cannot help while the panel has its own root
+layout. So: `NextIntlClientProvider` is given an explicit `locale` and
+`messages`, server components call `getTranslations({ locale, namespace })`, and
+**every internal public link comes from `lib/i18n/link.tsx`** (a `'use client'`
+module that reads the provider). A plain `next/link` on `/en` navigates to the
+Spanish page. This costs no extra client JS — `next/link` is a client component
+already.
+
+**3. Anything dynamic in the header costs the whole site its ISR.** The header
+is in every public page's layout, so a dynamic API there (e.g.
+`useSearchParams` in the language switcher) opts every page out of static
+rendering. Keep such things behind a `<Suspense>`; `LanguageSwitcherSlot` is the
+pattern.
+
+Adding a locale (Guaraní is deferred, D1) is one entry in `routing.locales`, one
+`messages/<locale>.json`, one sibling of `EN_CATEGORY_LABELS`, and one entry
+each in `HTML_LANG` / `OG_LOCALE` / `LOCALE_LABEL`. The key-parity test in
+`tests/i18n.test.ts` fails first if a message is missed, and
+`untranslatedCategories()` fails if a rubro is.
+
+**`revalidatePublic()` is per-locale.** `revalidatePath('/', 'layout')` matches
+nothing now that the public site lives under `[locale]`; it loops over
+`routing.locales` instead. A new locale that skipped this would serve stale
+listing pages for an hour after every staff edit, silently.
 
 ---
 

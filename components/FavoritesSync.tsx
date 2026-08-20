@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/i18n/link';
 import {
   decodeFavorites,
   encodeFavorites,
@@ -25,6 +25,10 @@ import {
  *
  * It replaces rather than pushes, so the back button leaves `/favoritos`
  * instead of walking backwards through every save.
+ *
+ * `useRouter` is the locale-aware one (ROADMAP W3-3): the plain one would push
+ * the Spanish `/favoritos` from `/en/favoritos`, dropping an English visitor
+ * into Spanish the moment their list synced.
  */
 export function FavoritesSync({ shown }: { shown: string[] }) {
   const router = useRouter();
