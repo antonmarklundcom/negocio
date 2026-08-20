@@ -222,10 +222,32 @@ bypasses the panel's own audit log. Every further account is created from
   password, no password set, suspended. The unknown-email path hashes against a
   cached decoy, and "suspended" is checked *after* the password, so response
   time is not an account-enumeration oracle. The real reason goes to the log.
-- **The session cookie carries only** id, role, scope id and
-  `mustChangePassword`; 8-hour TTL, `httpOnly`, `sameSite: lax`, `secure` in
-  production. Everything else is read from the database at use time, so
-  suspending an account takes effect on the next request.
+- **The session cookie carries only** id, role, scope id,
+  `mustChangePassword` and the instant it was issued; 8-hour TTL, `httpOnly`,
+  `sameSite: lax`, `secure` in production.
+- **`currentUser()` re-reads the account from the database on every request**
+  (ROADMAP W1-2), so suspending or demoting somebody takes effect on their
+  next request rather than whenever their cookie happens to expire. `role` and
+  `mustChangePassword` come back from the ROW, not from the cookie. It returns
+  null for a cookie that opens cleanly when the account is gone, is suspended,
+  or was issued before the account's password last changed.
+  *This claim used to be in this README while the code did not do it* — the
+  cookie was the whole answer and a suspended admin kept working for up to
+  eight hours. W1-2 made the code match the documentation.
+  The decision itself is pure and lives in `lib/auth/session-check.ts`, so it
+  is tested without a cookie, a database or a clock. `sessionClaims()` is the
+  unverified cookie payload and has exactly two legitimate callers: the login
+  flow and `currentUser()` itself.
+- **A database blip signs staff out** rather than serving the admin from an
+  unverified cookie. That is a deliberate trade: the public site never calls
+  `currentUser()`, so a blip cannot take the site down, and fail-closed is the
+  only defensible default for the thing that decides who may write.
+- **Changing a password revokes every other session** for that account
+  (`users.password_changed_at`, compared against the cookie's issue time). The
+  tab that performed the change re-issues its own cookie and survives; the
+  stolen laptop still holding a valid cookie does not, which is the whole
+  reason somebody changes their password under duress. An admin-issued reset
+  does the same.
 - **No default password anywhere.** Admin-issued resets generate a random one
   and return it as a one-time on-screen notice — deliberately not a redirect
   carrying it in a query string, which would land in access logs and history.

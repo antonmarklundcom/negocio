@@ -300,6 +300,17 @@ export const users = mysqlTable(
     role: mysqlEnum('role', USER_ROLES).notNull(),
     status: mysqlEnum('status', USER_STATUSES).notNull().default('active'),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
+    /**
+     * When the credential last changed (ROADMAP W1-2). Sessions issued BEFORE
+     * this instant are refused, which is what makes changing a password
+     * actually revoke the stolen laptop still holding a valid cookie.
+     *
+     * Nullable, and null means "never changed since this column existed" —
+     * every session then passes, which is the correct answer for accounts
+     * that predate the migration. Backfilling it with `now()` would sign out
+     * every logged-in member of staff at deploy time for no security gain.
+     */
+    passwordChangedAt: timestamp('password_changed_at'),
     lastLoginAt: timestamp('last_login_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),

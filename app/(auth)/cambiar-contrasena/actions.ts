@@ -32,7 +32,11 @@ export async function changePasswordAction(_prev: AdminFormState, fd: FormData):
 
     await changeOwnPassword(session, await hashPassword(parsed.data.next));
 
-    // Re-issue the cookie so the flag clears without waiting for a new sign-in.
+    // Re-issue the cookie: this clears the must-change flag without waiting for
+    // a new sign-in, AND stamps a fresh `issuedAt` so the tab that just changed
+    // the password is the one session that survives its own change (ROADMAP
+    // W1-2). Every other session this account has open is now older than
+    // `users.password_changed_at` and is refused on its next request.
     await startSession({ ...session, mustChangePassword: false });
   } catch (err) {
     if (err instanceof PasswordLengthError) return { errors: { next: err.message } };
