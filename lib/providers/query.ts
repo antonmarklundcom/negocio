@@ -13,6 +13,7 @@ export function applyQuery(all: Listing[], params: ListingQuery): ListingResult 
   const q = params.q?.trim().toLowerCase();
   let items = all.filter((l) => {
     if (params.excludeId && l.id === params.excludeId) return false;
+    if (params.slugs && !params.slugs.includes(l.slug)) return false;
     if (params.categoria && l.categoria !== params.categoria) return false;
     if (params.ciudad && l.ciudad !== params.ciudad) return false;
     if (params.zona && (l.zona ?? '').toLowerCase() !== params.zona.toLowerCase()) return false;

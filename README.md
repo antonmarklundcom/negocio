@@ -43,6 +43,8 @@ app/                       Routes (App Router) — TWO root layouts, see below
         [categoria]/       Category landing (all cities)
         [categoria]/[ciudad]/  Programmatic SEO landing
         lugar/[slug]/      Business detail (Free & Premium = one template)
+        favoritos/         Saved businesses — localStorage, rendered server-side
+                           from ?ids= (see lib/favorites.ts), noindex
         precios, sumar-negocio, contacto, nosotros
     not-found.tsx          The 404 (shares its body with the panel's — see below)
   (panel)/                 Staff only, Spanish only, OUTSIDE the locale segment

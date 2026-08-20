@@ -255,3 +255,22 @@ describe('buildListingWhere — excludeId', () => {
     expect(params).toContain('abc');
   });
 });
+
+describe('buildListingWhere — slugs filter (ROADMAP W3-2)', () => {
+  const AT = { day: 1, minutes: 600 };
+  const NOW = 1_700_000_000;
+
+  it('binds the slugs rather than interpolating them', () => {
+    const { sql, params } = render(buildListingWhere({ slugs: ['uno', 'dos'] }, AT, NOW));
+    expect(sql).toMatch(/`slug` in/);
+    expect(params).toContain('uno');
+    expect(params).toContain('dos');
+  });
+
+  it('an empty list is a false condition, not an absent one', () => {
+    // Without this, /favoritos with nothing saved would render the whole
+    // directory. `inArray` with no values does not reliably produce false.
+    const { sql } = render(buildListingWhere({ slugs: [] }, AT, NOW));
+    expect(sql).toMatch(/1 = 0/);
+  });
+});

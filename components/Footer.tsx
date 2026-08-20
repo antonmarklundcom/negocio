@@ -65,6 +65,11 @@ export async function Footer({ locale }: { locale: Locale }) {
           <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">{t('sections.search')}</div>
           <ul className="space-y-2 text-sm text-ink2">
             <li>
+              <Link href="/favoritos" className="hover:text-ink">
+                {t('myFavorites')}
+              </Link>
+            </li>
+            <li>
               <Link href="/buscar" className="hover:text-ink">
                 Todos los negocios
               </Link>

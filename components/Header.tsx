@@ -36,6 +36,9 @@ export async function Header({ locale }: { locale: Locale }) {
           <Link href="/buscar" className="transition-colors hover:text-ink">
             {t('search')}
           </Link>
+          <Link href="/favoritos" className="transition-colors hover:text-ink">
+            {t('favorites')}
+          </Link>
         </nav>
 
         <form action={searchAction} className="ml-auto hidden items-center md:flex">

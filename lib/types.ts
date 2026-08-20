@@ -110,6 +110,13 @@ export type ListingQuery = {
   near?: { lat: number; lng: number };
   /** Exclude one listing by id — "Negocios similares" must not list the page it is on. */
   excludeId?: string;
+  /**
+   * Restrict to an explicit set of slugs (ROADMAP W3-2). `/favoritos` renders
+   * from this: the saved list arrives as slugs in the URL and is read by a
+   * server component, so favorites never become client-side listing fetching.
+   * An empty array means "no listings", never "no filter".
+   */
+  slugs?: string[];
   premiumFirst?: boolean;
   page?: number;
   pageSize?: number;
