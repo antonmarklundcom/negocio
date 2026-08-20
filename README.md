@@ -42,6 +42,8 @@ app/                       Routes (App Router)
     [categoria]/           Category landing (all cities)
     [categoria]/[ciudad]/  Programmatic SEO landing
     lugar/[slug]/          Business detail (Free & Premium = one template)
+    favoritos/               Saved businesses — localStorage, rendered server-side
+                             from ?ids= (see lib/favorites.ts), noindex
     precios, sumar-negocio, contacto, nosotros
   (auth)/                  ingresar · cambiar-contrasena (bare chrome)
   admin/                   First-party staff panel (see "Admin & auth")

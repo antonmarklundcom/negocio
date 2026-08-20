@@ -57,6 +57,11 @@ export function Footer() {
           <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">Buscar</div>
           <ul className="space-y-2 text-sm text-ink2">
             <li>
+              <Link href="/favoritos" className="hover:text-ink">
+                Mis favoritos
+              </Link>
+            </li>
+            <li>
               <Link href="/buscar" className="hover:text-ink">
                 Todos los negocios
               </Link>

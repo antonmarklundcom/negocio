@@ -878,8 +878,36 @@ Repo, docs and comments in English.
       an unrated listing as `0` in the in-memory engine is indistinguishable
       from the correct behaviour while ratings are 1–5. The explicit key stays
       as defence against a future 0, and no test claims to cover it.
-- [ ] **W3-2 — Favorites (localStorage).** Save/unsave on cards + detail, a
+- [x] **W3-2 — Favorites (localStorage).** Save/unsave on cards + detail, a
       `/favoritos` page reading localStorage. No accounts, no DB, no migration.
+      *Shipped: `lib/favorites.ts` (pure — storage shape, validation, cap, URL
+      encoding), `components/FavoriteButton.tsx` (the only file in the app that
+      touches `localStorage`), `components/FavoritesSync.tsx`,
+      `/favoritos`, a `slugs` filter on `ListingQuery` implemented in both
+      providers, and links in the header and footer. 33 new tests (446 total).*
+      **The one real design problem, and how it was solved.** README's rendering
+      rule is absolute — listing data is server-rendered, *never* fetched from
+      the client — and `localStorage` is invisible to the server. So the saved
+      list is written into `?ids=` by a small client component and the page is
+      rendered by a **server** component from the repo. A saved card therefore
+      shows today's phone number and today's premium state, not a snapshot from
+      when it was saved, and the favorites page needs no new API surface.
+      Shareability falls out for free, which is why the route is `noindex` and
+      absent from the sitemap: it is a personal URL, not a page for the index.
+      **Slugs, not row ids** — a shareable URL should not carry internal ids.
+      **An empty `slugs` array means "no listings", never "no filter".** Spelled
+      out explicitly in both providers rather than left to `inArray`, because
+      getting it wrong renders the entire directory on an empty favorites page.
+      **Storage is treated as untrusted input.** Any script on the origin can
+      write `localStorage`, and these values reach a URL and a SQL query, so
+      slugs are validated against a narrow pattern on the way in *and* on the
+      way out, de-duplicated, and capped at `MAX_PAGE_SIZE` — which also stops a
+      hand-written `?ids=` being used to scan the table.
+      Canary run: validation loosened to "any non-empty string", the cap
+      removed, and the empty-list condition dropped in both providers → 7 of 504
+      tests red, guards restored. Smoke-tested against the production build:
+      `?ids=<script>` and `?ids=' OR 1=1 --` render zero cards and 200, two real
+      slugs render two cards.
 - [ ] **W3-3 — i18n scaffold. (Opus)** `next-intl`, `/en` route prefix
       (default `/` stays es-PY), locale-aware `generateMetadata` with
       `alternates.languages` + hreflang, locale-aware sitemap, language
