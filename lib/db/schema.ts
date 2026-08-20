@@ -65,6 +65,21 @@ export const cities = mysqlTable('cities', {
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
 });
 
+/**
+ * Listing lifecycle (ROADMAP W2-1 / D2).
+ *
+ *   draft     — being written. Invisible to the public and to the sitemap.
+ *   published — live. The default, and what every existing row becomes.
+ *   archived  — was live, is not any more. Replaces hard deletion for the
+ *               ordinary "this business closed" case: the row, its leads, its
+ *               reviews and its audit trail survive, and it can come back.
+ *
+ * Hard `deleteListing` stays admin-only, for true mistakes (a test row, a
+ * duplicate) — archiving those would leave rubbish in the admin forever.
+ */
+export const LISTING_STATUSES = ['draft', 'published', 'archived'] as const;
+export type ListingStatus = (typeof LISTING_STATUSES)[number];
+
 export const listings = mysqlTable(
   'listings',
   {
@@ -104,6 +119,13 @@ export const listings = mysqlTable(
     productos: json('productos').$type<Producto[]>(),
     servicios: json('servicios').$type<Servicio[]>(),
 
+    /**
+     * Lifecycle (ROADMAP W2-1 / D2). `published` is the default so every
+     * existing row keeps behaving exactly as it did — the migration must not
+     * silently unpublish the whole directory.
+     */
+    status: mysqlEnum('status', LISTING_STATUSES).notNull().default('published'),
+
     /** Never set from a form; a dated human assertion (PR-5). */
     verified: boolean('verified').notNull().default(false),
     /** Unix seconds. Premium while it is in the future. */
@@ -132,6 +154,10 @@ export const listings = mysqlTable(
     ciudadIdx: index('listings_ciudad_idx').on(t.ciudad),
     categoriaCiudadIdx: index('listings_categoria_ciudad_idx').on(t.categoria, t.ciudad),
     zonaIdx: index('listings_zona_idx').on(t.zona),
+    // Every public read filters on status, so it leads the composite indexes
+    // the landing pages use.
+    statusIdx: index('listings_status_idx').on(t.status),
+    statusCategoriaCiudadIdx: index('listings_status_categoria_ciudad_idx').on(t.status, t.categoria, t.ciudad),
     premiumIdx: index('listings_premium_until_idx').on(t.premiumUntil),
     featuredIdx: index('listings_featured_until_idx').on(t.featuredUntil),
   }),

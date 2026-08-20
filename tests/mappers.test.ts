@@ -36,6 +36,7 @@ function row(overrides: Partial<ListingRow> = {}): ListingRow {
     destacadoItem: { title: 'Menú del día', price: 'Gs. 45.000' },
     productos: null,
     servicios: null,
+    status: 'published',
     verified: true,
     premiumUntil: 1893456000,
     featuredUntil: null,

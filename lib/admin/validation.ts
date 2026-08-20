@@ -2,9 +2,11 @@ import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from '@/lib/auth/password';
 import {
   BLOCK_KINDS,
   REVIEW_STATUSES,
+  LISTING_STATUSES,
   STAFF_ROLES,
   USER_STATUSES,
   type BlockKind,
+  type ListingStatus,
   type ReviewStatus,
   type UserRole,
   type UserStatus,
@@ -193,6 +195,13 @@ export interface ListingBlockFields {
 export interface ListingFormInput extends ListingBlockFields {
   name: string;
   slug?: string; // present on create only
+  /**
+   * Lifecycle (ROADMAP W2-1). Present on create only: after that it moves
+   * through its own buttons, not through the big edit form, so that saving a
+   * phone number can never accidentally publish a draft or un-archive a
+   * closed business.
+   */
+  status?: 'draft' | 'published';
   categoria: string;
   ciudad: string;
   subtitle: string | null;
@@ -298,6 +307,13 @@ export function parseListingInput(
   const servicios = parseServicios(fd, errors);
   const destacadoItem = parseDestacadoItem(fd, errors);
 
+  // Create only, and only ever `draft` or `published` (ROADMAP W2-1). An
+  // unrecognised value falls back to `draft`, never to `published`: a typo, an
+  // old cached form or a hand-rolled POST must not be able to put something on
+  // the public site. Archiving is a separate, explicit action.
+  const status =
+    mode === 'create' ? (value(fd, 'status') === 'published' ? 'published' : 'draft') : undefined;
+
   if (Object.keys(errors).length > 0 || !categoria || !ciudad) return { ok: false, errors };
 
   return {
@@ -305,6 +321,7 @@ export function parseListingInput(
     data: {
       name,
       ...(slug !== undefined ? { slug } : {}),
+      ...(status !== undefined ? { status } : {}),
       categoria,
       ciudad,
       subtitle,
@@ -653,13 +670,25 @@ export function parseListingListParams(params: Record<string, string | string[] 
   categoria?: string;
   ciudad?: string;
   estado?: (typeof LISTING_ESTADOS)[number];
+  /** Lifecycle filter (ROADMAP W2-1). Absent = every status. */
+  status?: ListingStatus;
 } {
   const base = parseListParams(params);
   const rawEstado = oneOf(params, 'estado');
   const estado = (LISTING_ESTADOS as readonly string[]).includes(rawEstado ?? '')
     ? (rawEstado as (typeof LISTING_ESTADOS)[number])
     : undefined;
-  return { ...base, categoria: oneOf(params, 'categoria'), ciudad: oneOf(params, 'ciudad'), estado };
+  const rawStatus = oneOf(params, 'status');
+  const status = (LISTING_STATUSES as readonly string[]).includes(rawStatus ?? '')
+    ? (rawStatus as ListingStatus)
+    : undefined;
+  return {
+    ...base,
+    categoria: oneOf(params, 'categoria'),
+    ciudad: oneOf(params, 'ciudad'),
+    estado,
+    status,
+  };
 }
 
 /**

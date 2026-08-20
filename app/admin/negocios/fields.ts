@@ -25,6 +25,18 @@ export function listingFields(
 
   if (mode === 'create') {
     fields.push({
+      type: 'select',
+      name: 'status',
+      label: 'Estado',
+      required: true,
+      placeholder: '— Elegí un estado —',
+      options: [
+        { value: 'draft', label: 'Borrador — no se ve en el sitio' },
+        { value: 'published', label: 'Publicado — visible para todos' },
+      ],
+      hint: 'Después se cambia con los botones de la ficha, no desde este formulario.',
+    });
+    fields.push({
       type: 'text',
       name: 'slug',
       label: 'URL (slug)',

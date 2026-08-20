@@ -5,6 +5,8 @@ import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { currentUser } from '@/lib/auth/session';
 import { parseListingListParams } from '@/lib/admin/validation';
 import { recategoriseAction } from './actions';
+import { LISTING_STATUS_LABELS } from '@/lib/admin/labels';
+import { LISTING_STATUSES } from '@/lib/db/schema';
 import { listListings, LISTINGS_PAGE_SIZE, type AdminListingRow } from '@/lib/db/listings-admin';
 import { listAllCategoryOptions, listAllCityOptions } from '@/lib/db/taxonomy-admin';
 
@@ -16,7 +18,21 @@ const COLUMNS: AdminColumn<AdminListingRow>[] = [
     header: 'Negocio',
     cell: (row) => (
       <div>
-        <div className="font-bold">{row.name}</div>
+        <div className="flex items-center gap-2">
+          <span className="font-bold">{row.name}</span>
+          {/* Only the two statuses that mean "not on the site" are badged.
+              Badging `published` too would put a chip on every row and make
+              the exceptions harder to spot, not easier. */}
+          {row.status !== 'published' && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                row.status === 'draft' ? 'bg-terragold/20 text-ink' : 'bg-line2 text-ink2'
+              }`}
+            >
+              {LISTING_STATUS_LABELS[row.status]}
+            </span>
+          )}
+        </div>
         <div className="font-mono text-[13px] text-ink2">{row.slug}</div>
       </div>
     ),
@@ -52,7 +68,7 @@ export default async function ListingsPage(
   }
 ) {
   const searchParams = await props.searchParams;
-  const { q, page, categoria, ciudad, estado } = parseListingListParams(searchParams);
+  const { q, page, categoria, ciudad, estado, status } = parseListingListParams(searchParams);
   const nowSeconds = Math.floor(Date.now() / 1000);
   const bulkNotice = typeof searchParams.bulk === 'string' ? searchParams.bulk : undefined;
 
@@ -62,7 +78,7 @@ export default async function ListingsPage(
   let cities;
   try {
     [result, categories, cities] = await Promise.all([
-      listListings(actor, { q, page, categoria, ciudad, estado, nowSeconds }),
+      listListings(actor, { q, page, categoria, ciudad, estado, status, nowSeconds }),
       listAllCategoryOptions(actor),
       listAllCityOptions(actor),
     ]);
@@ -78,6 +94,7 @@ export default async function ListingsPage(
       ...(categoria ? { categoria } : {}),
       ...(ciudad ? { ciudad } : {}),
       ...(estado ? { estado } : {}),
+      ...(status ? { status } : {}),
       page: String(p),
     })}`;
 
@@ -139,6 +156,19 @@ export default async function ListingsPage(
           {cities.map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
+            </option>
+          ))}
+        </select>
+        <select
+          name="status"
+          defaultValue={status ?? ''}
+          aria-label="Filtrar por estado de publicación"
+          className="rounded-card border border-line bg-white px-3 py-2.5 text-[15px] outline-none focus:border-blue"
+        >
+          <option value="">Todos los estados</option>
+          {LISTING_STATUSES.map((value) => (
+            <option key={value} value={value}>
+              {LISTING_STATUS_LABELS[value]}
             </option>
           ))}
         </select>

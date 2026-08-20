@@ -95,21 +95,27 @@ describe('buildListingWhere', () => {
   const at = { day: 3, minutes: 690 }; // Wednesday 11:30
   const NOW = 1_700_000_000;
 
-  it('is undefined when nothing is filtered, so the query has no WHERE', () => {
-    expect(buildListingWhere({}, at, NOW)).toBeUndefined();
+  it('always filters to published, even with no parameters at all (ROADMAP W2-1)', () => {
+    // This used to return `undefined` — no WHERE clause. It cannot any more:
+    // `buildListingWhere` IS the public read path, so the status filter lives
+    // at the top of it rather than at each call site, and a new caller that
+    // passes nothing still gets published rows only.
+    const { sql, params } = render(buildListingWhere({}, at, NOW));
+    expect(sql).toContain('`status`');
+    expect(params).toEqual(['published']);
   });
 
   it('binds the filters as parameters, never as inlined strings', () => {
     const { sql, params } = render(buildListingWhere({ categoria: 'restaurantes', ciudad: 'asuncion' }, at, NOW));
     expect(sql).toContain('`categoria`');
     expect(sql).toContain('`ciudad`');
-    expect(params).toEqual(['restaurantes', 'asuncion']);
+    expect(params).toEqual(['published', 'restaurantes', 'asuncion']);
   });
 
   it('compares zona case-insensitively', () => {
     const { sql, params } = render(buildListingWhere({ zona: '  Villa Morra ' }, at, NOW));
     expect(sql).toContain('lower(');
-    expect(params).toEqual(['villa morra']);
+    expect(params).toEqual(['published', 'villa morra']);
   });
 
   it('searches the text columns with an escaped pattern and the matching taxonomy slugs', () => {

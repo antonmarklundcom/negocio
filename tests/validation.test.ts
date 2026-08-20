@@ -566,3 +566,50 @@ describe('parseListParams', () => {
     expect(parseListParams({ q: 'x'.repeat(400) }).q.length).toBe(120);
   });
 });
+
+describe('parseListingInput — status (ROADMAP W2-1)', () => {
+  const CATS = ['restaurantes'];
+  const OK_CITIES = ['asuncion'];
+
+  function createForm(over: Record<string, string> = {}) {
+    return form({
+      name: 'Panadería',
+      slug: 'panaderia',
+      categoria: 'restaurantes',
+      ciudad: 'asuncion',
+      ...over,
+    });
+  }
+
+  it('accepts published when the form says so', () => {
+    const result = parseListingInput(createForm({ status: 'published' }), 'create', CATS, OK_CITIES);
+    expect(result.ok && result.data.status).toBe('published');
+  });
+
+  it('defaults to draft when the field is absent', () => {
+    const result = parseListingInput(createForm(), 'create', CATS, OK_CITIES);
+    expect(result.ok && result.data.status).toBe('draft');
+  });
+
+  it('falls back to draft — never published — for an unrecognised value', () => {
+    // A typo, a stale cached form or a hand-rolled POST must not be able to
+    // put something on the public site.
+    const archived = parseListingInput(createForm({ status: 'archived' }), 'create', CATS, OK_CITIES);
+    expect(archived.ok && archived.data.status).toBe('draft');
+
+    const junk = parseListingInput(createForm({ status: 'PUBLISHED ' }), 'create', CATS, OK_CITIES);
+    expect(junk.ok && junk.data.status).toBe('draft');
+  });
+
+  it('carries no status at all on update', () => {
+    // Status moves through its own buttons. Saving a phone number must never
+    // publish a draft or un-archive a business that closed.
+    const result = parseListingInput(
+      form({ name: 'Panadería', categoria: 'restaurantes', ciudad: 'asuncion', status: 'published' }),
+      'update',
+      CATS,
+      OK_CITIES,
+    );
+    expect(result.ok && 'status' in result.data).toBe(false);
+  });
+});

@@ -101,6 +101,9 @@ test('create a listing, and it reaches the public site', async ({ page }) => {
 
   await page.goto('/admin/negocios/nuevo');
   await page.locator('input[name="name"]').fill(NAME);
+  // ROADMAP W2-1: new listings default to `draft`, so the public assertions
+  // below only mean anything if this run publishes deliberately.
+  await page.locator('select[name="status"]').selectOption('published');
   await page.locator('input[name="slug"]').fill(SLUG);
   await page.locator('select[name="categoria"]').selectOption('restaurantes');
   await page.locator('select[name="ciudad"]').selectOption('asuncion');
@@ -175,6 +178,36 @@ test('a pending review is invisible publicly until it is approved', async ({ pag
 
   await page.goto(`/lugar/${SLUG}`);
   await expect(page.getByText('Visitante E2E')).toBeVisible();
+});
+
+
+test('archiving takes a listing off the public site without losing it', async ({ page }) => {
+  // ROADMAP W2-1 / D2. This is the behaviour that replaces hard deletion for
+  // "the business closed": gone from the public site, still in the admin.
+  await signIn(page, PASSWORD);
+  await page.waitForURL('**/admin');
+
+  await page.goto(`/admin/negocios/${listingId}`);
+  // NOT waitForURL: the action redirects back to the page it was submitted
+  // from, so any URL matcher is already satisfied before anything happens.
+  // The badge changing is the real completion signal.
+  await page.getByRole('button', { name: 'Archivar' }).click();
+  await expect(page.getByText('Archivado', { exact: true })).toBeVisible();
+
+  const gone = await page.goto(`/lugar/${SLUG}`);
+  expect(gone?.status()).toBe(404);
+
+  // Still in the admin, and still findable.
+  await page.goto(`/admin/negocios?q=${encodeURIComponent(RENAMED)}`);
+  await expect(page.getByRole('row').filter({ hasText: RENAMED })).toHaveCount(1);
+
+  // And it comes back.
+  await page.goto(`/admin/negocios/${listingId}`);
+  await page.getByRole('button', { name: 'Publicar' }).click();
+  await expect(page.getByText('Publicado', { exact: true })).toBeVisible();
+
+  const back = await page.goto(`/lugar/${SLUG}`);
+  expect(back?.status()).toBe(200);
 });
 
 test('deleting requires the slug typed back, then removes the listing', async ({ page }) => {
