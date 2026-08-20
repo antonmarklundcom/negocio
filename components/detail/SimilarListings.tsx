@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '@/lib/i18n/link';
 import type { Listing } from '@/lib/types';
 import { getListings } from '@/lib/listings-repo';
 import { rankSimilar, similarQuery } from '@/lib/similar';

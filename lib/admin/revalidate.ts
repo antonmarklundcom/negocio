@@ -1,5 +1,6 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { CATALOG_TAG } from '@/lib/listings-repo';
+import { routing } from '@/lib/i18n/routing';
 
 /**
  * Drop the public caches a staff write can invalidate (ROADMAP W1-3).
@@ -30,6 +31,18 @@ import { CATALOG_TAG } from '@/lib/listings-repo';
  * than strictly necessary is the right trade against ever serving a listing
  * that no longer exists.
  *
+ * WHY IT IS NOW ONE CALL PER LOCALE (ROADMAP W3-3):
+ * `revalidatePath('/', 'layout')` stopped matching anything the moment the
+ * public site moved under `[locale]`. There is no longer a route at `/` — the
+ * Spanish site is `/es` internally and the middleware rewrites `/` onto it — so
+ * the old call was a no-op that would have looked exactly like the W1-3 bug it
+ * was written to fix: staff edits landing in MySQL and never reaching the
+ * public page, silently, for the full hour. Concrete per-locale roots are used
+ * rather than the dynamic `'/[locale]'` form for the same reason the comment
+ * above gives: the dynamic form is matched against the app-directory path,
+ * route group and all, and is easy to get wrong in a way that fails silently.
+ * The loop is over `routing.locales`, so adding Guaraní cannot forget this.
+ *
  * Called from admin server actions, deliberately after the query module has
  * committed: this is cache bookkeeping, never authorization.
  */
@@ -38,5 +51,5 @@ export function revalidatePublic(): void {
   // takes a cacheLife profile, and without one the entry may still be served
   // stale to the very person who just edited it.
   revalidateTag(CATALOG_TAG, { expire: 0 });
-  revalidatePath('/', 'layout');
+  for (const locale of routing.locales) revalidatePath(`/${locale}`, 'layout');
 }

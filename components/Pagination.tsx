@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '@/lib/i18n/link';
 import { pageWindow } from '@/lib/pagination-window';
 
 /** SSR page-based pagination (§6.2). Each page is server-rendered and indexable. */

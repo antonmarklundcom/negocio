@@ -1,7 +1,14 @@
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
+import { Link } from '@/lib/i18n/link';
 import { CATEGORIES } from '@/lib/categories';
+import { LanguageSwitcherSlot } from './LanguageSwitcher';
+import { categoryLabelPluralFor } from '@/lib/categories';
+import type { Locale } from '@/lib/i18n/routing';
 
-export function Footer() {
+export async function Footer({ locale }: { locale: Locale }) {
+  // Explicit locale — see the note in (site)/[locale]/layout.tsx.
+  const t = await getTranslations({ locale, namespace: 'footer' });
+
   return (
     <footer className="mt-16 border-t border-line bg-cream2/60">
       <div className="mx-auto grid max-w-content gap-8 px-4 py-12 md:grid-cols-4 md:px-8">
@@ -10,17 +17,18 @@ export function Footer() {
             negocio<span className="text-terra">.com.py</span>
           </div>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink2">
-            El directorio de negocios de Paraguay. Encontrá y contactá negocios locales, gratis.
+            {t('tagline')}
           </p>
+          <LanguageSwitcherSlot className="mt-4" />
         </div>
 
         <div>
-          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">Rubros</div>
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">{t('sections.rubros')}</div>
           <ul className="space-y-2 text-sm text-ink2">
             {CATEGORIES.slice(0, 6).map((c) => (
               <li key={c.slug}>
                 <Link href={`/${c.slug}`} className="hover:text-ink">
-                  {c.labelPlural}
+                  {categoryLabelPluralFor(c.slug, locale)}
                 </Link>
               </li>
             ))}
@@ -28,33 +36,33 @@ export function Footer() {
         </div>
 
         <div>
-          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">Negocio</div>
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">{t('sections.business')}</div>
           <ul className="space-y-2 text-sm text-ink2">
             <li>
               <Link href="/precios" className="hover:text-ink">
-                Precios
+                {t('prices')}
               </Link>
             </li>
             <li>
               <Link href="/sumar-negocio" className="hover:text-ink">
-                Sumá tu negocio
+                {t('addBusiness')}
               </Link>
             </li>
             <li>
               <Link href="/nosotros" className="hover:text-ink">
-                Nosotros
+                {t('about')}
               </Link>
             </li>
             <li>
               <Link href="/contacto" className="hover:text-ink">
-                Contacto
+                {t('contact')}
               </Link>
             </li>
           </ul>
         </div>
 
         <div>
-          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">Buscar</div>
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink3">{t('sections.search')}</div>
           <ul className="space-y-2 text-sm text-ink2">
             <li>
               <Link href="/buscar" className="hover:text-ink">
