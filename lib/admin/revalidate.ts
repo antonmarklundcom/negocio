@@ -1,6 +1,5 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { CATALOG_TAG } from '@/lib/listings-repo';
-import { routing } from '@/lib/i18n/routing';
 
 /**
  * Drop the public caches a staff write can invalidate (ROADMAP W1-3).
@@ -31,17 +30,21 @@ import { routing } from '@/lib/i18n/routing';
  * than strictly necessary is the right trade against ever serving a listing
  * that no longer exists.
  *
- * WHY IT IS NOW ONE CALL PER LOCALE (ROADMAP W3-3):
+ * WHY IT IS NOW `'/(site)/[locale]'` (ROADMAP W3-3):
  * `revalidatePath('/', 'layout')` stopped matching anything the moment the
- * public site moved under `[locale]`. There is no longer a route at `/` — the
- * Spanish site is `/es` internally and the middleware rewrites `/` onto it — so
- * the old call was a no-op that would have looked exactly like the W1-3 bug it
- * was written to fix: staff edits landing in MySQL and never reaching the
- * public page, silently, for the full hour. Concrete per-locale roots are used
- * rather than the dynamic `'/[locale]'` form for the same reason the comment
- * above gives: the dynamic form is matched against the app-directory path,
- * route group and all, and is easy to get wrong in a way that fails silently.
- * The loop is over `routing.locales`, so adding Guaraní cannot forget this.
+ * public site moved under `[locale]` — there is no longer a route at `/` — so
+ * it became a no-op with exactly the W1-3 signature: staff edits landing in
+ * MySQL and never reaching the public page, silently, for the full hour.
+ *
+ * The form that works is the **app-directory path, route group and all**,
+ * which is the same lesson as the paragraph above: `'/es'` and `'/en'` do NOT
+ * match (a concrete instance of a dynamic segment is not the route), and
+ * `'/[locale]'` without the group does not either. `'/(site)/[locale]'` with
+ * `'layout'` covers every locale and everything nested under it in one call.
+ *
+ * All three forms were tried against a real MySQL and a real production build
+ * using the W1-6 admin suite, which is the only thing that can tell them
+ * apart — every wrong one fails silently and looks identical to working code.
  *
  * Called from admin server actions, deliberately after the query module has
  * committed: this is cache bookkeeping, never authorization.
@@ -51,5 +54,5 @@ export function revalidatePublic(): void {
   // takes a cacheLife profile, and without one the entry may still be served
   // stale to the very person who just edited it.
   revalidateTag(CATALOG_TAG, { expire: 0 });
-  for (const locale of routing.locales) revalidatePath(`/${locale}`, 'layout');
+  revalidatePath('/(site)/[locale]', 'layout');
 }

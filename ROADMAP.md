@@ -931,14 +931,34 @@ Repo, docs and comments in English.
       the route *segment* keeps it static. Route groups are not part of any
       URL, so no admin path changed.
 
-      **`revalidatePublic()` was broken by the move and is fixed.** The user
-      flagged this exact risk. `revalidatePath('/', 'layout')` matched nothing
-      once the public site moved under `[locale]` — there is no route at `/`
-      any more — so it became a silent no-op with precisely the W1-3 failure
-      signature: staff edits landing in MySQL and never reaching the public
-      page. It is now one concrete call per locale, looped over
-      `routing.locales` so adding Guaraní cannot forget it. **Verified against
-      real MySQL with the W1-6 admin e2e suite**, which exists for this.
+      **TWO revalidation paths were broken by the move. The W1-6 admin suite
+      found both; nothing else could have.** The user flagged this exact risk.
+      1. `revalidatePath('/', 'layout')` matched nothing once the public site
+         moved under `[locale]` — there is no route at `/` any more — so it
+         became a silent no-op with precisely the W1-3 failure signature. The
+         first guess, one concrete call per locale (`'/es'`, `'/en'`), **also
+         did not work**: a concrete instance of a dynamic segment is not the
+         route. Neither is `'/[locale]'` without its route group. The form that
+         works is `revalidatePath('/(site)/[locale]', 'layout')` — the
+         app-directory path, group and all, exactly the lesson W1-3 already
+         recorded one line above it in the same file.
+      2. `/admin/resenas` invalidated the public page with its own
+         `revalidatePath(listingPath(slug))`, which for the same reason stopped
+         matching — an **approved review never appeared on the listing**. That
+         call site now goes through `revalidatePublic()` like every other admin
+         write; there is one place that knows how public caching works, and
+         hand-rolled public paths have now rotted twice.
+      All three candidate forms were tried against a **real MySQL and a real
+      production build**, because every wrong one fails silently and looks
+      identical to working code. Final result: admin e2e **9/9**.
+
+      **The social card was broken too, and is fixed.** `app/opengraph-image.tsx`
+      sat at the app root, which no longer has a layout, so it emitted no
+      `og:image` at all. Moved under `[locale]`, it then emitted
+      `/es/opengraph-image-…`, which the `as-needed` rule **307-redirected** —
+      and some social scrapers do not follow redirects for images, on a site
+      whose links are shared on WhatsApp. `opengraph-image` is now excluded
+      from the middleware at any depth; both cards serve 200, 81 kB, directly.
 
       **next-intl's ambient request locale does not work in this app, and the
       code says so.** `setRequestLocale` did not propagate to `getTranslations`

@@ -15,9 +15,15 @@ import { routing } from '@/lib/i18n/routing';
  *   paths, and translate a panel nobody outside the office ever opens.
  * - `/api` — a JSON contract (§7). A locale segment on an API route is a
  *   breaking change to every consumer for no benefit.
- * - `/sitemap.xml`, `/robots.txt` and the image routes — single files that
- *   handle both locales themselves; `sitemap.ts` emits the pair with
- *   `alternates`, which a rewritten-per-locale sitemap could not do.
+ * - `/sitemap.xml`, `/robots.txt` and `icon.svg` — single files that handle
+ *   both locales themselves; `sitemap.ts` emits the pair with `alternates`,
+ *   which a rewritten-per-locale sitemap could not do.
+ * - **anything named `opengraph-image…`, at any depth.** The generated social
+ *   card lives under `[locale]`, so its URL is `/es/opengraph-image-<hash>`;
+ *   without this the `as-needed` rule would 307 that to the unprefixed path and
+ *   `og:image` would point at a redirect. Some social scrapers do not follow
+ *   redirects for images, and this site's links are shared on WhatsApp — which
+ *   is the entire reason the card exists.
  * - `/_next`, and anything with a file extension.
  */
 export default createMiddleware(routing);
@@ -27,6 +33,6 @@ export const config = {
     // Each exclusion is anchored to a whole first segment — `admin(?:/|$)`, not
     // bare `admin`. A prefix match would also exclude `/administracion`, a
     // perfectly good future rubro slug, from locale routing.
-    '/((?!(?:api|admin|ingresar|cambiar-contrasena|_next|seed)(?:/|$)|sitemap\\.xml$|robots\\.txt$|opengraph-image$|icon\\.svg$|favicon\\.ico$|.*\\..*$).*)',
+    '/((?!(?:api|admin|ingresar|cambiar-contrasena|_next|seed)(?:/|$)|sitemap\\.xml$|robots\\.txt$|icon\\.svg$|favicon\\.ico$|.*opengraph-image.*|.*\\..*$).*)',
   ],
 };

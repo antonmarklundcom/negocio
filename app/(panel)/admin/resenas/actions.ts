@@ -1,11 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { revalidatePublic } from '@/lib/admin/revalidate';
 import { redirect } from 'next/navigation';
 import { currentUser, type SessionUser } from '@/lib/auth/session';
 import { isAuthError } from '@/lib/auth/roles';
 import { approveReview, rejectReview } from '@/lib/db/reviews-admin';
-import { listingPath } from '@/lib/config';
 import { REVIEW_STATUSES, type ReviewStatus } from '@/lib/db/schema';
 
 /**
@@ -52,7 +52,14 @@ async function moderate(
   }
 
   revalidatePath('/admin/resenas');
-  revalidatePath(listingPath(listingSlug));
+  // The public side goes through `revalidatePublic()` like every other admin
+  // write, NOT through a hand-built `revalidatePath(listingPath(slug))`.
+  // That narrow form broke silently when the public site moved under
+  // `[locale]` in W3-3 — `/lugar/x` is no longer a route — and an approved
+  // review simply never appeared on the listing page. It is the second time a
+  // bespoke public-path invalidation has rotted here; there is now one place
+  // that knows how public caching works, and this is a caller of it.
+  revalidatePublic();
   redirect(backTo(filter));
 }
 
