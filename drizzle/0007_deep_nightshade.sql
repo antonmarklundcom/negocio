@@ -1,0 +1,1 @@
+ALTER TABLE `leads` MODIFY COLUMN `source` enum('listing_message','listing_whatsapp','sumate','contacto','listing_report') NOT NULL;

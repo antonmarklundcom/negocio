@@ -65,6 +65,7 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   listing_whatsapp: 'WhatsApp desde ficha',
   sumate: 'Sumate (alta de negocio)',
   contacto: 'Contacto',
+  listing_report: 'Reporte de datos incorrectos',
 };
 
 /**

@@ -524,11 +524,24 @@ Repo, docs and comments in English.
       source is an `ALTER TABLE` — see **W1-1b** below, which carries it as a
       migration PR. Bundling it here would have made a "no migration" PR
       unmergeable until the database was touched by hand.
-- [ ] **W1-1b — "Reportar información incorrecta". MIGRATION.** Split out of
-      W1-1 (see above). New `listing_report` value in the `leads.source` enum,
-      a `listing_report` variant on the zod union in `lib/leads.ts`, and a
-      report affordance on `lugar/[slug]` that goes through the same lead
-      orchestrator, honeypot and rate limit as every other public write.
+- [x] **W1-1b — "Reportar información incorrecta". MIGRATION (`drizzle/0007_*`).**
+      Split out of W1-1 (see above). New `listing_report` value in the
+      `leads.source` enum, a `listing_report` variant on the zod union in
+      `lib/leads.ts`, and a report affordance on `lugar/[slug]` that goes
+      through the same lead orchestrator, honeypot and rate limit as every
+      other public write.
+      *Shipped exactly that: a lead source, not a table of its own — a report
+      IS a member of the public telling us something, so it reuses the
+      honeypot, the per-IP rate limit, the webhook fan-out, the `leads` table
+      and `/admin/leads`. A `reports` table would have duplicated all of it to
+      gain one column. `components/detail/ReportForm.tsx` sits collapsed behind
+      a `<details>` on both detail layouts: a report link is a footnote on a
+      business's page, not something competing with "Llamar". The contact field
+      is **optional** — somebody telling us a phone number is wrong is doing us
+      a favour, and demanding their email first is how the report does not get
+      sent. Verified end to end against MySQL: a POST to `/api/v1/leads` with
+      `source: listing_report` lands the row with its slug, message and
+      contact.*
 - [x] **W1-2 — Session correctness (S1 + S2). MIGRATION (`drizzle/0004_*`).** `requireRole`/`currentUser`
       must re-read `role` and `status` from the DB per request — today a
       suspended or demoted admin keeps access for the cookie's 8-hour TTL,
