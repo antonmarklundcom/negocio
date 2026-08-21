@@ -358,6 +358,47 @@ export const users = mysqlTable(
   }),
 );
 
+/**
+ * Password-reset tokens (ROADMAP: the "password reset by email" half of the
+ * PR-6 gate). One row per reset request.
+ *
+ * **The raw token is never stored.** This column holds its SHA-256, and the
+ * only copy of the token itself is the one in the email. A read of this table
+ * — a leaked backup, a SQL injection, a curious member of staff with database
+ * access — therefore yields nothing that can be used to take over an account.
+ *
+ * SHA-256 rather than scrypt, deliberately, and this is the one place in the
+ * app where a fast hash is the right answer: the token is 32 bytes of
+ * `randomBytes`, so there is no dictionary to run against it and nothing for a
+ * slow KDF to defend. `users.password_hash` protects a human-chosen secret and
+ * uses scrypt; this protects a random one and does not need to.
+ *
+ * `used_at` is what makes a token single-use, and it is set in the SAME
+ * transaction that writes the new password — so a token cannot be spent twice
+ * even by two requests arriving together.
+ */
+export const passwordResetTokens = mysqlTable(
+  'password_reset_tokens',
+  {
+    id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+    userId: int('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** SHA-256 of the token, hex. Unique so a lookup is one indexed read. */
+    tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    /** Null until spent. A spent token is kept, not deleted — it is audit trail. */
+    usedAt: timestamp('used_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    tokenIdx: uniqueIndex('password_reset_tokens_token_idx').on(t.tokenHash),
+    userIdx: index('password_reset_tokens_user_idx').on(t.userId),
+  }),
+);
+
+export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
+
 export const ACTIVITY_ACTIONS = ['create', 'update', 'delete', 'archive'] as const;
 
 /**

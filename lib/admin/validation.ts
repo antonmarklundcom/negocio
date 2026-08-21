@@ -640,6 +640,52 @@ export function parsePasswordChangeInput(fd: FormData): ParseResult<PasswordChan
   return { ok: true, data: { current, next } };
 }
 
+export interface ResetRequestInput {
+  email: string;
+}
+
+/**
+ * The "send me a link" form. Like `parseLoginInput`, it reports nothing
+ * field-specific: the page has one message for every outcome, because a
+ * different one for "that is not an email" versus "no such account" is the
+ * beginning of an account-enumeration oracle.
+ */
+export function parseResetRequestInput(fd: FormData): ParseResult<ResetRequestInput> {
+  const email = value(fd, 'email').toLowerCase();
+  if (!email || email.length > 160 || !email.includes('@')) return { ok: false, errors: {} };
+  return { ok: true, data: { email } };
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  next: string;
+}
+
+/**
+ * The "choose a new password" form. This one DOES report per-field errors —
+ * whoever is looking at it already proved possession of the token, so there is
+ * nothing left to leak, and "the passwords do not match" has to be sayable.
+ */
+export function parseResetPasswordInput(fd: FormData): ParseResult<ResetPasswordInput> {
+  const errors: Errors = {};
+  const token = value(fd, 'token');
+  const next = typeof fd.get('next') === 'string' ? String(fd.get('next')) : '';
+  const repeat = typeof fd.get('repeat') === 'string' ? String(fd.get('repeat')) : '';
+
+  if (next.length < MIN_PASSWORD_LENGTH) {
+    errors['next'] = `Usá al menos ${MIN_PASSWORD_LENGTH} caracteres.`;
+  } else if (next.length > MAX_PASSWORD_LENGTH) {
+    errors['next'] = 'Esa contraseña es demasiado larga.';
+  }
+  if (next !== repeat) errors['repeat'] = 'Las contraseñas no coinciden.';
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  // A missing token is not a field error — the form never renders without one,
+  // so its absence means a tampered submission, not a mistake worth explaining.
+  if (!token) return { ok: false, errors: {} };
+  return { ok: true, data: { token, next } };
+}
+
 // ---------------------------------------------------------------------------
 // shared list-page parsing
 // ---------------------------------------------------------------------------

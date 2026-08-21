@@ -69,3 +69,23 @@ test('/admin 404s with no database configured', async ({ page }) => {
   const res = await page.goto('/admin');
   expect(res?.status()).toBe(404);
 });
+
+test('the password-reset pages render without a database', async ({ page }) => {
+  // Both are reachable signed-out by design — they are how a locked-out member
+  // of staff gets back in. With no DATABASE_URL they must still render rather
+  // than 500: this CI run has none, and neither does a misconfigured deploy on
+  // the day someone actually needs the page.
+  const request = await page.goto('/recuperar-contrasena');
+  expect(request?.status()).toBe(200);
+  await expect(page.getByLabel('Correo')).toBeVisible();
+
+  // A token nobody minted must never produce a "choose a new password" form.
+  const reset = await page.goto('/restablecer-contrasena?token=not-a-real-token');
+  expect(reset?.status()).toBe(200);
+  await expect(page.locator('input[name="next"]')).toHaveCount(0);
+});
+
+test('the sign-in page offers password recovery', async ({ page }) => {
+  await page.goto('/ingresar');
+  await expect(page.getByRole('link', { name: /olvidaste tu contraseña/i })).toBeVisible();
+});

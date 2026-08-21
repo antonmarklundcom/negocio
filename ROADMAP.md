@@ -1115,11 +1115,51 @@ Repo, docs and comments in English.
       `/en/lugar/…` on the English page, full `og:` block on every detail page,
       and a real 1200×630 PNG on a photo-less listing in both languages.
 
+- [x] **W3-6 — Password reset by email. MIGRATION (`drizzle/0008_*`).** The
+      first half of the owner-portal gate (PR-6: "password reset by email live";
+      the transport shipped in W2-4, this is the flow). Staff-only today, and
+      reusable unchanged by PR-6 — the owner roles are already in the enum and
+      this path never asks what role you are.
+      *Shipped: `password_reset_tokens` (user, **SHA-256 of the token**, expiry,
+      `used_at`), `lib/auth/reset-token.ts` (pure: mint, hash, TTL, the
+      valid/used/expired/unknown decision), `lib/db/password-reset.ts`,
+      `/recuperar-contrasena` → email → `/restablecer-contrasena?token=…`.
+      **Four decisions worth not re-litigating:**
+      **(a) The raw token is never stored** — only its SHA-256, and SHA-256
+      rather than scrypt on purpose: the token is 32 bytes of `randomBytes`, so
+      there is no dictionary for a slow KDF to defend against. A leaked backup
+      yields nothing usable.
+      **(b) The request form answers identically** for a real address, an
+      unknown one, a malformed one and a suspended account — otherwise it is a
+      directory of who works here. The two exceptions are independent of the
+      address typed in (rate limit; SMTP unconfigured or refusing), so they
+      enumerate nobody. A send failure is surfaced, not swallowed: `lib/mail.ts`
+      says so in as many words, and the alternative is somebody staring at
+      "check your email" forever.
+      **(c) Single use is enforced by the database, not by a read.** Spending a
+      token is `UPDATE … WHERE used_at IS NULL`, and its affected-row count
+      authorises the password write. A SELECT-then-UPDATE would let two requests
+      carrying the same link both pass, the second silently overwriting the
+      first. Sibling tokens die in the same transaction.
+      **(d) A successful reset does NOT sign you in.** Minting a session there
+      would make the mailbox the credential. It stamps `password_changed_at`
+      (revoking every open session — the usual reason for a reset is that
+      somebody else has a cookie) and redirects to `/ingresar?reset=1`.
+      Also: per-address rate limiting on top of per-IP, so a rotating IP pool
+      cannot flood one person's mailbox; both routes excluded from locale
+      routing like the rest of the panel (`/en/recuperar-contrasena` 404s);
+      the sign-in page's "pedile a un administrador" placeholder is now a link.
+      21 new tests (572 total), canary on the single-use guard (`affectedOne`
+      forced to `true` → the already-spent test goes red), smoke e2e 12/12
+      including "a token nobody minted never renders a password form", and the
+      three routes curled against a production build.
+      **USER: apply `drizzle/0008_*` before merging** (standing rule).
+
 ### Gated items (build when their gate is met — decisions already made)
 
 - [ ] **Owner portal (PR-6)** — gate: **≥20 paying businesses** AND password
-      reset by email live (mail transport ships in W2-4; the reset flow itself
-      is part of this item). Uses the **`listing_users` join table** (D3 —
+      reset by email live — **the reset half is now done (W3-6)**, so the only
+      remaining gate is the 20 paying businesses. Uses the **`listing_users` join table** (D3 —
       MIGRATION), `scopeToOwner()` that throws on mismatch, a separate narrow
       `fields.ts` (owner never reaches `verified`/`premiumUntil`/`featuredUntil`/
       `slug`/taxonomy), owner edits land in a moderation queue (needs W2-1's
