@@ -342,11 +342,19 @@ bypasses the panel's own audit log. Every further account is created from
   owner portal) but satisfy nothing staff-facing and cannot be assigned from any
   form — with a numeric ladder, `owner_admin >= editor` would hand an owner a
   staff screen.
-- **Password reset by email is deliberately deferred.** It needs another table
-  and a mail integration. That is acceptable only while nobody outside the team
-  has an account — a self-serve owner portal must not be announced to real
-  businesses until it exists, or a locked-out owner is recoverable only by an
-  admin.
+- **Password reset by email is live** (`/recuperar-contrasena` →
+  `/restablecer-contrasena`), which clears half the owner-portal gate; the other
+  half is ≥20 paying businesses. Four rules hold it up. The raw token is never
+  stored — the database keeps its SHA-256, so a leaked backup yields nothing
+  usable. Requesting a link answers **identically** for a real address, an
+  unknown one and a suspended account, so the form is not a staff directory.
+  Spending a token is a single `UPDATE ... WHERE used_at IS NULL` whose
+  affected-row count authorises the password write, so two requests carrying the
+  same link cannot both win. And a successful reset does **not** sign you in: an
+  email link should not be a session, so it stamps `password_changed_at` (which
+  revokes every open session) and sends you to `/ingresar` to use what you just
+  chose. SMTP unconfigured is reported plainly rather than faked as sent — that
+  message is the same for every address, so it enumerates nobody.
 
 ### What is not built yet
 

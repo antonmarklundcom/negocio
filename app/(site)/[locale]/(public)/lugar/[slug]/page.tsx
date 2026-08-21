@@ -30,6 +30,7 @@ import { JsonLd, listingJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import type { Review } from '@/lib/types';
 import { toLocale, type Locale } from '@/lib/i18n/routing';
 import { alternatesFor } from '@/lib/i18n/alternates';
+import { siteOpenGraph } from '@/lib/i18n/metadata';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 /**
@@ -71,16 +72,29 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
   if (!l) return { title: t('notFoundTitle') };
   const where = l.zona ? `${l.zona}, ${l.ciudadLabel}` : l.ciudadLabel;
   const category = categoryLabelFor(l.categoria, locale);
+  const cover = l.coverImage ? mediaUrl(l.coverImage) : null;
+  const image = cover ? (/^https?:\/\//.test(cover) ? cover : `${SITE_URL}${cover}`) : null;
+
   return {
     title: t('metaTitle', { name: l.name, category, where }),
     description: l.description?.slice(0, 160) ?? t('metaDescription', { name: l.name, category, where }),
-    alternates: alternatesFor(listingPath(l.slug), toLocale(params.locale)),
+    alternates: alternatesFor(listingPath(l.slug), locale),
     openGraph: {
+      // Spread first: Next replaces the layout's `openGraph` wholesale rather
+      // than merging into it, so without this the shared card loses
+      // `og:site_name`, `og:locale`, `og:type` and `og:url`.
+      ...siteOpenGraph(listingPath(l.slug), locale),
       title: l.name,
       description: l.description?.slice(0, 160),
-      images: l.coverImage
-        ? [/^https?:\/\//.test(mediaUrl(l.coverImage)) ? mediaUrl(l.coverImage) : `${SITE_URL}${mediaUrl(l.coverImage)}`]
-        : undefined,
+      /**
+       * Omit the key entirely when the business has no cover photo — do not
+       * pass `images: undefined`. A present key overrides the generated
+       * `opengraph-image` card, and the result was a listing sharing on
+       * WhatsApp with **no preview image at all**. That hit free listings
+       * hardest, which is exactly backwards: the ones with no photo are the
+       * ones that most need the fallback card.
+       */
+      ...(image ? { images: [image] } : {}),
     },
   };
 }
@@ -114,8 +128,8 @@ export default async function ListingPage(props: { params: Promise<{ locale: str
 
   return (
     <div className="bg-cream">
-      <JsonLd data={listingJsonLd(listing)} />
-      <JsonLd data={breadcrumbJsonLd(crumbs)} />
+      <JsonLd data={listingJsonLd(listing, locale)} />
+      <JsonLd data={breadcrumbJsonLd(crumbs, locale)} />
 
       {premium ? (
         <PremiumDetail listing={listing} open={open} crumbs={crumbs} reviews={reviewsOn ? reviews : null} locale={locale} />

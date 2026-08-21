@@ -10,7 +10,8 @@ import { routing } from '@/lib/i18n/routing';
  *
  * Excluded, deliberately:
  *
- * - `/admin`, `/ingresar`, `/cambiar-contrasena` — staff tooling, Spanish only.
+ * - `/admin`, `/ingresar`, `/cambiar-contrasena`, `/recuperar-contrasena`,
+ *   `/restablecer-contrasena` — staff tooling, Spanish only.
  *   Localising them would multiply every admin URL, break the e2e suite's
  *   paths, and translate a panel nobody outside the office ever opens.
  * - `/api` — a JSON contract (§7). A locale segment on an API route is a
@@ -33,6 +34,6 @@ export const config = {
     // Each exclusion is anchored to a whole first segment — `admin(?:/|$)`, not
     // bare `admin`. A prefix match would also exclude `/administracion`, a
     // perfectly good future rubro slug, from locale routing.
-    '/((?!(?:api|admin|ingresar|cambiar-contrasena|_next|seed)(?:/|$)|sitemap\\.xml$|robots\\.txt$|icon\\.svg$|favicon\\.ico$|.*opengraph-image.*|.*\\..*$).*)',
+    '/((?!(?:api|admin|ingresar|cambiar-contrasena|recuperar-contrasena|restablecer-contrasena|_next|seed)(?:/|$)|sitemap\\.xml$|robots\\.txt$|icon\\.svg$|favicon\\.ico$|.*opengraph-image.*|.*\\..*$).*)',
   ],
 };

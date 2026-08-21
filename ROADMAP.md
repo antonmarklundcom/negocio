@@ -1075,11 +1075,91 @@ Repo, docs and comments in English.
       Verified: 525 unit tests, smoke 10/10, **admin e2e 9/9 against real
       MySQL**, and both locales curled against the production build.
 
+### Wave 3 follow-up — share/structured-data correctness (2026-08-20)
+
+- [x] **W3-5 — The locale move's SEO tail. No migration.** Three defects the
+      `[locale]` refactor left behind, all found by curling a production build
+      rather than by reading code, and all on the public pages the site is
+      actually shared and indexed from.
+      *Shipped:*
+      **(a) JSON-LD spoke Spanish on English pages.** `lib/jsonld.tsx` built
+      every URL as `SITE_URL + path`, so `/en/lugar/x` carried a
+      self-referencing canonical of `/en/lugar/x` beside a `LocalBusiness`
+      whose `@id` and `url` were the *Spanish* `/lugar/x` — the structured data
+      contradicting the canonical on the same page, and the two locale pages
+      claiming to be one entity. Breadcrumbs had it too: English labels
+      ("Home", "Restaurant") pointing at Spanish URLs. `locale` is now a
+      **required** argument on every builder that emits a URL, so a caller that
+      forgets it fails to compile instead of silently emitting Spanish. Canary:
+      the old expressions restored → 4 of 8 new tests red.
+      **(b) Every listing page lost the site-wide `og:` fields.** Next merges
+      metadata *shallowly* — a page returning its own `openGraph` replaces the
+      layout's outright — so `/lugar/<slug>` shipped `og:title` and
+      `og:description` and nothing else: no `og:site_name`, no `og:locale`, no
+      `og:type`, no `og:url`, on a site whose distribution is WhatsApp. New
+      `siteOpenGraph(path, locale)` in `lib/i18n/metadata.ts` is the one place
+      those fields live, and `og:url` is now per-page and locale-prefixed.
+      **(c) A business with no cover photo shared with no image at all.** The
+      site-wide card documents itself as "auto-applied site-wide" and, because
+      of (b), was not: `images: undefined` is a *present key*, so it overrode
+      the generated card and emitted nothing. That hit exactly backwards — the
+      free listings with no photo are the ones that most need a fallback. Fixed
+      with a **per-listing** card at
+      `lugar/[slug]/opengraph-image.tsx` (business name + rubro · barrio,
+      ciudad, in the page's language), rendered on demand rather than
+      prerendered per listing. A listing *with* a photo still wins: the
+      explicit `openGraph.images` takes precedence, so this is the fallback,
+      not the default.
+      Verified: 551 unit tests (8 new), lint + typecheck clean, smoke e2e 10/10,
+      and both locales re-curled against a production build — `@id` now
+      `/en/lugar/…` on the English page, full `og:` block on every detail page,
+      and a real 1200×630 PNG on a photo-less listing in both languages.
+
+- [x] **W3-6 — Password reset by email. MIGRATION (`drizzle/0008_*`).** The
+      first half of the owner-portal gate (PR-6: "password reset by email live";
+      the transport shipped in W2-4, this is the flow). Staff-only today, and
+      reusable unchanged by PR-6 — the owner roles are already in the enum and
+      this path never asks what role you are.
+      *Shipped: `password_reset_tokens` (user, **SHA-256 of the token**, expiry,
+      `used_at`), `lib/auth/reset-token.ts` (pure: mint, hash, TTL, the
+      valid/used/expired/unknown decision), `lib/db/password-reset.ts`,
+      `/recuperar-contrasena` → email → `/restablecer-contrasena?token=…`.
+      **Four decisions worth not re-litigating:**
+      **(a) The raw token is never stored** — only its SHA-256, and SHA-256
+      rather than scrypt on purpose: the token is 32 bytes of `randomBytes`, so
+      there is no dictionary for a slow KDF to defend against. A leaked backup
+      yields nothing usable.
+      **(b) The request form answers identically** for a real address, an
+      unknown one, a malformed one and a suspended account — otherwise it is a
+      directory of who works here. The two exceptions are independent of the
+      address typed in (rate limit; SMTP unconfigured or refusing), so they
+      enumerate nobody. A send failure is surfaced, not swallowed: `lib/mail.ts`
+      says so in as many words, and the alternative is somebody staring at
+      "check your email" forever.
+      **(c) Single use is enforced by the database, not by a read.** Spending a
+      token is `UPDATE … WHERE used_at IS NULL`, and its affected-row count
+      authorises the password write. A SELECT-then-UPDATE would let two requests
+      carrying the same link both pass, the second silently overwriting the
+      first. Sibling tokens die in the same transaction.
+      **(d) A successful reset does NOT sign you in.** Minting a session there
+      would make the mailbox the credential. It stamps `password_changed_at`
+      (revoking every open session — the usual reason for a reset is that
+      somebody else has a cookie) and redirects to `/ingresar?reset=1`.
+      Also: per-address rate limiting on top of per-IP, so a rotating IP pool
+      cannot flood one person's mailbox; both routes excluded from locale
+      routing like the rest of the panel (`/en/recuperar-contrasena` 404s);
+      the sign-in page's "pedile a un administrador" placeholder is now a link.
+      21 new tests (572 total), canary on the single-use guard (`affectedOne`
+      forced to `true` → the already-spent test goes red), smoke e2e 12/12
+      including "a token nobody minted never renders a password form", and the
+      three routes curled against a production build.
+      **USER: apply `drizzle/0008_*` before merging** (standing rule).
+
 ### Gated items (build when their gate is met — decisions already made)
 
 - [ ] **Owner portal (PR-6)** — gate: **≥20 paying businesses** AND password
-      reset by email live (mail transport ships in W2-4; the reset flow itself
-      is part of this item). Uses the **`listing_users` join table** (D3 —
+      reset by email live — **the reset half is now done (W3-6)**, so the only
+      remaining gate is the 20 paying businesses. Uses the **`listing_users` join table** (D3 —
       MIGRATION), `scopeToOwner()` that throws on mismatch, a separate narrow
       `fields.ts` (owner never reaches `verified`/`premiumUntil`/`featuredUntil`/
       `slug`/taxonomy), owner edits land in a moderation queue (needs W2-1's
