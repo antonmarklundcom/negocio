@@ -41,6 +41,11 @@ export function createPool(url: string = databaseUrl()): mysql.Pool {
     timezone: 'Z',
     supportBigNumbers: true,
     bigNumberStrings: false,
+    // A request that can't get a connection must fail in seconds so its process is
+    // released, rather than hang forever and eat into Hostinger's shared process cap.
+    waitForConnections: true,
+    queueLimit: 24,
+    connectTimeout: 8_000,
   });
 }
 
