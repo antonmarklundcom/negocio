@@ -94,7 +94,7 @@ jobs:
       - name: Admin round-trip
         run: npm run test:e2e:admin
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: admin-e2e-report
