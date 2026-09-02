@@ -68,6 +68,7 @@ export type Listing = {
   verified: boolean; // drives "Verificado" chip
   premiumUntil?: number; // unix seconds; premium = premiumUntil > now
   featuredUntil?: number; // unix seconds; "destacado en portada" home-page slot, sold separately from premium
+  updatedAt?: number; // unix seconds; sitemap lastModified (ROADMAP F5)
 
   // optional/honesty-gated stats (default hidden, see §6.6):
   rating?: number;
