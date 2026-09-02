@@ -2,15 +2,23 @@
 
 import { useTranslations } from 'next-intl';
 import type { OpenState } from '@/lib/hours';
+import type { DayHours } from '@/lib/types';
+import { useLiveOpenState } from '@/lib/hours-client';
 
 /**
  * "Abierto ahora" / "Cerrado" pill for the home page's featured cards
  * (Home_A §4). Renders nothing for `{ unknown: true }` — never a fabricated
  * state (§6.5 elsewhere in the codebase).
+ *
+ * `initialOpen` is the server-computed value (used for the first render, so
+ * SSR markup matches); `hours` lets `useLiveOpenState` recompute it in the
+ * browser and keep it live despite the page's hourly ISR staleness
+ * (ROADMAP F2).
  */
-export function StatusPill({ open }: { open: OpenState }) {
+export function StatusPill({ hours, initialOpen }: { hours: DayHours[] | undefined; initialOpen: OpenState }) {
   const tHours = useTranslations('hours');
   const tHome = useTranslations('home');
+  const open = useLiveOpenState(hours, initialOpen);
 
   if ('unknown' in open) return null;
 
