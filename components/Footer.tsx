@@ -55,6 +55,9 @@ export async function Footer({ locale }: { locale: Locale }) {
           <Link href="/favoritos" className="text-ink hover:text-blued">
             {t('myFavorites')}
           </Link>
+          <Link href="/terminos" className="text-ink hover:text-blued">
+            {t('terms')}
+          </Link>
         </div>
       </div>
       <div className="mx-auto flex max-w-wide flex-col justify-between gap-2 px-4 pb-7 text-[13px] text-ink2 sm:flex-row md:px-10">

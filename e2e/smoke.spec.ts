@@ -29,6 +29,11 @@ test('a category landing page renders', async ({ page }) => {
   await expect(page.locator('h1')).toBeVisible();
 });
 
+test('the legal/terms page renders', async ({ page }) => {
+  await page.goto('/terminos');
+  await expect(page.locator('h1')).toBeVisible();
+});
+
 test('sitemap.xml is served', async ({ request }) => {
   const res = await request.get('/sitemap.xml');
   expect(res.ok()).toBe(true);

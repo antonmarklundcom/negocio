@@ -53,7 +53,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   });
 
-  const staticRoutes = ['/', '/buscar', '/rubros', '/precios', '/sumar-negocio', '/contacto', '/nosotros'].map(
+  const staticRoutes = [
+    '/',
+    '/buscar',
+    '/rubros',
+    '/precios',
+    '/sumar-negocio',
+    '/contacto',
+    '/nosotros',
+    '/terminos',
+  ].map(
     (path) => entry(path, path === '/' ? 1 : 0.6),
   );
 

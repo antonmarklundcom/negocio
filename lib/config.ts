@@ -57,6 +57,7 @@ export const RESERVED_SLUGS = new Set([
   'sumar-negocio',
   'contacto',
   'nosotros',
+  'terminos',
   'api',
   'sitemap.xml',
   'robots.txt',
