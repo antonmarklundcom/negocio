@@ -176,6 +176,9 @@ async function postWithRetry(url: string, body: Record<string, string>, label: s
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        // Bound each webhook attempt so a hung sink can't stack up
+        // requests across the 3 retries and other concurrent leads.
+        signal: AbortSignal.timeout(10_000),
       });
       if (res.ok) return;
       lastErr = new Error(`${label} responded ${res.status}`);

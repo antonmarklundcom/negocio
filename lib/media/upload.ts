@@ -109,6 +109,9 @@ export async function uploadListingImage(listingId: string, file: File): Promise
     // forever — a new photo always gets a new key, never overwrites one.
     headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=31536000, immutable' },
     body: processed,
+    // Bound the outbound R2 call so a stalled upstream can't pile up
+    // requests toward the account-wide Hostinger process cap.
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!res.ok) {
