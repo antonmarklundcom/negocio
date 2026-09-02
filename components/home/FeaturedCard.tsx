@@ -11,6 +11,7 @@ import { waLink } from '@/lib/format';
 import { trackLead } from '@/lib/lead-client';
 import { DestacadoPill } from '@/components/Pills';
 import { FavoriteButton } from '@/components/FavoriteButton';
+import { RatingBadge } from '@/components/RatingBadge';
 import { StatusPill } from './StatusPill';
 
 /** "Negocios destacados" card (Home_A §4) — the paid/premium home slots. */
@@ -60,7 +61,10 @@ export function FeaturedCard({ listing, open }: { listing: Listing; open: OpenSt
           </div>
         </div>
 
-        <StatusPill open={open} />
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill open={open} />
+          <RatingBadge rating={listing.rating} reviewsCount={listing.reviewsCount} />
+        </div>
 
         <div className="mt-auto flex gap-2 pt-[6px]">
           {hasContact ? (

@@ -11,6 +11,7 @@ import { VerifiedPill, CategoryChip, DestacadoPill } from './Pills';
 import { Pin } from './icons';
 import { WhatsAppQuickButton } from './WhatsAppQuickButton';
 import { FavoriteButton } from './FavoriteButton';
+import { RatingBadge } from './RatingBadge';
 
 /**
  * Result card. Standard = white + photo-or-fallback + category chip + name +
@@ -65,8 +66,9 @@ export function ListingCard({ listing }: { listing: Listing }) {
       </div>
 
       <div className="flex flex-1 flex-col p-3.5">
-        <div className="mb-1.5 flex items-center gap-2">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
           {premium ? listing.verified && <VerifiedPill /> : <CategoryChip label={listing.categoriaLabel} />}
+          <RatingBadge rating={listing.rating} reviewsCount={listing.reviewsCount} />
         </div>
         <Link href={href}>
           <h3 className="mb-1.5 font-serif text-[20px] font-semibold leading-tight transition-colors group-hover:text-blued">

@@ -22,6 +22,7 @@ import { StickyWhatsAppBar } from '@/components/detail/StickyWhatsAppBar';
 import { LockedRow, LockedGallery, LockedCategory, UpgradeCta } from '@/components/detail/Locked';
 import { Reviews } from '@/components/detail/Reviews';
 import { ShareButton } from '@/components/detail/ShareButton';
+import { RatingBadge } from '@/components/RatingBadge';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { SimilarListings } from '@/components/detail/SimilarListings';
 import { ReportForm } from '@/components/detail/ReportForm';
@@ -155,26 +156,6 @@ function OpenState({ open }: { open: ReturnType<typeof computeOpenState> }) {
   return <ClosedPill opensAt={open.opensAt} opensDay={open.opensDay} opensWhen={open.opensWhen} />;
 }
 
-function Rating({
-  rating,
-  reviewsCount,
-  t,
-}: {
-  rating?: number;
-  reviewsCount?: number;
-  t: (key: string, values?: Record<string, string | number>) => string;
-}) {
-  if (!REVIEWS_ENABLED || !rating) return null;
-  return (
-    <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
-      <span className="tracking-wide text-terragold">★★★★★</span> {rating.toFixed(1)}
-      {reviewsCount ? (
-        <span className="font-medium text-ink3">{t('reviewsCount', { count: reviewsCount })}</span>
-      ) : null}
-    </span>
-  );
-}
-
 // ---------------------------------------------------------------- PREMIUM ----
 async function PremiumDetail({ listing: l, open, crumbs, reviews, locale }: DetailProps) {
   const t = await getTranslations({ locale, namespace: 'detail' });
@@ -207,7 +188,7 @@ async function PremiumDetail({ listing: l, open, crumbs, reviews, locale }: Deta
             <h1 className="font-serif text-[31px] font-semibold leading-[1.02] md:text-[42px]">{l.name}</h1>
 
             <div className="mt-3 flex flex-wrap items-center gap-4">
-              <Rating rating={l.rating} reviewsCount={l.reviewsCount} t={t} />
+              <RatingBadge rating={l.rating} reviewsCount={l.reviewsCount} />
               <OpenState open={open} />
             </div>
 
