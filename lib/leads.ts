@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { insertLead, updateLeadDelivery, type NewLead } from './db/leads';
 
@@ -69,6 +70,83 @@ export type Lead = z.infer<typeof leadSchema>;
 const GHL_WEBHOOK_URL = process.env.GHL_WEBHOOK_URL || '';
 const SHEETS_WEBHOOK_URL = process.env.SHEETS_WEBHOOK_URL || '';
 const LEADS_WEBHOOK_TOKEN = process.env.LEADS_WEBHOOK_TOKEN || '';
+const VENDERCRM_URL = process.env.VENDERCRM_URL || '';
+const VENDERCRM_API_KEY = process.env.VENDERCRM_API_KEY || '';
+
+/** Lead sources VenderCRM routing is scoped to (ROADMAP F6). */
+type VenderCrmSource = 'sumate' | 'contacto' | 'listing_whatsapp';
+
+function isVenderCrmSource(source: Lead['source']): source is VenderCrmSource {
+  return source === 'sumate' || source === 'contacto' || source === 'listing_whatsapp';
+}
+
+/**
+ * VenderCRM requires `phone` — it's the contact identity. Only `sumate`
+ * collects one today; `contacto` and `listing_whatsapp` don't ask for
+ * contact info at all. Never fabricate a value to satisfy the constraint
+ * (same convention as `verified`/`rating` elsewhere in this codebase): an
+ * honest absence beats a fake presence, so those two sources simply have no
+ * usable phone and the VenderCRM POST is skipped for that lead.
+ */
+function vendercrmPhoneFor(lead: Lead): string | undefined {
+  return lead.source === 'sumate' ? lead.phone : undefined;
+}
+
+type VenderCrmPayload = {
+  phone: string;
+  idempotency_key: string;
+  name?: string;
+  email?: string;
+  message?: string;
+  source?: string;
+  fields?: Record<string, string>;
+};
+
+/**
+ * Deterministic, stable idempotency key so `postWithRetry`'s 3 attempts (and
+ * any upstream retry, e.g. a double form submit) land on the same VenderCRM
+ * record instead of creating duplicate contacts. Hashes stable, identifying
+ * lead fields plus an hour-coarse time bucket — matches the
+ * `sha256(phone + "|" + YYYY-MM-DD-HH)` shape from the VenderCRM integration
+ * guide, extended with a per-source discriminator so different lead sources
+ * for the same phone/hour never collide.
+ */
+function vendercrmIdempotencyKey(lead: Lead, phone: string): string {
+  const hourBucket = new Date().toISOString().slice(0, 13); // YYYY-MM-DDTHH
+  const identity =
+    lead.source === 'listing_whatsapp'
+      ? `${lead.listingId}|${lead.slug ?? ''}`
+      : lead.source === 'contacto'
+        ? lead.email
+        : phone;
+  const hash = createHash('sha256').update(`${lead.source}|${identity}|${phone}|${hourBucket}`).digest('hex');
+  return `${lead.source}-${hash.slice(0, 32)}`;
+}
+
+/** Build the VenderCRM-shaped payload for one of the three eligible sources. */
+function toVenderCrmPayload(lead: Lead, phone: string): VenderCrmPayload {
+  const payload: VenderCrmPayload = {
+    phone,
+    idempotency_key: vendercrmIdempotencyKey(lead, phone),
+  };
+  switch (lead.source) {
+    case 'sumate':
+      payload.name = lead.contactName;
+      payload.message = `${lead.businessName} — ${lead.category}, ${lead.city}`;
+      payload.fields = { business_name: lead.businessName, category: lead.category, city: lead.city };
+      break;
+    case 'contacto':
+      payload.name = lead.name;
+      // Omit rather than send "" — an empty string fails VenderCRM's email validation.
+      if (lead.email) payload.email = lead.email;
+      payload.message = lead.message;
+      break;
+    case 'listing_whatsapp':
+      payload.fields = { listing_id: lead.listingId, listing_slug: lead.slug ?? '' };
+      break;
+  }
+  return payload;
+}
 
 /** Flatten any lead variant into a single snake_case record for the sinks. */
 function toFlatPayload(lead: Lead): Record<string, string> {
@@ -193,6 +271,48 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Outcome of attempting the VenderCRM sink for one lead. */
+type VenderCrmResult = 'sent' | 'skipped-no-phone' | 'failed';
+
+/**
+ * VenderCRM POST with the same 3× exponential-backoff retry shape as
+ * `postWithRetry`, kept separate because it needs an `X-Api-Key` header and
+ * an idempotency-keyed body rather than GHL/Sheets' flat snake_case shape —
+ * bending `postWithRetry` to carry both would make it harder to read for no
+ * shared benefit. Never throws: skips (and logs) when there's no phone,
+ * otherwise reports success/failure without surfacing anything to the caller.
+ */
+async function postToVenderCrm(lead: Lead): Promise<VenderCrmResult> {
+  const phone = vendercrmPhoneFor(lead);
+  if (!phone) {
+    console.info(
+      `[leads] skipping VenderCRM for "${lead.source}" lead: no phone field collected`,
+    );
+    return 'skipped-no-phone';
+  }
+
+  const payload = toVenderCrmPayload(lead, phone);
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(2 ** attempt * 250); // 500ms, 1000ms
+    try {
+      const res = await fetch(`${VENDERCRM_URL}/api/v1/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Api-Key': VENDERCRM_API_KEY },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10_000),
+      });
+      // 201 created, 200 = idempotency replay — both are success.
+      if (res.ok) return 'sent';
+      lastErr = new Error(`VenderCRM responded ${res.status}: ${await res.text().catch(() => '')}`);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  console.error('[leads] VenderCRM sink failed after retries:', lastErr);
+  return 'failed';
+}
+
 export type LeadOutcome = { accepted: true; delivered: number; sinks: number };
 
 /**
@@ -209,15 +329,39 @@ export async function handleLead(lead: Lead): Promise<LeadOutcome> {
   if (GHL_WEBHOOK_URL) sinks.push({ url: GHL_WEBHOOK_URL, label: 'GoHighLevel' });
   if (SHEETS_WEBHOOK_URL) sinks.push({ url: SHEETS_WEBHOOK_URL, label: 'Google Sheets' });
 
+  // VenderCRM is only attempted for the three eligible sources, and only when
+  // this particular lead actually has a phone to send — decided per-lead here
+  // rather than as a static entry in `sinks`, so a source that can never carry
+  // a phone (`contacto`, `listing_whatsapp`) doesn't drag down its own
+  // delivered/sinks ratio with an attempt that could never succeed.
+  const vendercrmEligible =
+    Boolean(VENDERCRM_URL && VENDERCRM_API_KEY) &&
+    isVenderCrmSource(lead.source) &&
+    Boolean(vendercrmPhoneFor(lead));
+  if (vendercrmEligible) sinks.push({ url: '', label: 'VenderCRM' });
+
+  if (VENDERCRM_URL && VENDERCRM_API_KEY && isVenderCrmSource(lead.source) && !vendercrmEligible) {
+    // Configured and an eligible source, but this particular lead has no
+    // usable phone — log why, but never count it as an attempted sink.
+    console.info(`[leads] skipping VenderCRM for "${lead.source}" lead: no phone field collected`);
+  }
+
   if (sinks.length === 0) {
-    // No routing configured yet — degrade gracefully but never lose the lead.
+    // No routing configured yet (or this lead has nowhere eligible to go) —
+    // degrade gracefully but never lose the lead.
     console.info('[leads] (no sinks configured) lead accepted:', payload);
     if (leadId !== undefined) await tryUpdateLeadDelivery(leadId, 0, 0);
     return { accepted: true, delivered: 0, sinks: 0 };
   }
 
   const results = await Promise.allSettled(
-    sinks.map((s) => postWithRetry(s.url, payload, s.label)),
+    sinks.map((s) =>
+      s.label === 'VenderCRM'
+        ? postToVenderCrm(lead).then((r) => {
+            if (r === 'failed') throw new Error('VenderCRM sink failed');
+          })
+        : postWithRetry(s.url, payload, s.label),
+    ),
   );
 
   let delivered = 0;
