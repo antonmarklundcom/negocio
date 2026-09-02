@@ -3,6 +3,7 @@
     "brandSuffix": ".com.py",
     "categories": "Categories",
     "search": "Search",
+    "openNow": "Open now",
     "favorites": "Favorites",
     "addBusiness": "List your business",
     "searchPlaceholder": "Search businesses…",
@@ -15,35 +16,68 @@
     "add": "Join"
   },
   "footer": {
-    "tagline": "Paraguay's business directory. Find and contact local businesses, for free.",
+    "tagline": "Paraguay's local business directory. Free to search, free to list.",
     "sections": {
-      "rubros": "Categories",
-      "business": "Business",
-      "search": "Search"
+      "explore": "Explore",
+      "business": "For businesses",
+      "help": "Help"
     },
+    "categories": "Categories",
+    "cities": "Cities",
+    "openNow": "Open now",
+    "featured": "Featured",
+    "publishFree": "List for free",
+    "premium": "Premium",
     "myFavorites": "My favorites",
-    "prices": "Pricing",
-    "addBusiness": "List your business",
     "about": "About us",
-    "contact": "Contact"
+    "contact": "Contact",
+    "note": "Hours shown in Asunción time · Prices in ₲"
   },
   "language": {
     "label": "Language",
     "switchTo": "View in {language}"
   },
   "home": {
-    "heroTitle": "Find local businesses you can trust.",
-    "heroLead": "Restaurants, shops, services and professionals across Paraguay. Search, compare and get in touch directly — for free.",
-    "searchPlaceholder": "What are you looking for?",
+    "eyebrow": "Paraguay's business directory",
+    "heroTitle": "Find businesses near you and contact them for free.",
+    "heroLead": "Restaurants, pharmacies, workshops, clinics and more. With real hours, phone and WhatsApp.",
+    "searchWhat": "What are you looking for?",
+    "searchCity": "City",
+    "allParaguay": "All Paraguay",
+    "searchPlaceholder": "E.g. pharmacy, pizzeria, vet",
     "searchLabel": "Search businesses",
     "searchSubmit": "Search",
-    "featuredOnHome": "Featured on the homepage",
-    "browseByCategory": "Browse by category",
+    "popular": "Popular:",
     "featured": "Featured businesses",
-    "seeAll": "See all",
-    "ctaTitle": "Own a business?",
-    "ctaBody": "List it for free and start getting customers today. Go Premium for photos, WhatsApp and more visibility.",
-    "ctaButton": "List your business for free"
+    "featuredSub": "Premium profiles with a gallery, verified badge and direct WhatsApp.",
+    "seeAll": "See all →",
+    "until": "until {time}",
+    "opensToday": "Opens {time}",
+    "opensTomorrow": "Opens tomorrow {time}",
+    "opensOnDay": "Opens {day} {time}",
+    "viewProfile": "View profile",
+    "browseByCategory": "Browse by category",
+    "browseByCity": "Browse by city",
+    "cityLead": "Pick your city and see which businesses are open right now, in Asunción time.",
+    "allCities": "All cities →",
+    "forBusinesses": "For businesses",
+    "ctaTitle": "List your business. It's free and takes five minutes.",
+    "ctaBody": "Add your name, address, hours and phone number. With Premium you get a photo gallery, a verified badge and a WhatsApp button.",
+    "ctaButton": "List my business for free",
+    "ctaPremium": "Learn about Premium",
+    "planCaption": "What each plan includes",
+    "planFree": "Free",
+    "planPremium": "Premium",
+    "yes": "Yes",
+    "plan": [
+      { "f": "Name, address and hours", "free": true, "prem": true },
+      { "f": "Visible phone number", "free": true, "prem": true },
+      { "f": "\"Open now\" status", "free": true, "prem": true },
+      { "f": "Photo gallery", "free": false, "prem": true },
+      { "f": "Verified badge", "free": false, "prem": true },
+      { "f": "WhatsApp button", "free": false, "prem": true },
+      { "f": "\"Featured\" tag", "free": false, "prem": true }
+    ]
   },
   "landing": {
     "resultCount": "{count, plural, =0 {No businesses} one {# business} other {# businesses}}",
@@ -89,7 +123,7 @@
   },
   "pills": {
     "verified": "Verified",
-    "featured": "★ Featured"
+    "featured": "Featured"
   },
   "detail": {
     "notFoundTitle": "Business not found",

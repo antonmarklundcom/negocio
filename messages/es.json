@@ -3,6 +3,7 @@
     "brandSuffix": ".com.py",
     "categories": "Categorías",
     "search": "Buscar",
+    "openNow": "Abierto ahora",
     "favorites": "Favoritos",
     "addBusiness": "Sumá tu negocio",
     "searchPlaceholder": "Buscar negocios…",
@@ -15,35 +16,68 @@
     "add": "Sumate"
   },
   "footer": {
-    "tagline": "El directorio de negocios de Paraguay. Encontrá y contactá negocios locales, gratis.",
+    "tagline": "El directorio de negocios locales de Paraguay. Gratis para buscar, gratis para publicar.",
     "sections": {
-      "rubros": "Rubros",
-      "business": "Negocio",
-      "search": "Buscar"
+      "explore": "Explorar",
+      "business": "Para negocios",
+      "help": "Ayuda"
     },
+    "categories": "Categorías",
+    "cities": "Ciudades",
+    "openNow": "Abierto ahora",
+    "featured": "Destacados",
+    "publishFree": "Publicar gratis",
+    "premium": "Premium",
     "myFavorites": "Mis favoritos",
-    "prices": "Precios",
-    "addBusiness": "Sumá tu negocio",
     "about": "Nosotros",
-    "contact": "Contacto"
+    "contact": "Contacto",
+    "note": "Horarios en hora de Asunción · Precios en ₲"
   },
   "language": {
     "label": "Idioma",
     "switchTo": "Ver en {language}"
   },
   "home": {
-    "heroTitle": "Encontrá negocios de confianza cerca tuyo.",
-    "heroLead": "Restaurantes, tiendas, servicios y profesionales en todo Paraguay. Buscá, comparás y contactás directo — gratis.",
-    "searchPlaceholder": "¿Qué estás buscando?",
+    "eyebrow": "Directorio de negocios de Paraguay",
+    "heroTitle": "Encontrá negocios cerca tuyo y contactalos gratis.",
+    "heroLead": "Restaurantes, farmacias, talleres, clínicas y más. Con horarios reales, teléfono y WhatsApp.",
+    "searchWhat": "¿Qué buscás?",
+    "searchCity": "Ciudad",
+    "allParaguay": "Todo Paraguay",
+    "searchPlaceholder": "Ej. farmacia, pizzería, veterinaria",
     "searchLabel": "Buscar negocios",
     "searchSubmit": "Buscar",
-    "featuredOnHome": "Destacado en portada",
-    "browseByCategory": "Explorá por rubro",
+    "popular": "Populares:",
     "featured": "Negocios destacados",
-    "seeAll": "Ver todos",
-    "ctaTitle": "¿Tenés un negocio?",
-    "ctaBody": "Sumalo gratis y empezá a recibir clientes hoy. Pasá a Premium para fotos, WhatsApp y más visibilidad.",
-    "ctaButton": "Sumá tu negocio gratis"
+    "featuredSub": "Perfiles Premium con galería, insignia verificada y WhatsApp directo.",
+    "seeAll": "Ver todos →",
+    "until": "hasta {time}",
+    "opensToday": "Abre {time}",
+    "opensTomorrow": "Abre mañana {time}",
+    "opensOnDay": "Abre {day} {time}",
+    "viewProfile": "Ver perfil",
+    "browseByCategory": "Buscá por categoría",
+    "browseByCity": "Buscá por ciudad",
+    "cityLead": "Elegí tu ciudad y vé los negocios que están abiertos ahora, con hora de Asunción.",
+    "allCities": "Todas las ciudades →",
+    "forBusinesses": "Para negocios",
+    "ctaTitle": "Sumá tu negocio. Es gratis y toma cinco minutos.",
+    "ctaBody": "Cargá tu nombre, dirección, horarios y teléfono. Con Premium sumás galería de fotos, insignia de verificado y botón de WhatsApp.",
+    "ctaButton": "Publicar mi negocio gratis",
+    "ctaPremium": "Conocer Premium",
+    "planCaption": "Qué incluye cada plan",
+    "planFree": "Gratis",
+    "planPremium": "Premium",
+    "yes": "Sí",
+    "plan": [
+      { "f": "Nombre, dirección y horarios", "free": true, "prem": true },
+      { "f": "Teléfono visible", "free": true, "prem": true },
+      { "f": "Estado “Abierto ahora”", "free": true, "prem": true },
+      { "f": "Galería de fotos", "free": false, "prem": true },
+      { "f": "Insignia de verificado", "free": false, "prem": true },
+      { "f": "Botón de WhatsApp", "free": false, "prem": true },
+      { "f": "Etiqueta “Destacado”", "free": false, "prem": true }
+    ]
   },
   "landing": {
     "resultCount": "{count, plural, =0 {Ningún negocio} one {# negocio} other {# negocios}}",
@@ -89,7 +123,7 @@
   },
   "pills": {
     "verified": "Verificado",
-    "featured": "★ Destacado"
+    "featured": "Destacado"
   },
   "detail": {
     "notFoundTitle": "Negocio no encontrado",

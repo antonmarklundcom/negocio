@@ -21,28 +21,34 @@ export async function Header({ locale }: { locale: Locale }) {
   const searchAction = getPathname({ href: '/buscar', locale });
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur">
-      <div className="mx-auto flex max-w-content items-center gap-4 px-4 py-3 md:px-8">
-        <Link href="/" className="shrink-0 font-serif text-[22px] font-semibold tracking-tight md:text-[24px]">
-          negocio<span className="text-terra">.com.py</span>
+    <header className="sticky top-0 z-40 border-b border-line bg-cream/90 py-4 backdrop-blur md:py-5">
+      <div className="mx-auto flex max-w-content items-center gap-4 px-4 md:px-8">
+        <Link
+          href="/"
+          className="shrink-0 font-serif text-[22px] font-medium tracking-[-0.01em] text-ink md:text-[26px]"
+        >
+          negocio<span className="text-terra">.</span>com.py
         </Link>
 
-        <nav className="ml-4 hidden items-center gap-5 text-sm font-semibold text-ink2 md:flex">
+        <nav className="ml-4 hidden items-center gap-5 text-[15px] font-medium text-ink md:flex">
           {/* /rubros is the crawlable category hub (W1-1); this link was still
               pointing at /buscar, the same stale target the mobile tab had. */}
-          <Link href="/rubros" className="transition-colors hover:text-ink">
+          <Link href="/rubros" className="transition-colors hover:text-blued">
             {t('categories')}
           </Link>
-          <Link href="/buscar" className="transition-colors hover:text-ink">
+          <Link href="/buscar" className="transition-colors hover:text-blued">
             {t('search')}
           </Link>
-          <Link href="/favoritos" className="transition-colors hover:text-ink">
+          <Link href="/buscar?abierto=1" className="transition-colors hover:text-blued">
+            {t('openNow')}
+          </Link>
+          <Link href="/favoritos" className="transition-colors hover:text-blued">
             {t('favorites')}
           </Link>
         </nav>
 
         <form action={searchAction} className="ml-auto hidden items-center md:flex">
-          <label className="flex w-[280px] items-center gap-2 rounded-card border border-line bg-paper px-3 py-2">
+          <label className="flex w-[280px] items-center gap-2 rounded-[12px] border-[1.5px] border-line bg-paper px-3 py-2">
             <Search size={16} className="text-ink3" />
             <input
               name="q"
@@ -57,7 +63,7 @@ export async function Header({ locale }: { locale: Locale }) {
 
         <Link
           href="/sumar-negocio"
-          className="rounded-card bg-blue px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blued md:ml-1"
+          className="rounded-full bg-blue px-[18px] py-[9px] text-[15px] font-semibold text-white transition-colors hover:bg-blued md:ml-1"
         >
           {t('addBusiness')}
         </Link>
