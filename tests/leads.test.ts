@@ -143,6 +143,145 @@ describe('handleLead', () => {
   });
 });
 
+describe('handleLead — VenderCRM (ROADMAP F6)', () => {
+  beforeEach(() => {
+    insertLeadMock.mockReset();
+    updateLeadDeliveryMock.mockReset();
+    insertLeadMock.mockResolvedValue(1);
+    updateLeadDeliveryMock.mockResolvedValue(undefined);
+    vi.unstubAllGlobals();
+  });
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+    vi.unstubAllGlobals();
+  });
+
+  it('posts a sumate lead to VenderCRM with the API key header and a phone + stable idempotency_key', async () => {
+    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 201 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { handleLead } = await importLeadsWithEnv({
+      GHL_WEBHOOK_URL: '',
+      SHEETS_WEBHOOK_URL: '',
+      VENDERCRM_URL: 'https://crm.example.com',
+      VENDERCRM_API_KEY: 'secret-key',
+    });
+
+    const outcome = await handleLead({
+      source: 'sumate',
+      businessName: 'Panadería Central',
+      category: 'restaurantes',
+      city: 'asuncion',
+      contactName: 'Ana',
+      phone: '595981234567',
+    });
+
+    expect(outcome).toEqual({ accepted: true, delivered: 1, sinks: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('https://crm.example.com/api/v1/leads');
+    const headers = init.headers as Record<string, string>;
+    expect(headers['X-Api-Key']).toBe('secret-key');
+    expect(headers['Content-Type']).toBe('application/json');
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.phone).toBe('595981234567');
+    expect(typeof body.idempotency_key).toBe('string');
+    expect((body.idempotency_key as string).length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('does not attempt a VenderCRM POST for a contacto lead (no phone), and it does not count as a failed sink', async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { handleLead } = await importLeadsWithEnv({
+      GHL_WEBHOOK_URL: '',
+      SHEETS_WEBHOOK_URL: '',
+      VENDERCRM_URL: 'https://crm.example.com',
+      VENDERCRM_API_KEY: 'secret-key',
+    });
+
+    const outcome = await handleLead({
+      source: 'contacto',
+      name: 'Ana',
+      email: 'ana@example.com',
+      message: 'Hola, quiero info',
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toEqual({ accepted: true, delivered: 0, sinks: 0 });
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      expect.stringContaining('skipping VenderCRM for "contacto" lead: no phone field collected'),
+    );
+
+    consoleInfoSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('produces the same idempotency_key for the same lead across two calls (retry-safe)', async () => {
+    const bodies: string[] = [];
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      bodies.push(init.body as string);
+      return new Response(null, { status: 201 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { handleLead } = await importLeadsWithEnv({
+      GHL_WEBHOOK_URL: '',
+      SHEETS_WEBHOOK_URL: '',
+      VENDERCRM_URL: 'https://crm.example.com',
+      VENDERCRM_API_KEY: 'secret-key',
+    });
+
+    const lead = {
+      source: 'sumate' as const,
+      businessName: 'Panadería Central',
+      category: 'restaurantes',
+      city: 'asuncion',
+      contactName: 'Ana',
+      phone: '595981234567',
+    };
+
+    await handleLead(lead);
+    await handleLead(lead);
+
+    expect(bodies).toHaveLength(2);
+    const key1 = (JSON.parse(bodies[0]!) as Record<string, unknown>).idempotency_key;
+    const key2 = (JSON.parse(bodies[1]!) as Record<string, unknown>).idempotency_key;
+    expect(key1).toBe(key2);
+  });
+
+  it('never attempts VenderCRM when VENDERCRM_URL/VENDERCRM_API_KEY are unset, and GHL/Sheets behavior is unchanged', async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { handleLead } = await importLeadsWithEnv({
+      GHL_WEBHOOK_URL: 'https://example.com/ghl',
+      SHEETS_WEBHOOK_URL: '',
+      VENDERCRM_URL: '',
+      VENDERCRM_API_KEY: '',
+    });
+
+    const outcome = await handleLead({
+      source: 'sumate',
+      businessName: 'Panadería Central',
+      category: 'restaurantes',
+      city: 'asuncion',
+      contactName: 'Ana',
+      phone: '595981234567',
+    });
+
+    expect(outcome).toEqual({ accepted: true, delivered: 1, sinks: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('https://example.com/ghl', expect.anything());
+  });
+});
+
 describe('listing_report (ROADMAP W1-1b)', () => {
   // The module is imported per-test elsewhere in this file so each case can set
   // its own env; the schema needs none of that.

@@ -15,7 +15,8 @@ import { HoursTable } from '@/components/detail/HoursTable';
 import { CategoryBlock } from '@/components/CategoryBlock';
 import { LocationMapLazy } from '@/components/LocationMapLazy';
 import { PhotoFallback } from '@/components/PhotoFallback';
-import { VerifiedPill, OpenNowPill, ClosedPill } from '@/components/Pills';
+import { VerifiedPill } from '@/components/Pills';
+import { LiveOpenState } from '@/components/detail/LiveOpenState';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { ListingMessageForm } from '@/components/ListingMessageForm';
 import { StickyWhatsAppBar } from '@/components/detail/StickyWhatsAppBar';
@@ -149,12 +150,6 @@ type DetailProps = {
   locale: Locale;
 };
 
-function OpenState({ open }: { open: ReturnType<typeof computeOpenState> }) {
-  if ('unknown' in open) return null;
-  if (open.open) return <OpenNowPill closesAt={open.closesAt} />;
-  return <ClosedPill opensAt={open.opensAt} opensDay={open.opensDay} opensWhen={open.opensWhen} />;
-}
-
 function Rating({
   rating,
   reviewsCount,
@@ -208,7 +203,7 @@ async function PremiumDetail({ listing: l, open, crumbs, reviews, locale }: Deta
 
             <div className="mt-3 flex flex-wrap items-center gap-4">
               <Rating rating={l.rating} reviewsCount={l.reviewsCount} t={t} />
-              <OpenState open={open} />
+              <LiveOpenState hours={l.hours} initial={open} />
             </div>
 
             {l.description && (
@@ -301,7 +296,7 @@ async function ContactCard({
     <div className="rounded-card border border-line bg-paper p-5 shadow-card">
       {desktop && open && (
         <div className="mb-4">
-          <OpenState open={open} />
+          <LiveOpenState hours={l.hours} initial={open} />
         </div>
       )}
       {l.whatsapp && (

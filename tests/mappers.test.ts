@@ -82,6 +82,11 @@ describe('rowToListing', () => {
     expect(listing.verified).toBe(true);
   });
 
+  it('maps updatedAt to unix seconds (sitemap lastModified, ROADMAP F5)', () => {
+    const listing = rowToListing(row({ updatedAt: new Date('2026-03-15T12:30:00Z') }));
+    expect(listing.updatedAt).toBe(Math.floor(new Date('2026-03-15T12:30:00Z').getTime() / 1000));
+  });
+
   it('leaves empty child collections undefined so the UI renders nothing', () => {
     const listing = rowToListing(row(), { hours: [], gallery: [] });
     expect(listing.hours).toBeUndefined();

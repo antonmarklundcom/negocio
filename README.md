@@ -463,6 +463,18 @@ All contact paths converge on **`lib/leads.ts`** + `POST /api/v1/leads`:
 To activate routing, set `GHL_WEBHOOK_URL` and/or `SHEETS_WEBHOOK_URL` (and
 optionally `LEADS_WEBHOOK_TOKEN`), then redeploy — one at a time.
 
+**VenderCRM (ROADMAP F6).** Set `VENDERCRM_URL` and `VENDERCRM_API_KEY` (both
+required together) to also fan out to `POST {VENDERCRM_URL}/api/v1/leads` with
+an `X-Api-Key` header, using the same retry shape as GHL/Sheets and a stable,
+hash-derived `idempotency_key` so a retried POST replays instead of creating a
+duplicate contact. This only applies to `sumate`, `contacto` and
+`listing_whatsapp` — the three sources the ROADMAP item names — and only when
+VenderCRM's required `phone` field is actually available. `sumate` has one;
+`contacto` and `listing_whatsapp` don't collect any contact info today, so
+rather than invent a phone number to satisfy the requirement, the VenderCRM
+POST is skipped for those leads and logged (`[leads] skipping VenderCRM for
+"..." lead: no phone field collected`) — it is never counted as a failed sink.
+
 ---
 
 ## SEO & honesty
