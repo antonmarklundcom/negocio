@@ -70,6 +70,10 @@ export default async function PreciosPage(props: { params: Promise<{ locale: str
             {t('premiumPrice')}
             <span className="text-[16px] font-medium text-ink3">{t('perMonth')}</span>
           </div>
+          <p className="mt-1 text-sm font-semibold text-terrad">
+            {t('premiumAnnualPrice')}
+            <span className="ml-1.5 font-normal text-ink3">({t('premiumAnnualNote')})</span>
+          </p>
           <p className="mt-1 text-sm text-ink2">{t('premiumNote')}</p>
           <ul className="mt-5 flex-1 space-y-3">
             {t.raw('premiumFeatures').map((f: string) => (
@@ -87,6 +91,13 @@ export default async function PreciosPage(props: { params: Promise<{ locale: str
           </Link>
         </div>
       </div>
+
+      <p className="mx-auto mt-6 max-w-3xl text-center text-sm text-ink2">
+        {t('verifiedAddon')}{' '}
+        <Link href="/contacto" className="font-semibold text-blue">
+          {t('verifiedAddonCta')}
+        </Link>
+      </p>
 
       <p className="mt-8 text-center text-xs text-ink3">
         {t('footnote')}

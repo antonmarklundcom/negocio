@@ -500,13 +500,16 @@ export async function setListingHours(
 // updateListing: that keeps the editor-facing write path physically unable to
 // set either field, which is stronger than a conditional inside one function.
 //
-// W2-2 split them from each other for the same reason one level down. They are
-// two different kinds of claim:
+// W2-2 split them from each other for the same reason one level down. Both are
+// sold now (F7), but they stay two different kinds of write:
 //
-//   `verified`     — a HUMAN ASSERTION. Somebody rang the business or walked
-//                    in. It is never bought, and it never expires on a clock.
-//   `premiumUntil` — a SALE. It has a price, a package and an end date, and it
-//                    is (from W2-3) accompanied by a row in `sales`.
+//   `verified`     — still set by a human, and still never expires on a
+//                    clock. Staff confirms the business (and, since F7, the
+//                    payment) by phone or WhatsApp, then flips the toggle —
+//                    the toggle itself is unchanged, only the reason to sell
+//                    it exists now.
+//   `premiumUntil` — a SALE with a package and an end date, accompanied
+//                    (from W2-3) by a row in `sales`.
 //
 // Sharing one write path meant saving one silently rewrote the other, the
 // activity log could not tell an upsell from a verification, and the future

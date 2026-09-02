@@ -65,6 +65,8 @@
     "ctaBody": "Cargá tu nombre, dirección, horarios y teléfono. Con Premium sumás galería de fotos, insignia de verificado y botón de WhatsApp.",
     "ctaButton": "Publicar mi negocio gratis",
     "ctaPremium": "Conocer Premium",
+    "planAnnualNote": "Premium también disponible por año.",
+    "planAnnualLink": "Ver precios",
     "planCaption": "Qué incluye cada plan",
     "planFree": "Gratis",
     "planPremium": "Premium",
@@ -295,7 +297,11 @@
     "recommended": "★ Recomendado",
     "perMonth": " /mes",
     "premiumPrice": "₲ 65.000",
-    "footnote": "Los precios son referenciales y pueden ajustarse. Consultanos por planes anuales."
+    "premiumAnnualPrice": "o ₲ 650.000 /año",
+    "premiumAnnualNote": "Equivale a 2 meses gratis",
+    "footnote": "Los precios son referenciales y pueden ajustarse.",
+    "verifiedAddon": "¿Ya tenés tu negocio publicado? Sumá la insignia de Verificado por ₲ 30.000 (pago único).",
+    "verifiedAddonCta": "Contactanos"
   },
   "join": {
     "title": "Sumá tu negocio",

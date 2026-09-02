@@ -65,6 +65,8 @@
     "ctaBody": "Add your name, address, hours and phone number. With Premium you get a photo gallery, a verified badge and a WhatsApp button.",
     "ctaButton": "List my business for free",
     "ctaPremium": "Learn about Premium",
+    "planAnnualNote": "Premium is also available yearly.",
+    "planAnnualLink": "See pricing",
     "planCaption": "What each plan includes",
     "planFree": "Free",
     "planPremium": "Premium",
@@ -295,7 +297,11 @@
     "recommended": "★ Recommended",
     "perMonth": " /month",
     "premiumPrice": "₲ 65,000",
-    "footnote": "Prices are indicative and may be adjusted. Ask us about annual plans."
+    "premiumAnnualPrice": "or ₲ 650,000 /year",
+    "premiumAnnualNote": "Equivalent to 2 months free",
+    "footnote": "Prices are indicative and may be adjusted.",
+    "verifiedAddon": "Already listed? Add the Verified badge for ₲ 30,000 (one-time payment).",
+    "verifiedAddonCta": "Contact us"
   },
   "join": {
     "title": "List your business",

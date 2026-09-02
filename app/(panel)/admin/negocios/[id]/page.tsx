@@ -431,16 +431,18 @@ export default async function EditListingPage(
             </div>
           </div>
 
-          {/* Two forms, deliberately (ROADMAP W2-2). "Verificado" is a human
-              assertion — somebody rang the business — and it is never sold.
-              "Premium hasta" is a sale. Sharing one form meant saving either
-              silently rewrote the other, and an unchecked checkbox that is not
-              rendered submits nothing at all, so any variant of that form
-              without the checkbox would have un-verified the business on save. */}
+          {/* Two forms, deliberately (ROADMAP W2-2 / F7). Both "Verificado" and
+              "Premium hasta" are now sold, but they stay on separate forms:
+              sharing one meant saving either silently rewrote the other, and
+              an unchecked checkbox that is not rendered submits nothing at
+              all, so any variant of a shared form without the checkbox would
+              have un-verified the business on an unrelated save. */}
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div className="rounded-card border border-line bg-cream p-4">
               <h3 className="text-[14px] font-bold">Verificación</h3>
-              <p className="mt-1 text-[13px] text-ink2">Una comprobación humana. No se vende.</p>
+              <p className="mt-1 text-[13px] text-ink2">
+                Comprobación humana tras el pago. Confirmá el pago antes de marcar.
+              </p>
               <div className="mt-3">
                 <AdminForm
                   fields={verifiedFields()}

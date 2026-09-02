@@ -172,9 +172,10 @@ export function hoursDefaultValues(hours: DayHours[]): Record<string, string> {
 // ---------------------------------------------------------------------------
 
 /**
- * Two field lists, two forms (ROADMAP W2-2). `verified` is a human assertion,
- * `premiumUntil` is a sale — see the comment above `setListingVerified` in
- * `lib/db/listings-admin.ts` for why they no longer share a write path.
+ * Two field lists, two forms (ROADMAP W2-2 / F7). `verified` and
+ * `premiumUntil` are both sold now, but each still has its own write path —
+ * see the comment above `setListingVerified` in `lib/db/listings-admin.ts`
+ * for why.
  */
 export function verifiedFields(): FieldDef[] {
   return [
@@ -182,7 +183,7 @@ export function verifiedFields(): FieldDef[] {
       type: 'checkbox',
       name: 'verified',
       label: 'Verificado',
-      hint: 'Marcá esto solo después de confirmar el negocio en persona o por teléfono. No se vende.',
+      hint: 'Marcá esto solo después de confirmar el negocio (y el pago) en persona, por teléfono o WhatsApp.',
     },
   ];
 }

@@ -128,7 +128,15 @@ export default async function HomePage(props: { params: Promise<{ locale: string
               </Link>
             </div>
           </div>
-          <PlanTable locale={locale} />
+          <div>
+            <PlanTable locale={locale} />
+            <p className="mt-3 text-center text-[13px] text-ink3">
+              {t('planAnnualNote')}{' '}
+              <Link href="/precios" className="font-semibold text-blue">
+                {t('planAnnualLink')}
+              </Link>
+            </p>
+          </div>
         </div>
       </section>
     </div>
