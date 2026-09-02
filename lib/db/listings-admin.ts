@@ -19,6 +19,7 @@ import {
 } from './schema';
 import { serialiseLines, serialisePiped } from '@/lib/admin/blocks';
 import { dayHoursToRows, rowsToDayHours } from './mappers';
+import { computeSearchText } from './query-helpers';
 import type { DayHours } from '../types';
 import type { ListingFormInput } from '@/lib/admin/validation';
 import { MAX_GALLERY_IMAGES } from '@/lib/media/upload';
@@ -345,6 +346,8 @@ export async function createListing(
       productos: input.productos,
       servicios: input.servicios,
       destacadoItem: input.destacadoItem,
+      // ROADMAP F3 — kept in sync on every write, same as `listingToRow`.
+      searchText: computeSearchText(input),
     });
 
     await logActivity(tx, {
@@ -399,6 +402,8 @@ export async function updateListing(
         productos: input.productos,
         servicios: input.servicios,
         destacadoItem: input.destacadoItem,
+        // ROADMAP F3 — kept in sync on every write, same as `listingToRow`.
+        searchText: computeSearchText(input),
       })
       .where(eq(listings.id, id));
 

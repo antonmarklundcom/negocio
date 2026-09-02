@@ -11,6 +11,7 @@ import { categoryLabel } from '../categories';
 import { cityLabel, CITY_COORDS } from '../cities';
 import { initialOf } from '../format';
 import { toHHMM, toMinutes } from './open-now';
+import { computeSearchText } from './query-helpers';
 
 /**
  * Row ↔ domain mapping. Pure, so it is unit-testable without MySQL — which is
@@ -155,6 +156,11 @@ export function listingToRow(listing: Listing): ListingInsert {
     address: listing.address ?? null,
     lat: listing.lat !== undefined ? String(listing.lat) : null,
     lng: listing.lng !== undefined ? String(listing.lng) : null,
+
+    // Kept in sync on every write (ROADMAP F3) so `search_text` never lags
+    // behind the fields it is derived from — see the column comment in
+    // `./schema.ts` and `computeSearchText` in `./query-helpers.ts`.
+    searchText: computeSearchText(listing),
 
     phone: listing.phone ?? null,
     whatsapp: listing.whatsapp ?? null,

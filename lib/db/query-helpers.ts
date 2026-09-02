@@ -52,12 +52,36 @@ export function taxonomySlugsMatching(term: string): { categorias: string[]; ciu
 }
 
 /** Lowercase and strip accents, so "asuncion" finds "Asunción". */
-function normalize(value: string): string {
+export function normalize(value: string): string {
   return value
     .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * The value stored in `listings.search_text` (ROADMAP F3): every free-text
+ * field folded to accent-insensitive lowercase and joined with a single
+ * space, so `LIKE '%<normalized term>%'` against this one column matches
+ * what `name`/`subtitle`/`description`/`zona` used to be searched separately.
+ * Missing optional fields are skipped rather than turned into an empty piece,
+ * so the result never has doubled, leading, or trailing spaces.
+ */
+export function computeSearchText(fields: {
+  name: string;
+  subtitle?: string | null;
+  description?: string | null;
+  zona?: string | null;
+}): string {
+  return [
+    normalize(fields.name),
+    normalize(fields.subtitle ?? ''),
+    normalize(fields.description ?? ''),
+    normalize(fields.zona ?? ''),
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 export type SortPlan = {

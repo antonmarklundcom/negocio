@@ -3,6 +3,7 @@ import { isFeatured, isPremium } from '../listing';
 import { computeOpenState } from '../hours';
 import { approxDistanceKm, isValidPoint, type Point } from '../geo';
 import { DEFAULT_PAGE_SIZE } from '../config';
+import { normalize } from '../db/query-helpers';
 
 /**
  * Pure, in-memory query engine used by the seed provider, which materialises
@@ -10,7 +11,9 @@ import { DEFAULT_PAGE_SIZE } from '../config';
  * behave identically regardless of source.
  */
 export function applyQuery(all: Listing[], params: ListingQuery): ListingResult {
-  const q = params.q?.trim().toLowerCase();
+  // Accent-insensitive (ROADMAP F3), folded the same way as the DB provider's
+  // `search_text` column so the two never diverge on what a term matches.
+  const q = params.q?.trim() ? normalize(params.q) : undefined;
   let items = all.filter((l) => {
     if (params.excludeId && l.id === params.excludeId) return false;
     if (params.slugs && !params.slugs.includes(l.slug)) return false;
@@ -23,9 +26,9 @@ export function applyQuery(all: Listing[], params: ListingQuery): ListingResult 
     }
     if (params.destacado && !isFeatured(l)) return false;
     if (q) {
-      const hay = `${l.name} ${l.categoriaLabel} ${l.ciudadLabel} ${l.zona ?? ''} ${l.subtitle ?? ''} ${
-        l.description ?? ''
-      }`.toLowerCase();
+      const hay = normalize(
+        `${l.name} ${l.categoriaLabel} ${l.ciudadLabel} ${l.zona ?? ''} ${l.subtitle ?? ''} ${l.description ?? ''}`,
+      );
       if (!hay.includes(q)) return false;
     }
     return true;
