@@ -1190,6 +1190,40 @@ Repo, docs and comments in English.
 
 ---
 
+## Phase F — Post-Home_A review findings (2026-09-02)
+
+Findings from the build/architecture/product review that accompanied the
+Home_A home-page redesign (PR #52). Ordered by leverage. Each item is one PR
+unless noted; "Model" is the model that BUILDS it — Fable only directs and
+reviews from the conversation Anton opens, never as a subagent.
+
+Rules for the run: one branch + one PR per item, `npm run typecheck && npm run
+lint && npm run test && npm run build` green before every push, Playwright
+smoke (`npm run test:e2e`) green for anything touching a public page. Items
+marked *migration* need the migration applied by hand before merge (README →
+Database). Anton merges when green.
+
+| # | Item | Why it matters | Size | Model | Notes |
+|---|---|---|---|---|---|
+| F1 | **Self-serve free listing + claim flow.** `/sumar-negocio` creates a `draft` listing (not just a lead), staff approve in `/admin/negocios`; existing listings get a "¿Es tu negocio?" claim link that files a claim for staff to verify by phone/WhatsApp. No owner login yet (PR-6 gate unchanged). | The only growth path today is staff typing every listing by hand. | Large | Opus (design + data model), Sonnet (forms/admin UI) | *migration* (claims table, `listings.source`). Reuse `lib/public-write.ts`, honeypot, rate limiter. |
+| F2 | **Live "Abierto ahora" on ISR pages.** Client `OpenStatus` component that recomputes `computeOpenState(hours)` after hydration on home cards and `/lugar/[slug]`; server-rendered value stays as the initial paint. | Home and detail revalidate hourly, so the pill can be wrong for up to 60 min. | Small | Sonnet | Hours already ship in the `Listing` prop; no fetch needed. |
+| F3 | **Accent-insensitive search.** Normalised `search_text` column (name + subtitle + description + zona, NFD-stripped, lowercased) with a FULLTEXT index; seed provider folds accents the same way (`lib/db/query-helpers.ts` `normalize`). | "asuncion" vs "Asunción" and "farmacia" vs "Farmácia" currently diverge between providers. | Medium | Sonnet | *migration*. Keep `LIKE` as fallback for < 3-char terms. Add tests to `tests/listing-query.test.ts`. |
+| F4 | **Surface ratings on cards and enable reviews.** Show `rating`/`reviewsCount` on `ListingCard` and `FeaturedCard` behind `REVIEWS_ENABLED`; add sort `calificacion` to `FilterBar`; then USER flips `NEXT_PUBLIC_REVIEWS_ENABLED=true`. | Trust signal already built but invisible; drives clicks and Premium value. | Medium | Sonnet | Honesty gate stays: nothing renders without ≥1 approved review. |
+| F5 | **Sitemap `lastModified`.** Add `updatedAt` to the public `Listing` shape (DB has it; seed uses import date) and emit it per entry; static pages use build time. | Google has no recrawl signal for edited listings. | Small | Sonnet | No migration if `updated_at` already exists — check `lib/db/schema.ts` first. |
+| F6 | **Lead capture into VenderCRM.** Route `sumate`, `contacto` and `listing_whatsapp` leads to VenderCRM's `POST /api/v1/leads` alongside the existing GHL/Sheets hooks; env-gated like the others. | Leads sit in MySQL and a best-effort webhook; nobody works them in a pipeline. | Medium | Sonnet | Follow the `vendercrm-lead-capture` skill. Keep `Promise.allSettled` fan-out. |
+| F7 | **Monetisation levers.** (a) annual Premium price row on `/precios` and the home plan table; (b) "Verificado" as a paid add-on toggle in admin (Phase D item 7); (c) per-category sponsorship = `featuredUntil` scoped to a `categoria` (top slot on `/[categoria]`). | Premium is the only SKU; three cheap SKUs on existing plumbing. | Small each | Sonnet (a, b), Opus (c) | (c) is *migration* (`featured_categoria`). |
+| F8 | **Hostinger memory cap.** USER sets `NODE_OPTIONS=--max-old-space-size=1536` in the panel; document in README → Deployment. | Phase C OOM item is still open; one build worker does not cap heap. | Small | USER + Sonnet (docs) | |
+| F9 | **Dependency minors.** next, eslint-config-next, next-intl, mysql2, zod, @sentry/nextjs, nodemailer, sharp, tsx. Majors (vitest 4, maplibre 6, Tailwind 4, TypeScript 7, ESLint 10, iron-session 9) stay parked. | Safe bumps, security surface. | Small | Sonnet | One PR; run the full CI plus admin e2e manually. |
+| F10 | **Test gaps.** e2e: `/buscar?abierto=1`, `/en` home + detail, sitemap contains `/rubros` + a barrio URL; unit: `lib/rate-limit.ts`, `messages/es.json` vs `en.json` key parity. | The items most likely to regress silently. | Small | Sonnet | |
+| F11 | **Remove dead weight.** Delete `legacy/` and `public/businesses/`; drop `legacy` from `RESERVED_SLUGS` and the ESLint/tsconfig ignores. | Unreferenced pre-Next static site in every checkout. | Small | Sonnet | Confirm with `grep -rn legacy app lib` first. |
+| F12 | **Legal page + footer links.** `/terminos` (términos y privacidad) as a static translated page; link from footer "Ayuda". | Home_A footer had it; the site has no privacy text at all. | Small | Sonnet | Copy from Anton or a placeholder marked for review. |
+
+Recommended order: F2, F5, F10, F11, F9 (all small, independent, no
+migration) → F4 → F6 → F3 → F7 → F12 → F1 (largest, last, needs the claims
+model designed on Opus first). F8 is a panel setting Anton applies any time.
+
+---
+
 ## Estimated remaining builds
 
 | Work | Builds | Model |

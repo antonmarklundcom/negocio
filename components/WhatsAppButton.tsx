@@ -28,7 +28,7 @@ export function WhatsAppButton({
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => trackLead({ source: 'listing_whatsapp', listingId, slug })}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-wab px-4 py-3.5 text-[15px] font-bold text-[#053d22] shadow-wa transition-transform hover:-translate-y-0.5 ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-wa px-4 py-3.5 text-[15px] font-bold text-white shadow-wa transition-colors hover:bg-wab ${className}`}
     >
       <WhatsApp size={19} />
       {label ?? 'WhatsApp'}

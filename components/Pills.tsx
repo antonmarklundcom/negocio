@@ -23,11 +23,11 @@ export function CategoryChip({ label }: { label: string }) {
   );
 }
 
-/** Destacado = terra2 / terra with a ★ (§3). */
+/** Destacado = solid terragold badge (Home_A). */
 export function DestacadoPill() {
   const t = useTranslations('pills');
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-terra2 px-2.5 py-1 text-[11px] font-bold text-terra">
+    <span className="rounded-full bg-terragold px-[10px] py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] text-white">
       {t('featured')}
     </span>
   );

@@ -27,7 +27,7 @@ export function StickyWhatsAppBar({
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => trackLead({ source: 'listing_whatsapp', listingId, slug })}
-        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-wab py-3 text-[15px] font-bold text-[#053d22] shadow-wa"
+        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-wa py-3 text-[15px] font-bold text-white shadow-wa"
       >
         <WhatsApp size={19} />
         {t('whatsappWrite')}

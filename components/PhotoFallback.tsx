@@ -22,10 +22,10 @@ export function PhotoFallback({
   const icon = getCategory(categoria)?.icon ?? 'bag';
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-1 bg-[linear-gradient(150deg,#F4E3D6,#E9D2BE)] ${className}`}
+      className={`flex flex-col items-center justify-center gap-1 bg-[image:var(--fallback)] ${className}`}
     >
-      <span className={`font-serif font-semibold leading-none text-terra ${initialSize}`}>{initial}</span>
-      <CategoryIcon name={icon} size={iconSize} className="text-terra" />
+      <span className={`font-serif font-medium leading-none text-white ${initialSize}`}>{initial}</span>
+      <CategoryIcon name={icon} size={iconSize} className="text-white" />
     </div>
   );
 }

@@ -41,7 +41,7 @@ export default async function ContactoPage(props: { params: Promise<{ locale: st
             href={waLink(PLATFORM_WHATSAPP, t('whatsappMessage'))}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-6 inline-flex items-center gap-2 rounded-card bg-wab px-5 py-3 text-[15px] font-bold text-[#053d22] shadow-wa"
+            className="mt-6 inline-flex items-center gap-2 rounded-card bg-wa px-5 py-3 text-[15px] font-bold text-white shadow-wa transition-colors hover:bg-wab"
           >
             <WhatsApp size={19} />
             {t('whatsappCta')}
