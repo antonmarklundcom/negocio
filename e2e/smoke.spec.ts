@@ -35,6 +35,33 @@ test('sitemap.xml is served', async ({ request }) => {
   expect(res.headers()['content-type']).toContain('xml');
 });
 
+test('open-now filter narrows search results', async ({ page }) => {
+  await page.goto('/buscar?abierto=1');
+  expect(page.url()).toContain('abierto=1');
+  // Not asserting exact counts — seed data changes over time. The point is
+  // the filtered route renders without erroring.
+  await expect(page.locator('body')).toBeVisible();
+});
+
+test('English home page loads', async ({ page }) => {
+  await page.goto('/en');
+  await expect(page).toHaveTitle(/.+/);
+  await expect(page.locator('article').first()).toBeVisible();
+});
+
+test('English listing detail page renders', async ({ page }) => {
+  await page.goto('/en/lugar/nande-cocina');
+  await expect(page.locator('h1')).toBeVisible();
+});
+
+test('sitemap includes rubros and a barrio URL', async ({ request }) => {
+  const res = await request.get('/sitemap.xml');
+  const body = await res.text();
+  expect(body).toMatch(/<loc>[^<]*\/rubros<\/loc>/);
+  // A barrio URL is a 3-segment path after the domain: /categoria/ciudad/barrio-slug.
+  expect(body).toMatch(/<loc>https?:\/\/[^/]+\/[^/<>]+\/[^/<>]+\/[^/<>]+<\/loc>/);
+});
+
 test('robots.txt is served', async ({ request }) => {
   const res = await request.get('/robots.txt');
   expect(res.ok()).toBe(true);

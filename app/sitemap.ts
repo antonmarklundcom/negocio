@@ -44,10 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entry = (
     path: string,
     priority: number,
+    lastModified?: Date,
   ): MetadataRoute.Sitemap[number] => ({
     url: localeUrl(path, routing.defaultLocale),
     changeFrequency: 'weekly',
     priority,
+    ...(lastModified ? { lastModified } : {}),
     alternates: {
       languages: Object.fromEntries(routing.locales.map((l) => [l, localeUrl(path, l)])),
     },
@@ -60,7 +62,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const categoryRoutes = categories.map((c) => entry(`/${c.slug}`, 0.7));
   const comboRoutes = combos.map((c) => entry(`/${c.categoria}/${c.ciudad}`, 0.7));
   const barrioRoutes = zonaCombos.map((c) => entry(`/${c.categoria}/${c.ciudad}/${slugify(c.zona)}`, 0.6));
-  const listingRoutes = items.map((l) => entry(listingPath(l.slug), 0.8));
+  const listingRoutes = items.map((l) =>
+    entry(listingPath(l.slug), 0.8, l.updatedAt ? new Date(l.updatedAt * 1000) : undefined),
+  );
 
   return [...staticRoutes, ...categoryRoutes, ...comboRoutes, ...barrioRoutes, ...listingRoutes];
 }

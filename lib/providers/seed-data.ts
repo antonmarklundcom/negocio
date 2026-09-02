@@ -13,6 +13,9 @@ import { initialOf } from '../format';
 // Far-future timestamp so premium listings stay premium in the seed.
 const PREMIUM = Math.floor(new Date('2030-01-01T00:00:00Z').getTime() / 1000);
 
+// When the seed dataset was authored — sitemap `lastModified` for seed-provider listings (ROADMAP F5).
+const SEED_IMPORTED_AT = Math.floor(new Date('2026-01-01T00:00:00Z').getTime() / 1000);
+
 // Hours helpers (America/Asuncion wall clock).
 const r = (open: string, close: string) => ({ open, close });
 type R = { open: string; close: string };
@@ -733,5 +736,6 @@ export const SEED_LISTINGS: Listing[] = SEED.map((s) => {
     logoInitial: initialOf(s.name),
     lat: coords?.lat,
     lng: coords?.lng,
+    updatedAt: s.updatedAt ?? SEED_IMPORTED_AT,
   };
 });

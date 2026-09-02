@@ -124,6 +124,7 @@ export function rowToListing(
     verified: row.verified,
     premiumUntil: orUndefined(row.premiumUntil),
     featuredUntil: orUndefined(row.featuredUntil),
+    updatedAt: Math.floor(row.updatedAt.getTime() / 1000),
 
     rating: toNumber(row.rating),
     reviewsCount: orUndefined(row.reviewsCount),

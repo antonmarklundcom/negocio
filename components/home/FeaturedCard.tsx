@@ -62,7 +62,7 @@ export function FeaturedCard({ listing, open }: { listing: Listing; open: OpenSt
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <StatusPill open={open} />
+          <StatusPill hours={listing.hours} initialOpen={open} />
           <RatingBadge rating={listing.rating} reviewsCount={listing.reviewsCount} />
         </div>
 

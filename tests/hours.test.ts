@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { asuncionMonthRange, asuncionMonthRanges } from '@/lib/hours';
+import { asuncionMonthRange, asuncionMonthRanges, computeOpenState } from '@/lib/hours';
+import type { DayHours } from '@/lib/types';
 
 describe('asuncionMonthRange', () => {
   it('resolves the calendar month in America/Asuncion (UTC-3), not UTC', () => {
@@ -67,5 +68,27 @@ describe('asuncionMonthRanges (ROADMAP W2-5)', () => {
 
   it('returns nothing for a count of zero', () => {
     expect(asuncionMonthRanges(0, new Date('2026-08-19T15:00:00Z'))).toEqual([]);
+  });
+});
+
+describe('computeOpenState is pure over `now` (ROADMAP F2 — live "Abierto ahora")', () => {
+  // `useLiveOpenState` (lib/hours-client.ts) leans on this: it re-runs
+  // `computeOpenState` client-side on the same `hours` with a fresher clock
+  // to cover up to an hour of ISR staleness. That only works if two calls a
+  // clock-hour apart, on the same hours, can disagree.
+  const hours: DayHours[] = [{ day: 3, ranges: [{ open: '11:00', close: '15:00' }] }];
+
+  it('recomputes to closed once the clock moves past closing, same hours object', () => {
+    const stillOpen = computeOpenState(hours, new Date('2026-08-12T17:30:00Z')); // Wed 14:30 Asunción
+    const nowClosed = computeOpenState(hours, new Date('2026-08-12T18:30:00Z')); // Wed 15:30 Asunción
+    expect('open' in stillOpen && stillOpen.open).toBe(true);
+    expect('open' in nowClosed && nowClosed.open).toBe(false);
+  });
+
+  it('recomputes to open once the clock reaches the next opening, same hours object', () => {
+    const closed = computeOpenState(hours, new Date('2026-08-12T13:00:00Z')); // Wed 10:00 Asunción
+    const open = computeOpenState(hours, new Date('2026-08-12T14:00:00Z')); // Wed 11:00 Asunción
+    expect('open' in closed && closed.open).toBe(false);
+    expect('open' in open && open.open).toBe(true);
   });
 });

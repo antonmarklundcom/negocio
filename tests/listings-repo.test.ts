@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SEED_LISTINGS } from '../lib/providers/seed-data';
 
 /**
  * `lib/listings-repo.ts` selects the DB provider once `DATABASE_URL` is set
@@ -19,6 +20,15 @@ vi.mock('../lib/providers/db', () => ({
 vi.mock('../lib/providers/seed', () => ({
   seedProvider: { name: 'seed' },
 }));
+
+describe('SEED_LISTINGS', () => {
+  it('gives every seed listing a defined updatedAt (sitemap lastModified, ROADMAP F5)', () => {
+    expect(SEED_LISTINGS.length).toBeGreaterThan(0);
+    for (const listing of SEED_LISTINGS) {
+      expect(listing.updatedAt).toBeTypeOf('number');
+    }
+  });
+});
 
 describe('selectPrimary', () => {
   beforeEach(() => {
