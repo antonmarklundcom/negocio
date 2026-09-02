@@ -30,7 +30,6 @@
   // `npm run typecheck` (tsconfig.typecheck.json), which is what CI runs.
   "exclude": [
     "node_modules",
-    "legacy",
     "design",
     "project",
     "tests",

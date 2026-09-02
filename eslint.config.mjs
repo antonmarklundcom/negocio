@@ -15,9 +15,8 @@ const config = [
       '.next/**',
       'node_modules/**',
       'next-env.d.ts',
-      // Vendored design artefacts and the pre-Next static site, not app source.
+      // Vendored design artefacts, not app source.
       'design/**',
-      'legacy/**',
       'public/**',
     ],
   },

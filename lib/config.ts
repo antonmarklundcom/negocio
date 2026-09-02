@@ -63,7 +63,6 @@ export const RESERVED_SLUGS = new Set([
   '_next',
   'favicon.ico',
   'design',
-  'legacy',
 ]);
 
 export function listingPath(slug: string): string {
