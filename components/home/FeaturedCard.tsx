@@ -60,7 +60,7 @@ export function FeaturedCard({ listing, open }: { listing: Listing; open: OpenSt
           </div>
         </div>
 
-        <StatusPill open={open} />
+        <StatusPill hours={listing.hours} initialOpen={open} />
 
         <div className="mt-auto flex gap-2 pt-[6px]">
           {hasContact ? (
