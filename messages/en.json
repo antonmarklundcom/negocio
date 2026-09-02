@@ -31,6 +31,7 @@
     "myFavorites": "My favorites",
     "about": "About us",
     "contact": "Contact",
+    "terms": "Terms & privacy",
     "note": "Hours shown in Asunción time · Prices in ₲"
   },
   "language": {
@@ -265,6 +266,23 @@
     "p2": "We bring businesses from across the country together — from Asunción to Encarnación, from Ciudad del Este to Luque — in one place, with the information that actually matters: how to reach them, where they are and when they open.",
     "p3": "For businesses, we are an honest way to gain visibility and win customers. No inflated promises and no fake reviews: we show what is real.",
     "cta": "List your business"
+  },
+  "legal": {
+    "title": "Terms & privacy",
+    "description": "Terms of use and privacy policy for negocio.com.py, Paraguay's business directory.",
+    "heading": "Terms & privacy",
+    "updated": "Last updated: September 2026.",
+    "whatTitle": "What negocio.com.py is",
+    "whatBody": "negocio.com.py is a business directory for Paraguay. Browsing the directory is free, and listing a business is free too. By using the site or listing a business, you agree to these terms.",
+    "dataTitle": "Data we collect",
+    "dataBody": "We collect the data you give us directly: when you write through the contact form, when you send a message or an enquiry to a business from its profile, when you list your business in the directory, or when you report incorrect information. That includes things like your name, your email or WhatsApp number, and the content of your message. If the site's analytics are active, we use a cookieless tool (Plausible) that measures visits in aggregate, without identifying you or your device.",
+    "useTitle": "How it's used",
+    "useBody": "We use your data for what you asked for: forwarding your enquiry to the relevant business, contacting you about your directory listing, or reviewing a report of incorrect information. We also use it to improve the service, for example by understanding which pages get the most visits. We do not sell your data to third parties.",
+    "reviewsTitle": "Reviews",
+    "reviewsBody": "When the reviews feature is active, reviews you leave are moderated before publishing and must reflect a real experience with the business — we don't accept fake or paid reviews. The display name you choose is published alongside your review.",
+    "contactTitle": "Legal or privacy enquiries",
+    "contactBody": "If you have a question about these terms, about your data, or want to ask us to delete it, write to us via",
+    "contactLink": "our contact page"
   },
   "pricing": {
     "title": "Pricing — Free vs Premium",

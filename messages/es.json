@@ -31,6 +31,7 @@
     "myFavorites": "Mis favoritos",
     "about": "Nosotros",
     "contact": "Contacto",
+    "terms": "Términos y privacidad",
     "note": "Horarios en hora de Asunción · Precios en ₲"
   },
   "language": {
@@ -265,6 +266,23 @@
     "p2": "Reunimos negocios de todo el país —de Asunción a Encarnación, de Ciudad del Este a Luque— en un solo lugar, con la información que realmente importa: cómo contactarlos, dónde están y a qué hora abren.",
     "p3": "Para los negocios, somos una forma honesta de ganar visibilidad y recibir clientes. Sin promesas infladas ni reseñas falsas: mostramos lo que es real.",
     "cta": "Sumá tu negocio"
+  },
+  "legal": {
+    "title": "Términos y privacidad",
+    "description": "Términos de uso y política de privacidad de negocio.com.py, el directorio de negocios de Paraguay.",
+    "heading": "Términos y privacidad",
+    "updated": "Última actualización: septiembre de 2026.",
+    "whatTitle": "Qué es negocio.com.py",
+    "whatBody": "negocio.com.py es un directorio de negocios de Paraguay. Es gratis buscar y navegar el directorio, y también es gratis sumar un negocio y publicar su perfil básico. Al usar el sitio o publicar un negocio, aceptás estos términos.",
+    "dataTitle": "Datos que recolectamos",
+    "dataBody": "Recolectamos los datos que nos das directamente: cuando escribís por el formulario de contacto, cuando le mandás un mensaje o una consulta a un negocio desde su perfil, cuando sumás tu negocio al directorio o cuando reportás un dato incorrecto. Eso incluye cosas como tu nombre, tu email o WhatsApp y el contenido de tu mensaje. Si las analíticas del sitio están activas, usamos una herramienta sin cookies (Plausible) que mide visitas de forma agregada, sin identificarte a vos ni a tu dispositivo.",
+    "useTitle": "Cómo se usan",
+    "useBody": "Usamos tus datos para lo que hiciste: reenviar tu consulta al negocio correspondiente, contactarte por tu publicación en el directorio, o revisar un reporte de información incorrecta. También los usamos para mejorar el servicio, por ejemplo entendiendo qué páginas se visitan más. No vendemos tus datos a terceros.",
+    "reviewsTitle": "Reseñas",
+    "reviewsBody": "Cuando la función de reseñas está activa, las reseñas que dejás son moderadas antes de publicarse y deben reflejar una experiencia real con el negocio: no aceptamos reseñas falsas ni compradas. El nombre que elegís mostrar es el que se publica junto a tu reseña.",
+    "contactTitle": "Consultas legales o de privacidad",
+    "contactBody": "Si tenés una consulta sobre estos términos, sobre tus datos o querés pedir que los eliminemos, escribinos por",
+    "contactLink": "nuestra página de contacto"
   },
   "pricing": {
     "title": "Precios — Gratis vs Premium",
