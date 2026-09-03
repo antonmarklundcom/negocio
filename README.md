@@ -571,6 +571,16 @@ Merge to `main` = redeploy. Adding an integration = add its env vars + redeploy.
 **Database migrations are not part of the deploy** — apply them from a local
 machine before merging the PR that needs them (see **Database** above).
 
+### Build memory cap (ROADMAP F8)
+
+Hostinger's Node.js app hosting runs the build on a single worker with no
+heap cap by default — on a memory-constrained plan a large `next build` can
+OOM. **USER:** in hPanel → the app → **Environment variables**, set
+`NODE_OPTIONS=--max-old-space-size=1536` (adjust the number down if the plan's
+RAM is smaller; 1536 MB is a reasonable default for Hostinger's common
+Node.js tiers), then redeploy. This is a panel setting only — there is
+nothing in the repo to change for it.
+
 ### The production build has no devDependencies
 
 Hostinger sets `NODE_ENV=production` as an app environment variable, so its
