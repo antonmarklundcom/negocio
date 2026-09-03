@@ -7,9 +7,11 @@ import {
   openNowSql,
 } from '../lib/db/listing-query';
 import {
+  computeSearchText,
   escapeLike,
   likePattern,
   MAX_PAGE_SIZE,
+  normalize,
   pagination,
   sortPlan,
   taxonomySlugsMatching,
@@ -91,6 +93,36 @@ describe('sortPlan', () => {
   });
 });
 
+describe('normalize', () => {
+  it('lowercases and strips accents', () => {
+    expect(normalize('Asunción')).toBe('asuncion');
+    expect(normalize('FARMÁCIA')).toBe('farmacia');
+    expect(normalize('Ñandutí')).toBe('nanduti');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(normalize('  Asunción  ')).toBe('asuncion');
+  });
+
+  it('leaves an already-plain string alone', () => {
+    expect(normalize('pizza')).toBe('pizza');
+  });
+});
+
+describe('computeSearchText', () => {
+  it('joins the normalized fields with a single space', () => {
+    expect(
+      computeSearchText({ name: 'Farmácia Asunción', subtitle: 'Zona Villa Morra', description: 'Café', zona: 'Centro' }),
+    ).toBe('farmacia asuncion zona villa morra cafe centro');
+  });
+
+  it('skips missing optional fields instead of leaving doubled/leading/trailing spaces', () => {
+    expect(computeSearchText({ name: 'Pizza' })).toBe('pizza');
+    expect(computeSearchText({ name: 'Pizza', subtitle: null, description: null, zona: null })).toBe('pizza');
+    expect(computeSearchText({ name: 'Pizza', zona: 'Centro' })).toBe('pizza centro');
+  });
+});
+
 describe('taxonomySlugsMatching', () => {
   it('matches a category by its singular or plural label', () => {
     expect(taxonomySlugsMatching('restaurante').categorias).toContain('restaurantes');
@@ -134,10 +166,18 @@ describe('buildListingWhere', () => {
     expect(params).toEqual(['published', 'villa morra']);
   });
 
-  it('searches the text columns with an escaped pattern and the matching taxonomy slugs', () => {
+  it('searches the single normalized search_text column, plus the matching taxonomy slugs', () => {
     const { params } = render(buildListingWhere({ q: 'asuncion' }, at, NOW));
-    expect(params.filter((p) => p === '%asuncion%')).toHaveLength(4);
+    expect(params.filter((p) => p === '%asuncion%')).toHaveLength(1);
     expect(params).toContain('asuncion'); // the city slug, added as an OR
+  });
+
+  it('folds accents in `q`, so "Asunción" and "asuncion" produce the same search_text LIKE parameter (ROADMAP F3)', () => {
+    const withAccent = render(buildListingWhere({ q: 'Asunción' }, at, NOW));
+    const withoutAccent = render(buildListingWhere({ q: 'asuncion' }, at, NOW));
+    const patternOf = (params: unknown[]) => params.find((p) => typeof p === 'string' && p.startsWith('%'));
+    expect(patternOf(withAccent.params)).toBe('%asuncion%');
+    expect(patternOf(withAccent.params)).toBe(patternOf(withoutAccent.params));
   });
 
   it('passes the Asunción day and minute into the open-now check, plus yesterday', () => {

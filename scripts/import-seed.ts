@@ -20,6 +20,7 @@ import { SEED_RAW } from '../lib/providers/seed-data';
 import { createDb, createPool, databaseUrl, MissingDatabaseUrlError } from '../lib/db/connection';
 import { categories, cities, listingGallery, listingHours, listings } from '../lib/db/schema';
 import { dayHoursToRows } from '../lib/db/mappers';
+import { computeSearchText } from '../lib/db/query-helpers';
 
 type Counts = { categories: number; cities: number; listings: number; hours: number; gallery: number };
 
@@ -155,6 +156,8 @@ async function main(): Promise<void> {
           // silently wiped a real, earned average.
           yearsActive: s.yearsActive ?? null,
           avgResponseMins: s.avgResponseMins ?? null,
+          // ROADMAP F3 — kept in sync on every write, same as `listingToRow`.
+          searchText: computeSearchText(s),
         };
 
         // `slug` is the natural key. The primary key is never updated, so an

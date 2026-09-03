@@ -32,6 +32,7 @@ function row(overrides: Partial<ListingRow> = {}): ListingRow {
     website: 'https://nandecocina.com.py',
     instagram: 'nandecocina',
     coverImage: '/seed/food-1.svg',
+    searchText: 'nande cocina cocina paraguaya cocina paraguaya de raiz. villa morra',
     especialidades: ['Sopa paraguaya', 'Chipa guasú'],
     destacadoItem: { title: 'Menú del día', price: 'Gs. 45.000' },
     productos: null,
@@ -119,6 +120,12 @@ describe('listingToRow', () => {
     expect(roundTripped.verified).toBe(original.verified);
     expect(roundTripped.premiumUntil).toBe(original.premiumUntil);
     expect(roundTripped.yearsActive).toBe(original.yearsActive);
+  });
+
+  it('populates search_text as the accent-folded name/subtitle/description/zona (ROADMAP F3)', () => {
+    const original = rowToListing(row());
+    const mapped = listingToRow(original);
+    expect(mapped.searchText).toBe('nande cocina cocina paraguaya cocina paraguaya de raiz. villa morra');
   });
 
   it('writes NULL rather than inventing a value for an unknown column', () => {

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
@@ -101,6 +102,16 @@ export const listings = mysqlTable(
 
     zona: varchar('zona', { length: 120 }),
     address: varchar('address', { length: 255 }),
+    /**
+     * Accent-folded, lowercased concatenation of name/subtitle/description/zona
+     * (ROADMAP F3), computed by `computeSearchText` in `./query-helpers.ts` and
+     * kept in sync on every write by `listingToRow` in `./mappers.ts`. Free-text
+     * search matches THIS column instead of the four raw ones, so "asuncion"
+     * finds "Asunción" regardless of MySQL's column collation. Nullable because
+     * existing rows need a one-off backfill (`scripts/backfill-search-text.ts`)
+     * after the migration lands — see that script before deploying.
+     */
+    searchText: text('search_text'),
     lat: decimal('lat', { precision: 9, scale: 6 }),
     lng: decimal('lng', { precision: 9, scale: 6 }),
 
@@ -154,6 +165,13 @@ export const listings = mysqlTable(
     ciudadIdx: index('listings_ciudad_idx').on(t.ciudad),
     categoriaCiudadIdx: index('listings_categoria_ciudad_idx').on(t.categoria, t.ciudad),
     zonaIdx: index('listings_zona_idx').on(t.zona),
+    // Regular (non-FULLTEXT) index backing the accent-insensitive `q` search
+    // (ROADMAP F3) — see the field comment on `searchText` above for why. A
+    // TEXT column cannot be indexed in full, so MySQL needs an explicit key
+    // prefix length; drizzle-kit has no typed option for that, so the prefix
+    // is spelled out as raw SQL, which drizzle-kit reproduces verbatim in the
+    // generated migration.
+    searchTextIdx: index('listings_search_text_idx').on(sql`${t.searchText}(191)`),
     // Every public read filters on status, so it leads the composite indexes
     // the landing pages use.
     statusIdx: index('listings_status_idx').on(t.status),

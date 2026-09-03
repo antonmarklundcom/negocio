@@ -2,7 +2,7 @@ import { and, asc, desc, eq, exists, inArray, like, ne, or, sql, type SQL } from
 import { QueryBuilder } from 'drizzle-orm/mysql-core';
 import type { ListingQuery } from '../types';
 import { listingHours, listings } from './schema';
-import { likePattern, sortPlan, taxonomySlugsMatching } from './query-helpers';
+import { likePattern, normalize, sortPlan, taxonomySlugsMatching } from './query-helpers';
 import { lngScaleAt, type Point } from '../geo';
 import { previousDay, type WallClock } from './open-now';
 
@@ -85,14 +85,13 @@ export function buildListingWhere(params: ListingQuery, at: WallClock, nowSecond
 
   const q = params.q?.trim();
   if (q) {
-    const pattern = likePattern(q);
+    // Accent-insensitive (ROADMAP F3): `search_text` is pre-normalized on
+    // every write (see `computeSearchText` / `listingToRow`), so folding the
+    // term the same way here is what makes "asuncion" match "Asunción" no
+    // matter what the column's collation does with LIKE.
+    const pattern = likePattern(normalize(q));
     const { categorias, ciudades } = taxonomySlugsMatching(q);
-    const textMatches: SQL[] = [
-      like(listings.name, pattern),
-      like(listings.subtitle, pattern),
-      like(listings.description, pattern),
-      like(listings.zona, pattern),
-    ];
+    const textMatches: SQL[] = [like(listings.searchText, pattern)];
     // Category and city labels are derived from the static taxonomy rather than
     // stored on the row, so they are matched as slugs instead of joined.
     if (categorias.length > 0) textMatches.push(inArray(listings.categoria, categorias));

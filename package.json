@@ -16,7 +16,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:import-seed": "tsx scripts/import-seed.ts",
-    "bootstrap-admin": "tsx scripts/bootstrap-admin.ts"
+    "bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
+    "backfill-search-text": "tsx scripts/backfill-search-text.ts"
   },
   "engines": {
     "node": ">=22"

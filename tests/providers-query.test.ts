@@ -55,6 +55,29 @@ describe('applyQuery — destacado filter ("destacado en portada")', () => {
   });
 });
 
+describe('applyQuery — accent-insensitive `q` search (ROADMAP F3)', () => {
+  const all: Listing[] = [
+    listing({ id: 'a', name: 'Farmácia San José', zona: 'Villa Morra' }),
+    listing({ id: 'b', name: 'La Farmacia del Centro' }),
+    listing({ id: 'c', name: 'Kiosco 24hs' }),
+  ];
+
+  it('an unaccented term finds a name typed with the accent', () => {
+    const result = applyQuery(all, { q: 'farmacia' });
+    expect(result.items.map((l) => l.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('an accented term finds a name typed without the accent too', () => {
+    const result = applyQuery(all, { q: 'Farmácia' });
+    expect(result.items.map((l) => l.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('still matches the city label, folded the same way ("Asunción" / "asuncion")', () => {
+    const result = applyQuery(all, { q: 'asuncion' });
+    expect(result.items.map((l) => l.id).sort()).toEqual(['a', 'b', 'c']);
+  });
+});
+
 describe('isPremium (regression guard — unaffected by the featured-slot addition)', () => {
   it('is still independent of featuredUntil', () => {
     expect(isPremium(listing({ premiumUntil: FUTURE, featuredUntil: PAST }))).toBe(true);
